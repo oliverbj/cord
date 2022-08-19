@@ -54,10 +54,47 @@ php artisan vendor:publish --tag="cord-views"
 
 ## Usage
 
+### Shipments
 ```php
-$cord = new Oliverbj\Cord();
-echo $cord->echoPhrase('Hello, Oliverbj!');
+//Get a shipment
+Cord::shipment()
+    ->find('SMIA12345678');
 ```
+
+### Customs
+```php
+//Get a brokerage job
+Cord::custom()
+    ->find('BATL12345678');
+```
+
+### eDocs
+```php
+//Get all the available documents from a shipment file
+Cord::documents()
+    ->shipment()
+    ->find('SMIA12345678');
+```
+When interacting with the eDocs of CargoWise One, we can provide filters to the request:
+```php
+//Get only documents from a shipment file that is the type "ARN"
+Cord::documents()
+    ->shipment()
+    ->find('SMIA92838292')
+    ->filter('DocumentType', 'ARN');
+```
+
+The available filters are:
+```
+ - **DocumentType** – Retrieve only documents matching the specified document type.
+ - **IsPublished** – Retrieve only published or un-published documents. The values for this filter are: `True` and `False`. This can only be specified once.
+ - **SaveDateUTCFrom** – Retrieve only documents that were added or modified on or after the specified date/time (provided in UTC time). This can only be specified once.
+ - **SaveDateUTCTo** – Retrieve only documents that were added or modified on or before the specified date/time (provided in UTC time). This can only be specified once.
+ - **CompanyCode** – Retrieve only documents related to the specified company or non-company specific. The default behavior without this Type being filtered is to return all documents regardless of company affiliation.
+ - **BranchCode** – Retrieve only documents related to the specified branch code.
+ - **DepartmentCode** – Retrieve only documents relevant to specified department code.
+```
+
 
 ## Testing
 

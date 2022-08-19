@@ -7,7 +7,9 @@ use Oliverbj\Cord\Enums\DataTarget;
 class Cord
 {
     protected string $target = DataTarget::Shipment;
+
     protected string $targetKey;
+
     protected bool $documents = false;
 
     public function shipment()
@@ -51,9 +53,7 @@ class Cord
         $client->setDefaultOption('headers', [
             'Accept' => 'application/xml',
             'Content-Type' => 'application/xml',
-            'Authorization' => 'Basic ' . base64_encode(env('CORD_USERNAME') . ':' . env('CORD_PASSWORD')),
+            'Authorization' => 'Basic '.base64_encode(env('CORD_USERNAME').':'.env('CORD_PASSWORD')),
         ]);
-
-
     }
 }

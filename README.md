@@ -82,7 +82,6 @@ Cord::documents()
 ```
 
 The available filters are:
-```
  - **DocumentType** – Retrieve only documents matching the specified document type.
  - **IsPublished** – Retrieve only published or un-published documents. The values for this filter are: `True` and `False`. This can only be specified once.
  - **SaveDateUTCFrom** – Retrieve only documents that were added or modified on or after the specified date/time (provided in UTC time). This can only be specified once.
@@ -90,7 +89,6 @@ The available filters are:
  - **CompanyCode** – Retrieve only documents related to the specified company or non-company specific. The default behavior without this Type being filtered is to return all documents regardless of company affiliation.
  - **BranchCode** – Retrieve only documents related to the specified branch code.
  - **DepartmentCode** – Retrieve only documents relevant to specified department code.
-```
 
 
 ## Testing

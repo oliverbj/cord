@@ -1,6 +1,6 @@
 <?php
 
-Cord::findShipment('DSV');
+Cord::findShipment('SNTG99999999');
 Cord::findShipment('SNTG99999999')
     ->company('DK1')
     ->server('ENT')
@@ -18,4 +18,4 @@ Cord::custom()
 Cord::documents()
     ->shipment()
     ->find('SNTG99999999')
-    ->filter('');
+    ->filter('DocumentType', 'ARN');

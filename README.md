@@ -65,6 +65,7 @@ Cord::custom()
     ->find('BATL12345678');
 ```
 
+
 ### eDocs
 ```php
 //Get all the available documents from a shipment file

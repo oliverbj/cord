@@ -2,9 +2,9 @@
 
 namespace Oliverbj\Cord;
 
+use Oliverbj\Cord\Commands\CordCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Oliverbj\Cord\Commands\CordCommand;
 
 class CordServiceProvider extends PackageServiceProvider
 {

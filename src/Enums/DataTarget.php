@@ -2,7 +2,7 @@
 
 namespace Oliverbj\Cord\Enums;
 
-enum DataTarget : string
+enum DataTarget: string
 {
     case Shipment = 'ForwardingShipment';
     case Booking = 'ForwardingBooking';

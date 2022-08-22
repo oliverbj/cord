@@ -1,6 +1,5 @@
 <?php
 
-
 Cord::shipment()
     ->find('SNTG99999999');
 

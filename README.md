@@ -51,6 +51,15 @@ php artisan vendor:publish --tag="cord-views"
 
 ## Usage
 
+### Setting environment
+In order to use Cord, you must specify the appropiate login details for your CargoWise One eAdapter service:
+
+```env
+CW1_EADAPTER_URL=
+CW1_EADAPTER_USERNAME=
+CW1_EADAPTER_PASSWORD=
+```
+
 ### Shipments
 ```php
 //Get a shipment

@@ -10,7 +10,7 @@ Cord::custom()
     ->server('ENT')
     ->enterprise('CW');
 
-Cord::documents()
-    ->shipment()
+Cord::shipment()
     ->find('SNTG99999999')
-    ->filter('DocumentType', 'ARN');
+    ->filter('DocumentType', 'ARN')
+    ->documents();

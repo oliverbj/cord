@@ -1,0 +1,17 @@
+<UniversalShipmentRequest xmlns="http://www.cargowise.com/Schemas/Universal/2011/11" version="1.1">
+    <ShipmentRequest>
+        <DataContext>
+            <DataTargetCollection>
+            <DataTarget>
+                <Type>{{target}}</Type>
+                <Key>{{targetKey}}</Key>
+            </DataTarget>
+            </DataTargetCollection>
+            <EnterpriseID>{{enterprise}}</EnterpriseID>
+            <ServerID>{{server}}</ServerID>
+            <Company>
+            <Code>{{company}}</Code>
+            </Company>
+        </DataContext>
+    </ShipmentRequest>
+</UniversalShipmentRequest>

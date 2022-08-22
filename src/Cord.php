@@ -47,6 +47,13 @@ class Cord
         return $this;
     }
 
+    public function milestones()
+    {
+        $this->milestones = true;
+
+        return $this;
+    }
+
     protected function fetch()
     {
         $client = new \GuzzleHttp\Client();

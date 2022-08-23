@@ -21,15 +21,12 @@ class CordServiceProvider extends PackageServiceProvider
             ->hasViews()
             ->hasMigration('create_cord_table')
             ->hasCommand(CordCommand::class);
-
-
     }
 
-    public function packageRegistered(){
+    public function packageRegistered()
+    {
         $this->app->singleton('cord', function () {
             return new Cord();
         });
     }
-
-
 }

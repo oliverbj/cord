@@ -8,5 +8,4 @@ class UniversalDocumentRequest extends Request
     {
         return [];
     }
-
 }

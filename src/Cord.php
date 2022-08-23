@@ -11,13 +11,21 @@ use Request;
 class Cord
 {
     public ?DataTarget $target = DataTarget::Shipment;
+
     public ?string $targetKey = null;
+
     public ?string $company = null;
+
     public ?string $server = null;
+
     public ?string $enterprise = null;
+
     public bool $documents = false;
+
     public array $filters = [];
+
     protected $xml;
+
     protected $client;
 
     public function __construct()

@@ -11,26 +11,13 @@ use Request;
 class Cord
 {
     public ?DataTarget $target = DataTarget::Shipment;
-
     public ?string $targetKey = null;
-
     public ?string $company = null;
-
     public ?string $server = null;
-
     public ?string $enterprise = null;
-
     public bool $documents = false;
-<<<<<<< HEAD
-=======
-
-    public bool $milestones = false;
-
->>>>>>> 100bee0b63ee641ea5aa31de49215286328d07fc
     public array $filters = [];
-
     protected $xml;
-
     protected $client;
 
     public function __construct()
@@ -100,18 +87,7 @@ class Cord
         return $this;
     }
 
-<<<<<<< HEAD
-    public function filter($type, $value) : self
-=======
-    public function milestones(): self
-    {
-        $this->milestones = true;
-
-        return $this;
-    }
-
     public function filter($type, $value): self
->>>>>>> 100bee0b63ee641ea5aa31de49215286328d07fc
     {
         //Every time this method is called, it will add a new filter to the filters array.
         $this->filters[] = [
@@ -174,13 +150,6 @@ class Cord
             }
         }
 
-<<<<<<< HEAD
-=======
-        if ($this->milestones) {
-            return $response['Data']['UniversalShipment']['Shipment']['MilestoneCollection'];
-        }
-
->>>>>>> 100bee0b63ee641ea5aa31de49215286328d07fc
         //If eAdapter response is successful, return data:
         return $response['Data'];
     }

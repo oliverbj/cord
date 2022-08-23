@@ -25,6 +25,11 @@ This is the contents of the published config file:
 
 ```php
 return [
+    'eadapter_connection' => [
+        'url' => env('CW1_EADAPTER_URL', ''),
+        'username' => env('CW1_EADAPTER_USERNAME', ''),
+        'password' => env('CW1_EADAPTER_PASSWORD', ''),
+    ],
 ];
 ```
 

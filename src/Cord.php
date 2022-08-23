@@ -17,7 +17,6 @@ class Cord
     public ?string $server = null;
     public ?string $enterprise = null;
     public bool $documents = false;
-    public bool $milestones = false;
     public array $filters = [];
     protected $xml;
     protected $client;
@@ -89,12 +88,6 @@ class Cord
         return $this;
     }
 
-    public function milestones() : self
-    {
-        $this->milestones = true;
-        return $this;
-    }
-
     public function filter($type, $value) : self
     {
         //Every time this method is called, it will add a new filter to the filters array.
@@ -156,9 +149,6 @@ class Cord
 
             else throw new \Exception('Error from eAdapter: ' . $response['ProcessingLog']);
         }
-
-        if($this->milestones)
-            return $response['Data']['UniversalShipment']['Shipment']['MilestoneCollection'];
 
         //If eAdapter response is successful, return data:
         return $response['Data'];

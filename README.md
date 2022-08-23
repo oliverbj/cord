@@ -42,9 +42,9 @@ CW1_EADAPTER_PASSWORD=
 ### Modules
 
 Cord comes with connectivity to the following modules:
- - Bookings (`booking()`)
- - Shipments (`shipment()`)
- - Customs (`custom()`)
+ - Bookings `booking()`
+ - Shipments `shipment()`
+ - Customs `custom()`
 
 Similar for all, you must call the `get()` method to get the actual response back from the eAdapter. The response from the eAdapter will be returned in a JSON format.
 
@@ -59,7 +59,6 @@ Cord::custom()
     ->find('BATL12345678')
     ->get();
 ```
-
 
 ### Documents / eDocs
 Most entities in CargoWise One have a document tab (called eDocs). It is possible to use Cord to access these documents using the `documents()` method.

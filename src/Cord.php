@@ -4,18 +4,22 @@ namespace Oliverbj\Cord;
 
 use Oliverbj\Cord\Enums\DataTarget;
 use Illuminate\Support\Facades\Http;
+use Oliverbj\Cord\Requests\UniversalDocumentRequest;
+use Oliverbj\Cord\Requests\UniversalShipmentRequest;
 use Request;
 use SimpleXMLElement;
 
 class Cord
 {
-    protected ?DataTarget $target = null;
-    protected ?string $targetKey = null;
-    protected ?string $company = null;
-    protected ?string $server = null;
-    protected ?string $enterprise = null;
-    protected bool $documents = false;
-    protected bool $milestones = false;
+    public ?DataTarget $target = DataTarget::Shipment;
+    public ?string $targetKey = null;
+    public ?string $company = null;
+    public ?string $server = null;
+    public ?string $enterprise = null;
+    public bool $documents = false;
+    public bool $milestones = false;
+    public array $filters = [];
+    protected $xml;
     protected $client;
 
     public function __construct()
@@ -29,22 +33,31 @@ class Cord
         ]);
     }
 
-    //create three methods: company, server, enterprise
     public function company(string $company): self
     {
         $this->company = $company;
+
         return $this;
     }
 
     public function server(string $server): self
     {
         $this->server = $server;
+
         return $this;
     }
 
     public function enterprise(string $enterprise): self
     {
         $this->enterprise = $enterprise;
+
+        return $this;
+    }
+
+    public function booking() : self
+    {
+        $this->target = DataTarget::Booking;
+
         return $this;
     }
 
@@ -58,13 +71,6 @@ class Cord
     public function custom() : self
     {
         $this->target = DataTarget::Custom;
-
-        return $this;
-    }
-
-    public function booking() : self
-    {
-        $this->target = DataTarget::Booking;
 
         return $this;
     }
@@ -89,54 +95,54 @@ class Cord
         return $this;
     }
 
+    public function filter($type, $value) : self
+    {
+        //Every time this method is called, it will add a new filter to the filters array.
+        $this->filters[] = [
+            'Type' => $type,
+            'Value' => $value,
+        ];
+
+        return $this;
+    }
+
     public function get()
     {
-        $xml = match($this->target) {
-            DataTarget::Shipment, DataTarget::Custom, DataTarget::Booking => file_get_contents(__DIR__ . '/Requests/UniversalShipmentRequest.xml'),
+        $target = match($this->target) {
+            DataTarget::Shipment, DataTarget::Custom, DataTarget::Booking => new (UniversalShipmentRequest::class)($this),
         };
 
-        $xml = str_replace(['{{target}}', '{{targetKey}}'], [$this->target->value, $this->targetKey], $xml);
+        if($this->documents) $target = new (UniversalDocumentRequest::class)($this);
 
-        $xml = new SimpleXMLElement($xml);
+        $this->xml = $target->xml();
 
-        if($this->enterprise){
-            $xml->ShipmentRequest->DataContext->addChild('EnterpriseID', $this->enterprise);
-        }
+        return $this->fetch();
 
-        if($this->server){
-            $xml->ShipmentRequest->DataContext->addChild('ServerID', $this->server);
-        }
+    }
 
-        if($this->company){
-            $company = $xml->ShipmentRequest->DataContext->addChild('Company');
-            $company->addChild('Code', $this->company);
-        }
-
-
-
-        return $this->fetch($xml);
+    /**
+     * Get the request as XML.
+     */
+    public function inspect() : string
+    {
+        $this->get();
+        return $this->xml;
     }
 
     private function checkForErrors()
     {
-        if(! $this->target){
-            throw new \Exception('You haven\'t set any target module. Set this using the booking(), shipment() or custom() method.');
-        }
-
         if(! $this->targetKey){
-            throw new \Exception('You haven\'t set any target key. Set this using find()');
+            throw new \Exception('You haven\'t set any target key. Set this using find(). This is usually the shipment number, customs declaration number or booking number.');
         }
     }
 
-    protected function fetch(SimpleXMLElement $xml)
+    protected function fetch()
     {
 
         $this->checkForErrors();
-        $xml = $xml->asXML();
-        $xml = substr($xml, strpos($xml, '?'.'>') + 2);
 
         $response = $this->client->send('POST', config('cord.eadapter_connection.url'), [
-            "body" => $xml
+            "body" => $this->xml,
         ])->body();
 
         //XML to JSON
@@ -144,6 +150,7 @@ class Cord
 
         //If eAdapter response is not successful, throw exception:
         if($response['Status'] == "ERR"){
+
             if(Request::wantsJson())
                 abort(response()->json(['error' => $response['ProcessingLog']]), 500);
 
@@ -152,9 +159,6 @@ class Cord
 
         if($this->milestones)
             return $response['Data']['UniversalShipment']['Shipment']['MilestoneCollection'];
-
-        #if($this->documents)
-        #    return $response['Data']['UniversalShipment']['Shipment']['DocumentCollection'];
 
         //If eAdapter response is successful, return data:
         return $response['Data'];

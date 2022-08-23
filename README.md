@@ -5,15 +5,7 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/workflow/status/oliverbj/cord/Fix%20PHP%20code%20style%20issues?label=code%20style)](https://github.com/oliverbj/cord/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/oliverbj/cord.svg?style=flat-square)](https://packagist.org/packages/oliverbj/cord)
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
-
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/cord.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/cord)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+Cord offers a expressive, chainable and easy API to interact with CargoWise One's eAdapter using their HTTP Webservice.
 
 ## Installation
 
@@ -21,13 +13,6 @@ You can install the package via composer:
 
 ```bash
 composer require oliverbj/cord
-```
-
-You can publish and run the migrations with:
-
-```bash
-php artisan vendor:publish --tag="cord-migrations"
-php artisan migrate
 ```
 
 You can publish the config file with:
@@ -43,12 +28,6 @@ return [
 ];
 ```
 
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag="cord-views"
-```
-
 ## Usage
 
 ### Setting environment
@@ -60,35 +39,49 @@ CW1_EADAPTER_USERNAME=
 CW1_EADAPTER_PASSWORD=
 ```
 
-### Shipments
+### Modules
+
+Cord comes with connectivity to the following modules:
+ - Bookings (`booking()`)
+ - Shipments (`shipment()`)
+ - Customs (`custom()`)
+
+Similar for all, you must call the `get()` method to get the actual response back from the eAdapter. The response from the eAdapter will be returned in a JSON format.
+
 ```php
 //Get a shipment
 Cord::shipment()
-    ->find('SMIA12345678');
-```
+    ->find('SMIA12345678')
+    ->get();
 
-### Customs
-```php
 //Get a brokerage job
 Cord::custom()
-    ->find('BATL12345678');
+    ->find('BATL12345678')
+    ->get();
 ```
 
 
-### eDocs
+### Documents / eDocs
+Most entities in CargoWise One have a document tab (called eDocs). It is possible to use Cord to access these documents using the `documents()` method.
+When applying the documents method, Cord will only a `DcoumentCollection` containing the documents from the specified entity.
+
 ```php
 //Get all the available documents from a shipment file
 Cord::documents()
     ->shipment()
-    ->find('SMIA12345678');
+    ->find('SMIA12345678')
+    ->get();
 ```
 When interacting with the eDocs of CargoWise One, we can provide filters to the request:
+
 ```php
 //Get only documents from a shipment file that is the type "ARN"
 Cord::documents()
     ->shipment()
     ->find('SMIA92838292')
-    ->filter('DocumentType', 'ARN');
+    ->filter('DocumentType', 'ARN')
+    ->filter('IsPublished', True)
+    ->get();
 ```
 
 The available filters are:
@@ -100,6 +93,18 @@ The available filters are:
  - **BranchCode** – Retrieve only documents related to the specified branch code.
  - **DepartmentCode** – Retrieve only documents relevant to specified department code.
 
+### Debugging
+Sometimes you may want to inspect the XML request before it's sent to the eAdapter. To do this, you can simply call the `inspect()` method. This will return the XML string repesentation:
+
+```php
+$xml = Cord::custom()
+            ->find('BJFK21041242')
+            ->documents()
+            ->filter('DocumentType', 'ARN')
+            ->inspect();
+
+return response($xml, 200, ['Content-Type' => 'application/xml']);
+```
 
 ## Testing
 

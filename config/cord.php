@@ -17,6 +17,6 @@ return [
         'url' => env('CW1_EADAPTER_URL', ''),
         'username' => env('CW1_EADAPTER_USERNAME', ''),
         'password' => env('CW1_EADAPTER_PASSWORD', ''),
-    ]
+    ],
 
 ];

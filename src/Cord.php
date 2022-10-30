@@ -129,7 +129,7 @@ class Cord
                         'Code' => $type,
                         'Description' => $description,
                     ],
-                    'IsPublished' => var_export($isPublished, true) //cast to string,
+                    'IsPublished' => var_export($isPublished, true), //cast to string,
                 ],
             ],
         ];
@@ -157,7 +157,7 @@ class Cord
              'EventTime' => $date,
              'EventType' => $type,
              'EventReference' => $reference,
-             'IsEstimate' => var_export($isEstimate, true) //cast to string
+             'IsEstimate' => var_export($isEstimate, true), //cast to string
          ];
 
          return $this;

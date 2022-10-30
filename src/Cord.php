@@ -2,7 +2,6 @@
 
 namespace Oliverbj\Cord;
 
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
@@ -116,10 +115,6 @@ class Cord
         return $this;
     }
 
-
-    /**
-     *
-     */
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
         $this->requestType = RequestType::UniversalEvent;
@@ -142,10 +137,9 @@ class Cord
         return $this;
     }
 
-
-    /**
-     * Add an event to the request.
-     */
+     /**
+      * Add an event to the request.
+      */
      public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
      {
          $this->requestType = RequestType::UniversalEvent;
@@ -154,10 +148,10 @@ class Cord
              throw new \Exception('Only one event can be added to a request');
          }
 
-         if (!$date) {
-             $date = date("c");
+         if (! $date) {
+             $date = date('c');
          }
-         $date = date("c", strtotime($date));
+         $date = date('c', strtotime($date));
 
          $this->event = [
              'EventTime' => $date,
@@ -170,8 +164,8 @@ class Cord
      }
 
     /**
-      * Add filter(s) to the request.
-      */
+     * Add filter(s) to the request.
+     */
     public function filter($type, $value): self
     {
         //Every time this method is called, it will add a new filter to the filters array.

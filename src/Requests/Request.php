@@ -38,7 +38,6 @@ abstract class Request implements RequestInterface
 
     protected function build(array $schema): array
     {
-
         //1. Add the "DataContext" key to the schema.
         $context = $this->context();
 

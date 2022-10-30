@@ -70,7 +70,15 @@ abstract class Request implements RequestInterface
             ];
         }
 
-        //4. Add the schema defined by the XXXRequest class if any.
+        //4. (if any), add an event to request.
+        if (! empty($this->cord->event)) {
+            $DataTargetArray['EventTime'] = $this->cord->event['EventTime'];
+            $DataTargetArray['EvenType'] = $this->cord->event['EventType'];
+            $DataTargetArray['EventReference'] = $this->cord->event['EventReference'];
+            $DataTargetArray['IsEstimate'] = $this->cord->event['IsEstimate'];
+        }
+
+        //5. Add the schema defined by the XXXRequest class if any.
         $DataTargetArray += $schema;
 
         return [

@@ -2,15 +2,20 @@
 
 namespace Oliverbj\Cord;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Oliverbj\Cord\Enums\DataTarget;
+use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
+use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
 use Request;
 
 class Cord
 {
     public ?DataTarget $target = DataTarget::Shipment;
+
+    public ?RequestType $requestType = RequestType::UniversalShipmentRequest;
 
     public ?string $targetKey = null;
 
@@ -20,9 +25,13 @@ class Cord
 
     public ?string $enterprise = null;
 
-    public bool $documents = false;
+    //public bool $documents = false;
 
     public array $filters = [];
+
+    public array $event = [];
+
+    public $document = [];
 
     protected $xml;
 
@@ -60,41 +69,106 @@ class Cord
         return $this;
     }
 
-    public function booking(): self
+    /**
+     * Determine if the request is for a booking.
+     */
+    public function booking(string $booking): self
     {
+        $this->targetKey = $booking;
         $this->target = DataTarget::Booking;
+        $this->requestType = RequestType::UniversalShipmentRequest;
 
         return $this;
     }
 
-    public function shipment(): self
+    /**
+     * Determine if the request is for a shipment.
+     */
+    public function shipment(string $shipment): self
     {
+        $this->targetKey = $shipment;
         $this->target = DataTarget::Shipment;
+        $this->requestType = RequestType::UniversalShipmentRequest;
 
         return $this;
     }
 
-    public function custom(): self
+    /**
+     * Determine if the request is for a brokerage job.
+     */
+    public function custom(string $custom): self
     {
+        $this->targetKey = $custom;
         $this->target = DataTarget::Custom;
+        $this->requestType = RequestType::UniversalShipmentRequest;
 
         return $this;
     }
 
-    public function find(string $targetKey): self
+    /**
+     * Determine if the request should include documents.
+     */
+    public function withDocuments(): self
     {
-        $this->targetKey = $targetKey;
+        //$this->documents = true;
+        $this->requestType = RequestType::UniversalDocumentRequest;
 
         return $this;
     }
 
-    public function documents(): self
+
+    /**
+     *
+     */
+    public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
-        $this->documents = true;
+        $this->requestType = RequestType::UniversalEvent;
+
+        $this->document = [
+            'AttachedDocumentCollection' => [
+                'AttachedDocument' => [
+                    'FileName' => $name,
+                    'ImageData' => $file_contents,
+                    'Type' => [
+                        'Code' => $type,
+                        'Description' => $description,
+                    ],
+                    'IsPublished' => $isPublished,
+                ],
+            ],
+        ];
 
         return $this;
     }
 
+
+    /**
+     * Add an event to the request.
+     */
+     public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
+     {
+         if ($this->event) {
+             throw new \Exception('Only one event can be added to a request');
+         }
+
+         if (!$date) {
+             $date = date("c");
+         }
+         $date = date("c", strtotime($date));
+
+         $this->event[] = [
+             'EventTime' => $date,
+             'EventType' => $type,
+             'EventReference' => $reference,
+             'IsEstimate' => $isEstimate,
+         ];
+
+         return $this;
+     }
+
+    /**
+      * Add filter(s) to the request.
+      */
     public function filter($type, $value): self
     {
         //Every time this method is called, it will add a new filter to the filters array.
@@ -106,17 +180,18 @@ class Cord
         return $this;
     }
 
+    /**
+     * Get the XML object.
+     */
     public function get()
     {
-        $target = match ($this->target) {
-            DataTarget::Shipment, DataTarget::Custom, DataTarget::Booking => new (UniversalShipmentRequest::class)($this),
+        $requestType = match ($this->requestType) {
+            RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
+            RequestType::UniversalDocumentRequest => new UniversalDocumentRequest($this),
+            RequestType::UniversalEvent => new UniversalEvent($this),
         };
 
-        if ($this->documents) {
-            $target = new (UniversalDocumentRequest::class)($this);
-        }
-
-        $this->xml = $target->xml();
+        $this->xml = $requestType->xml();
 
         return $this->fetch();
     }
@@ -134,7 +209,7 @@ class Cord
     private function checkForErrors()
     {
         if (! $this->targetKey) {
-            throw new \Exception('You haven\'t set any target key. Set this using find(). This is usually the shipment number, customs declaration number or booking number.');
+            throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }
 
@@ -144,18 +219,23 @@ class Cord
 
         $response = $this->client->send('POST', config('cord.eadapter_connection.url'), [
             'body' => $this->xml,
-        ])->body();
+        ])->throw()->body();
 
         //XML to JSON
         $response = json_decode(json_encode(simplexml_load_string($response)), true);
 
         //If eAdapter response is not successful, throw exception:
         if ($response['Status'] == 'ERR') {
+            //If client expects json, return json:
             if (Request::wantsJson()) {
-                abort(response()->json(['error' => $response['ProcessingLog']]), 500);
-            } else {
-                throw new \Exception('Error from eAdapter: '.$response['ProcessingLog']);
+                $status = match ($response['ProcessingLog']) {
+                    'Warning - There is no business object matching the criteria.' => 404,
+                    default => 500,
+                };
+
+                return response()->json(['error' => $response['ProcessingLog']], $status);
             }
+            throw new \Exception($response['ProcessingLog']);
         }
 
         //If eAdapter response is successful, return data:

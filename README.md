@@ -51,41 +51,37 @@ Cord comes with connectivity to the following modules:
  - Shipments `shipment()`
  - Customs `custom()`
 
-Similar for all, you must call the `get()` method to get the actual response back from the eAdapter. The response from the eAdapter will be returned in a JSON format.
+Similar for all, you must call the `run()` method to 'get' the actual response back from the eAdapter. The response from the eAdapter will be returned in a JSON format.
 
 ```php
 //Get a shipment
-Cord::shipment()
-    ->find('SMIA12345678')
-    ->get();
+Cord::shipment('SMIA12345678')
+    ->run();
 
 //Get a brokerage job
-Cord::custom()
-    ->find('BATL12345678')
-    ->get();
+Cord::custom('BATL12345678')
+    ->run();
 ```
 
 ### Documents / eDocs
-Most entities in CargoWise One have a document tab (called eDocs). It is possible to use Cord to access these documents using the `documents()` method.
+Most entities in CargoWise One have a document tab (called eDocs). It is possible to use Cord to access these documents using the `withDocuments()` method.
 When applying the documents method, Cord will only a `DcoumentCollection` containing the documents from the specified entity.
 
 ```php
 //Get all the available documents from a shipment file
-Cord::documents()
-    ->shipment()
-    ->find('SMIA12345678')
-    ->get();
+Cord::shipment('SMIA12345678')
+    ->withDocuments()
+    ->run();
 ```
-When interacting with the eDocs of CargoWise One, we can provide filters to the request:
+When interacting with the eDocs of CargoWise One (getting documents), we can provide filters to the request:
 
 ```php
 //Get only documents from a shipment file that is the type "ARN"
-Cord::documents()
-    ->shipment()
-    ->find('SMIA92838292')
+Cord::shipment('SMIA92838292')
+    ->withDocuments()
     ->filter('DocumentType', 'ARN')
     ->filter('IsPublished', True)
-    ->get();
+    ->run();
 ```
 
 The available filters are:
@@ -97,18 +93,46 @@ The available filters are:
  - **BranchCode** – Retrieve only documents related to the specified branch code.
  - **DepartmentCode** – Retrieve only documents relevant to specified department code.
 
+Similar, it is also possible to upload documents to a file in CargoWise One using `addDocument`:
+
+```php
+Cord::shipment('SJFK21060014')
+        ->addDocument(
+            file_contents: base64_decode(file_get_contents("myfile.pdf")),
+            name: 'myfile.pdf',
+            type: 'MSC'
+            description: '(Optional)',
+            isPublished: true //default is *false*
+        )
+        ->run();
+```
+
+Cord also supports interacting with CargoWise One's event engine, meaning we can add events to files:
+
+```php
+Cord::shipment('SJFK21060014')
+        ->addEvent(
+            date: date('c'),
+            type: 'DIM',
+            reference: 'My Reference',
+            isEstimate: true //default is *false*
+        )
+        ->run();
+```
+
 ### Debugging
 Sometimes you may want to inspect the XML request before it's sent to the eAdapter. To do this, you can simply call the `inspect()` method. This will return the XML string repesentation:
 
 ```php
-$xml = Cord::custom()
-            ->find('BJFK21041242')
+$xml = Cord::custom('BJFK21041242')
             ->documents()
             ->filter('DocumentType', 'ARN')
             ->inspect();
 
 return response($xml, 200, ['Content-Type' => 'application/xml']);
 ```
+
+
 
 ## Testing
 

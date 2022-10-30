@@ -73,7 +73,7 @@ abstract class Request implements RequestInterface
         //4. (if any), add an event to request.
         if (! empty($this->cord->event)) {
             $DataTargetArray['EventTime'] = $this->cord->event['EventTime'];
-            $DataTargetArray['EvenType'] = $this->cord->event['EventType'];
+            $DataTargetArray['EventType'] = $this->cord->event['EventType'];
             $DataTargetArray['EventReference'] = $this->cord->event['EventReference'];
             $DataTargetArray['IsEstimate'] = $this->cord->event['IsEstimate'];
         }

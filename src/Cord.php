@@ -123,6 +123,7 @@ class Cord
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
         $this->requestType = RequestType::UniversalEvent;
+        $this->addEvent(date('c'), 'DIM', 'Document imported automatically from XML');
 
         $this->document = [
             'AttachedDocumentCollection' => [
@@ -133,7 +134,7 @@ class Cord
                         'Code' => $type,
                         'Description' => $description,
                     ],
-                    'IsPublished' => $isPublished,
+                    'IsPublished' => var_export($isPublished, true) //cast to string,
                 ],
             ],
         ];
@@ -147,6 +148,8 @@ class Cord
      */
      public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
      {
+         $this->requestType = RequestType::UniversalEvent;
+
          if ($this->event) {
              throw new \Exception('Only one event can be added to a request');
          }
@@ -156,11 +159,11 @@ class Cord
          }
          $date = date("c", strtotime($date));
 
-         $this->event[] = [
+         $this->event = [
              'EventTime' => $date,
              'EventType' => $type,
              'EventReference' => $reference,
-             'IsEstimate' => $isEstimate,
+             'IsEstimate' => var_export($isEstimate, true) //cast to string
          ];
 
          return $this;
@@ -183,7 +186,7 @@ class Cord
     /**
      * Get the XML object.
      */
-    public function get()
+    public function run()
     {
         $requestType = match ($this->requestType) {
             RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
@@ -201,7 +204,7 @@ class Cord
      */
     public function inspect(): string
     {
-        $this->get();
+        $this->run();
 
         return $this->xml;
     }

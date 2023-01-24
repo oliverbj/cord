@@ -39,7 +39,7 @@ class Cord
     public function __construct()
     {
         //If the company, server and enterprise are not set in the config file, throw an exception.
-        if (! config('cord.eadapter_connection.company') || ! config('cord.eadapter_connection.server') || ! config('cord.eadapter_connection.enterprise')) {
+        if (! config('cord.CW1_EADAPTER_URL') || ! config('cord.CW1_EADAPTER_USERNAME') || ! config('cord.CW1_EADAPTER_PASSWORD')) {
             throw new \Exception('Company, server and enterprise must be set in the config file.');
         }
 

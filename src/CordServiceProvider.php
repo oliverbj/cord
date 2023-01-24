@@ -23,7 +23,7 @@ class CordServiceProvider extends PackageServiceProvider
             ->hasCommand(CordCommand::class);
     }
 
-    public function packageRegistered()
+    public function register()
     {
         $this->app->singleton('cord', function () {
             return new Cord();

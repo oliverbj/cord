@@ -38,6 +38,11 @@ class Cord
 
     public function __construct()
     {
+        //If the company, server and enterprise are not set in the config file, throw an exception.
+        if (! config('cord.eadapter_connection.company') || ! config('cord.eadapter_connection.server') || ! config('cord.eadapter_connection.enterprise')) {
+            throw new \Exception('Company, server and enterprise must be set in the config file.');
+        }
+
         $this->client = Http::withBasicAuth(
             config('cord.eadapter_connection.username'),
             config('cord.eadapter_connection.password')

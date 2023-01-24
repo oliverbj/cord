@@ -11,6 +11,7 @@ class Cord extends Facade
 {
     protected static function getFacadeAccessor()
     {
-        return \Oliverbj\Cord\Cord::class;
+        //return \Oliverbj\Cord\Cord::class;
+        return 'cord';
     }
 }

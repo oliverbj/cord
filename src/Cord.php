@@ -47,7 +47,6 @@ class Cord
         if (! $this->config['url'] || ! $this->config['username'] || ! $this->config['password']) {
             throw new \Exception('Company, server and enterprise must be set in the config file.');
         }
-
     }
 
     protected function setClient()
@@ -235,6 +234,8 @@ class Cord
     {
         $this->checkForErrors();
         $this->setClient();
+
+        \Log::info('Sending request to eAdapter using the following config: '.json_encode($this->config));
 
         $response = $this->client->send('POST', $this->config['url'], [
             'body' => $this->xml,

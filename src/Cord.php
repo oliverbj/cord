@@ -80,7 +80,7 @@ class Cord
 
     public function withConfig(string $configName): self
     {
-        $this->config = config('cord.' . $configName . '.eadapter_connection');
+        $this->config = config('cord.'.$configName.'.eadapter_connection');
 
         return $this;
     }

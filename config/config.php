@@ -22,5 +22,4 @@ return [
 
     //Add more connections here if you need to connect to multiple CargoWise One eAdapters.
 
-
 ];

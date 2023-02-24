@@ -24,6 +24,8 @@ class Cord
 
     public ?string $enterprise = null;
 
+    public ?string $config = null;
+
     //public bool $documents = false;
 
     public array $filters = [];
@@ -38,14 +40,17 @@ class Cord
 
     public function __construct()
     {
+        $this->config = config('cord.base.eadapter_connection');
+
         //If the company, server and enterprise are not set in the config file, throw an exception.
-        if (! config('cord.eadapter_connection.url') || ! config('cord.eadapter_connection.username') || ! config('cord.eadapter_connection.password')) {
+
+        if (! $this->config['url'] || ! $this->config['username'] || ! $this->config['password']) {
             throw new \Exception('Company, server and enterprise must be set in the config file.');
         }
 
         $this->client = Http::withBasicAuth(
-            config('cord.eadapter_connection.username'),
-            config('cord.eadapter_connection.password')
+            $this->config['username'],
+            $this->config['password']
         )->withHeaders([
             'Accept' => 'application/xml',
             'Content-Type' => 'application/xml',
@@ -69,6 +74,13 @@ class Cord
     public function enterprise(string $enterprise): self
     {
         $this->enterprise = $enterprise;
+
+        return $this;
+    }
+
+    public function withConfig(string $configName): self
+    {
+        $this->config = config('cord.' . $configName . '.eadapter_connection');
 
         return $this;
     }
@@ -219,7 +231,7 @@ class Cord
     {
         $this->checkForErrors();
 
-        $response = $this->client->send('POST', config('cord.eadapter_connection.url'), [
+        $response = $this->client->send('POST', $this->config['url'], [
             'body' => $this->xml,
         ])->throw()->body();
 

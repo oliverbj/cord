@@ -12,11 +12,15 @@ return [
     | service.
     |
     */
-
-    'eadapter_connection' => [
-        'url' => env('CW1_EADAPTER_URL', ''),
-        'username' => env('CW1_EADAPTER_USERNAME', ''),
-        'password' => env('CW1_EADAPTER_PASSWORD', ''),
+    'base' => [
+        'eadapter_connection' => [
+            'url' => env('CW1_EADAPTER_URL', ''),
+            'username' => env('CW1_EADAPTER_USERNAME', ''),
+            'password' => env('CW1_EADAPTER_PASSWORD', ''),
+        ],
     ],
+
+    //Add more connections here if you need to connect to multiple CargoWise One eAdapters.
+
 
 ];

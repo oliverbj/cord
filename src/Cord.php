@@ -47,7 +47,6 @@ class Cord
         if (! $this->config['url'] || ! $this->config['username'] || ! $this->config['password']) {
             throw new \Exception('Company, server and enterprise must be set in the config file.');
         }
-
     }
 
     protected function setClient()

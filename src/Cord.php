@@ -48,6 +48,10 @@ class Cord
             throw new \Exception('Company, server and enterprise must be set in the config file.');
         }
 
+    }
+
+    protected function setClient()
+    {
         $this->client = Http::withBasicAuth(
             $this->config['username'],
             $this->config['password']
@@ -230,6 +234,7 @@ class Cord
     protected function fetch()
     {
         $this->checkForErrors();
+        $this->setClient();
 
         $response = $this->client->send('POST', $this->config['url'], [
             'body' => $this->xml,

@@ -24,7 +24,7 @@ class Cord
 
     public ?string $enterprise = null;
 
-    public ?string $config = null;
+    public $config = null;
 
     //public bool $documents = false;
 

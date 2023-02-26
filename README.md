@@ -107,7 +107,7 @@ Cord::shipment('SJFK21060014')
         ->run();
 ```
 
-Cord also supports interacting with CargoWise One's event engine, meaning we can add events to files:
+Cord also supports interacting with CargoWise One's event engine, meaning we can add events to jobs:
 
 ```php
 Cord::shipment('SJFK21060014')
@@ -119,6 +119,41 @@ Cord::shipment('SJFK21060014')
         )
         ->run();
 ```
+
+### Multiple Connections
+
+Sometimes you may want to connect to multiple eAdapters. This can be done by using the `withConfig` method:
+
+```php
+$config = "my_custom_connection";
+Cord::shipment('SJFK21060014')
+      ->withConfig($config)
+      ->run();
+```
+
+Then you can add the connection details to your `config/cord.php` file:
+
+```php
+return [
+    'base' => [
+            'eadapter_connection' => [
+            'url' => env('CW1_EADAPTER_URL', ''),
+            'username' => env('CW1_EADAPTER_USERNAME', ''),
+            'password' => env('CW1_EADAPTER_PASSWORD', ''),
+        ],
+    ]
+
+    'my_custom_connection' => [
+        'eadapter_connection' => [
+            'url' => env('ANOTHER_CW1_EADAPTER_URL', ''),
+            'username' => env('ANOTHER_CW1_EADAPTER_USERNAME', ''),
+            'password' => env('ANOTHER_CW1_EADAPTER_PASSWORD', ''),
+        ],
+    ],
+];
+```
+
+```php
 
 ### Debugging
 Sometimes you may want to inspect the XML request before it's sent to the eAdapter. To do this, you can simply call the `inspect()` method. This will return the XML string repesentation:

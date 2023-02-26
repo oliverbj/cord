@@ -235,8 +235,6 @@ class Cord
         $this->checkForErrors();
         $this->setClient();
 
-        \Log::info('Sending request to eAdapter using the following config: '.json_encode($this->config));
-
         $response = $this->client->send('POST', $this->config['url'], [
             'body' => $this->xml,
         ])->throw()->body();

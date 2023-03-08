@@ -155,6 +155,13 @@ return [
 
 ```php
 
+### Response as XML
+If you want to return the original eAdaptor response directly as XML, call `toXml()` before you call the `run()` method:
+
+```php
+Cord::shipment('SJFK21041242')->toXml()->run();
+```
+
 ### Debugging
 Sometimes you may want to inspect the XML request before it's sent to the eAdapter. To do this, you can simply call the `inspect()` method. This will return the XML string repesentation:
 

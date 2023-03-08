@@ -36,7 +36,7 @@ class Cord
 
     protected $xml;
 
-    public ?string $xmlResponse;
+    public bool $asXml = false;
 
     protected $client;
 
@@ -224,6 +224,14 @@ class Cord
 
         return $this->xml;
     }
+    
+    /**
+     * Determine if the response should be returned as XML.
+     */
+    public function toXml(): string
+    {
+        $this->asXml = true;
+    }
 
     private function checkForErrors()
     {
@@ -231,6 +239,7 @@ class Cord
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }
+ 
 
     protected function fetch()
     {
@@ -241,7 +250,7 @@ class Cord
             'body' => $this->xml,
         ])->throw()->body();
 
-        $this->xmlResponse = $response;
+        $xmlResponse = $response;
 
         //XML to JSON
         $response = json_decode(json_encode(simplexml_load_string($response)), true);
@@ -258,6 +267,10 @@ class Cord
                 return response()->json(['error' => $response['ProcessingLog']], $status);
             }
             throw new \Exception($response['ProcessingLog']);
+        }
+        
+        if($this->asXml){
+            return $xmlResponse;
         }
 
         //If eAdapter response is successful, return data:

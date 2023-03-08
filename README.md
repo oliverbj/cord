@@ -153,8 +153,6 @@ return [
 ];
 ```
 
-```php
-
 ### Response as XML
 If you want to return the original eAdaptor response directly as XML, call `toXml()` before you call the `run()` method:
 

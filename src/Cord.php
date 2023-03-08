@@ -35,7 +35,9 @@ class Cord
     public $document = [];
 
     protected $xml;
-
+    
+    public ?string $xmlResponse;
+    
     protected $client;
 
     public function __construct()
@@ -222,6 +224,14 @@ class Cord
 
         return $this->xml;
     }
+    
+    /**
+     * Get the response as XML
+     */
+    public function asXML(): string
+    {
+        return $this->xmlResponse;
+    }
 
     private function checkForErrors()
     {
@@ -239,6 +249,8 @@ class Cord
             'body' => $this->xml,
         ])->throw()->body();
 
+        $this->xmlResponse = $response;
+        
         //XML to JSON
         $response = json_decode(json_encode(simplexml_load_string($response)), true);
 

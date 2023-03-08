@@ -225,13 +225,6 @@ class Cord
         return $this->xml;
     }
 
-    /**
-     * Get the response as XML
-     */
-    public function asXML(): string
-    {
-        return $this->xmlResponse;
-    }
 
     private function checkForErrors()
     {
@@ -250,7 +243,7 @@ class Cord
         ])->throw()->body();
 
         $this->xmlResponse = $response;
-
+        
         //XML to JSON
         $response = json_decode(json_encode(simplexml_load_string($response)), true);
 

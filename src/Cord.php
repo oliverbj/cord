@@ -272,7 +272,7 @@ class Cord
 
         if ($this->asXml) {
             $xmlResponse = simplexml_load_string($xmlResponse);
-            $xmlResponse = $xmlResponse->xpath('//Data')[0]->asXML();
+            $xmlResponse = $xmlResponse->xpath('//Data')->asXML();
 
             return $xmlResponse;
         }

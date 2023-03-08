@@ -272,9 +272,9 @@ class Cord
 
         if ($this->asXml) {
             $xmlResponse = simplexml_load_string($xmlResponse);
-            
+
             //We need to return the first subelement of the Data element, because the Data element is an array.
-            return($xmlResponse->Data->children()[0]);
+            return $xmlResponse->Data->children()[0];
         }
 
         //If eAdapter response is successful, return data:

@@ -231,6 +231,8 @@ class Cord
     public function toXml()
     {
         $this->asXml = true;
+        
+        return $this;
     }
 
     private function checkForErrors()

@@ -224,7 +224,7 @@ class Cord
 
         return $this->xml;
     }
-    
+
     /**
      * Determine if the response should be returned as XML.
      */
@@ -239,7 +239,6 @@ class Cord
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }
- 
 
     protected function fetch()
     {
@@ -268,8 +267,8 @@ class Cord
             }
             throw new \Exception($response['ProcessingLog']);
         }
-        
-        if($this->asXml){
+
+        if ($this->asXml) {
             return $xmlResponse;
         }
 

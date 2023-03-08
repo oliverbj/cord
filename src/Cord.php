@@ -228,7 +228,7 @@ class Cord
     /**
      * Determine if the response should be returned as XML.
      */
-    public function toXml(): string
+    public function toXml()
     {
         $this->asXml = true;
     }

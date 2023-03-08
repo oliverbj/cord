@@ -225,7 +225,6 @@ class Cord
         return $this->xml;
     }
 
-
     private function checkForErrors()
     {
         if (! $this->targetKey) {
@@ -243,7 +242,7 @@ class Cord
         ])->throw()->body();
 
         $this->xmlResponse = $response;
-        
+
         //XML to JSON
         $response = json_decode(json_encode(simplexml_load_string($response)), true);
 

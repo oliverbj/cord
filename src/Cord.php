@@ -101,7 +101,7 @@ class Cord
 
         return $this;
     }
-    
+
     /**
      * Determine if the request is for a receiveable
      * Note: eAdaptor cannot query AR/APs, so this can only be used in junction

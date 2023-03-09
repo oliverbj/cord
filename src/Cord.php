@@ -101,6 +101,19 @@ class Cord
 
         return $this;
     }
+    
+    /**
+     * Determine if the request is for a receiveable
+     * Note: eAdaptor cannot query AR/APs, so this can only be used in junction
+     * with the "withDocuments()" method.
+     */
+    public function receiveable(string $receiveable): self
+    {
+        $this->targetKey = $receiveable;
+        $this->target = DataTarget::Receiveable;
+
+        return $this;
+    }
 
     /**
      * Determine if the request is for a shipment.

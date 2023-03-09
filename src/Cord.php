@@ -109,7 +109,7 @@ class Cord
      */
     public function receiveable(string $receiveable): self
     {
-        $this->targetKey = 'AR INV ' . $receiveable;
+        $this->targetKey = 'AR INV '.$receiveable;
         $this->target = DataTarget::Receiveable;
 
         return $this;

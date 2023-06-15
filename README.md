@@ -141,7 +141,7 @@ return [
             'username' => env('CW1_EADAPTER_USERNAME', ''),
             'password' => env('CW1_EADAPTER_PASSWORD', ''),
         ],
-    ]
+    ],
 
     'my_custom_connection' => [
         'eadapter_connection' => [

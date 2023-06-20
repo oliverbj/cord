@@ -13,8 +13,8 @@ class NativeOrganizationRetrieval extends NativeRequest
     {
         $schema = [
             'Body' => [
-                'Organization' => []
-            ]
+                'Organization' => [],
+            ],
         ];
 
         array_push($schema['Body']['Organization'], $criteriaGroups[0]);

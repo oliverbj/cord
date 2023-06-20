@@ -144,7 +144,7 @@ class Cord
             'CriteriaGroup' => [
                 '_attributes' => ['Type' => $type],
                 'Criteria' => [],
-            ]
+            ],
         ];
 
         foreach ($criteria as $item) {
@@ -153,7 +153,7 @@ class Cord
                     'Entity' => $item['Entity'],
                     'FieldName' => $item['FieldName'],
                 ],
-                '_value' => $item['Value']
+                '_value' => $item['Value'],
             ];
         }
 
@@ -161,7 +161,6 @@ class Cord
 
         return $this;
     }
-
 
     /**
      * Determine if the request is for a brokerage job.
@@ -259,7 +258,6 @@ class Cord
             RequestType::UniversalEvent => new UniversalEvent($this),
             RequestType::NativeOrganizationRetrieval => new NativeOrganizationRetrieval($this)
         };
-
 
         $this->xml = $requestType->xml();
 

@@ -138,7 +138,7 @@ class Cord
         return $this;
     }
 
-    public function criteriaGroup(array $criteria, string $type = 'Partial'): self
+    public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
         $criteriaGroup = [
             'CriteriaGroup' => [

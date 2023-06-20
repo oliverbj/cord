@@ -5,6 +5,7 @@ namespace Oliverbj\Cord;
 use Illuminate\Support\Facades\Http;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
+use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -26,7 +27,7 @@ class Cord
 
     public $config = null;
 
-    //public bool $documents = false;
+    public array $criteriaGroups = [];
 
     public array $filters = [];
 
@@ -128,6 +129,41 @@ class Cord
     }
 
     /**
+     * Determine if the request is for a native request.
+     */
+    public function organizationRetrieval(): self
+    {
+        $this->requestType = RequestType::NativeOrganizationRetrieval;
+
+        return $this;
+    }
+
+    public function criteriaGroup(array $criteria, string $type = 'Partial'): self
+    {
+        $criteriaGroup = [
+            'CriteriaGroup' => [
+                '_attributes' => ['Type' => $type],
+                'Criteria' => [],
+            ]
+        ];
+
+        foreach ($criteria as $item) {
+            $criteriaGroup['CriteriaGroup']['Criteria'][] = [
+                '_attributes' => [
+                    'Entity' => $item['Entity'],
+                    'FieldName' => $item['FieldName'],
+                ],
+                '_value' => $item['Value']
+            ];
+        }
+
+        array_push($this->criteriaGroups, $criteriaGroup);
+
+        return $this;
+    }
+
+
+    /**
      * Determine if the request is for a brokerage job.
      */
     public function custom(string $custom): self
@@ -221,7 +257,9 @@ class Cord
             RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
             RequestType::UniversalDocumentRequest => new UniversalDocumentRequest($this),
             RequestType::UniversalEvent => new UniversalEvent($this),
+            RequestType::NativeOrganizationRetrieval => new NativeOrganizationRetrieval($this)
         };
+
 
         $this->xml = $requestType->xml();
 
@@ -250,7 +288,7 @@ class Cord
 
     private function checkForErrors()
     {
-        if (! $this->targetKey) {
+        if (! $this->targetKey && $this->requestType != RequestType::NativeOrganizationRetrieval) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }

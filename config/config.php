@@ -14,9 +14,9 @@ return [
     */
     'base' => [
         'eadapter_connection' => [
-            'url' => env('CW1_EADAPTER_URL', ''),
-            'username' => env('CW1_EADAPTER_USERNAME', ''),
-            'password' => env('CW1_EADAPTER_PASSWORD', ''),
+            'url' => env('CORD_URL', ''),
+            'username' => env('CORD_USERNAME', ''),
+            'password' => env('CORD_PASSWORD', ''),
         ],
     ],
 

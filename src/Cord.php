@@ -207,31 +207,31 @@ class Cord
         return $this;
     }
 
-     /**
-      * Add an event to the request.
-      */
-     public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
-     {
-         $this->requestType = RequestType::UniversalEvent;
+    /**
+     * Add an event to the request.
+     */
+    public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
+    {
+        $this->requestType = RequestType::UniversalEvent;
 
-         if ($this->event) {
-             throw new \Exception('Only one event can be added to a request');
-         }
+        if ($this->event) {
+            throw new \Exception('Only one event can be added to a request');
+        }
 
-         if (! $date) {
-             $date = date('c');
-         }
-         $date = date('c', strtotime($date));
+        if (! $date) {
+            $date = date('c');
+        }
+        $date = date('c', strtotime($date));
 
-         $this->event = [
-             'EventTime' => $date,
-             'EventType' => $type,
-             'EventReference' => $reference,
-             'IsEstimate' => var_export($isEstimate, true), //cast to string
-         ];
+        $this->event = [
+            'EventTime' => $date,
+            'EventType' => $type,
+            'EventReference' => $reference,
+            'IsEstimate' => var_export($isEstimate, true), //cast to string
+        ];
 
-         return $this;
-     }
+        return $this;
+    }
 
     /**
      * Add filter(s) to the request.

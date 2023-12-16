@@ -90,6 +90,7 @@ abstract class Request implements RequestInterface
         $array = $this->build($this->schema());
 
         $xml = ArrayToXml::convert($array, $this->rootElement);
+
         //Remove the "<?xml version="1.0".. " tag from the XML string.
         return preg_replace('!^[^>]+>(\r\n|\n)!', '', $xml);
     }

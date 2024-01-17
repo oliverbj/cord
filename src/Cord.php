@@ -345,20 +345,18 @@ class Cord
             return $xmlResponse->Data->children()[0];
         }
 
-        
-
         //If eAdapter response is successful, return data:
         // Handling different request types
         return match ($this->requestType) {
-            RequestType::NativeOrganizationRetrieval => isset($response['Data']['Native']['Body']['Organization']['OrgHeader']) 
+            RequestType::NativeOrganizationRetrieval => isset($response['Data']['Native']['Body']['Organization']['OrgHeader'])
                 ? $response['Data']['Native']['Body']['Organization']['OrgHeader']
                 : [],
-    
+
             // Future implementations for shipment, custom, and booking can be added here
             // RequestType::UniversalShipmentRequest, RequestType::Custom, RequestType::Booking => {
             //     // Implement specific handling here
             // },
-    
+
             default => $response['Data'],
         };
     }

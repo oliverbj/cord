@@ -148,19 +148,17 @@ class Cord
 
         return $this;
     }
-
+    
     /**
-     * Determine if the request is for a native request.
-     */
-    public function organizationRetrieval(): self
-    {
-        $this->requestType = RequestType::NativeOrganizationRetrieval;
-
-        return $this;
-    }
-
+    * Add criteriaGroup to the Organization() method.
+    */
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
+
+        if ($this->requestType !== RequestType::NativeOrganizationRetrieval) {
+            throw new \Exception('You must call organization() method before calling the criteraGroup() method.');
+        }
+        
         $criteriaGroup = [
             'CriteriaGroup' => [
                 '_attributes' => ['Type' => $type],

@@ -131,6 +131,29 @@ class Cord
     /**
      * Determine if the request is for a native request.
      */
+    public function organization(string $code = null): self
+    {
+        $this->requestType = RequestType::NativeOrganizationRetrieval;
+
+        if ($code) {
+            $this->targetKey = $code;
+            $this->criteriaGroup([
+                [
+                    'Entity' => 'OrgHeader',
+                    'FieldName' => 'Code',
+                    'Value' => $code
+                ]
+            ], type: "Key");
+        }
+
+        
+        return $this;
+    }
+
+    
+    /**
+     * Determine if the request is for a native request.
+     */
     public function organizationRetrieval(): self
     {
         $this->requestType = RequestType::NativeOrganizationRetrieval;

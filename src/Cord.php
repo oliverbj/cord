@@ -331,11 +331,8 @@ class Cord
 
     private function checkForErrors()
     {
-        if (! $this->targetKey && $this->requestType != RequestType::NativeOrganizationRetrieval) {
-            throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
-        }
-
-        if (! $this->targetKey && $this->requestType != RequestType::NativeCompanyRetrieval) {
+        
+        if (! $this->targetKey && !in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval]) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }

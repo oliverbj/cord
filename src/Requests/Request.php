@@ -49,8 +49,8 @@ abstract class Request implements RequestInterface
         //2. Append the "EnterpriseID", "ServerID" and "Company.Code" to the "DataContext" key.
         if ($this->cord->company) {
             $DataTargetArray['DataContext'] += [
-                'EnterpriseID' => $this->cord->enterprise,
-                'ServerID' => $this->cord->server,
+                //'EnterpriseID' => $this->cord->enterprise, //Todo: Evaluate if these can be removed. It is set from the URL directly?
+                //'ServerID' => $this->cord->server, //Todo: Evaluate if these can be removed. It is set from the URL directly?
                 'Company' => [
                     'Code' => $this->cord->company,
                 ],

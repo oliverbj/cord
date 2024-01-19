@@ -8,4 +8,5 @@ enum DataTarget: string
     case Booking = 'ForwardingBooking';
     case Custom = 'CustomsDeclaration';
     case Receiveable = 'AccountingInvoice';
+    case Organization = 'Organization';
 }

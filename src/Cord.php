@@ -339,7 +339,7 @@ class Cord
     protected function flattenResponse(array $response, string $key)
     {
         $response = $response ?? [];
-        
+
         return tap($response, function (&$items) use ($key) {
             // Check if there's only one result with the specified key
             if (is_array($items) && count($items) === 1 && isset($items[$key])) {

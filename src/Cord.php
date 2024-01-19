@@ -155,13 +155,33 @@ class Cord
     }
 
     /**
+     * Determine if the request is for a shipment.
+     */
+    public function company(?string $code = null): self
+    {
+        $this->requestType = RequestType::NativeCompanyRetrieval;
+        $this->target = DataTarget::Organization;
+
+        if ($code) {
+            $this->targetKey = $code;
+            $this->criteriaGroup([
+                [
+                    'Entity' => 'GlbCompany',
+                    'FieldName' => 'Code',
+                    'Value' => $code,
+                ],
+            ], type: 'Key');
+        }
+    }
+
+    /**
      * Add criteriaGroup to the Organization() method.
      */
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
 
-        if ($this->requestType !== RequestType::NativeOrganizationRetrieval) {
-            throw new \Exception('You must call organization() method before calling the criteraGroup() method.');
+        if ($this->requestType !== RequestType::NativeOrganizationRetrieval || $this->requestType !== RequestType::NativeCompanyRetrieval) {
+            throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization() or company()');
         }
 
         $criteriaGroup = [

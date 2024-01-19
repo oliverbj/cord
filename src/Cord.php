@@ -45,11 +45,11 @@ class Cord
     {
         $this->config = config('cord.base.eadapter_connection');
 
-        //If the company, server and enterprise are not set in the config file, throw an exception.
-
+        //If the url, username and password are not set in the config file, throw an exception.
         if (! $this->config['url'] || ! $this->config['username'] || ! $this->config['password']) {
-            throw new \Exception('Company, server and enterprise must be set in the config file.');
+            throw new \Exception('URL, Username and password must be set in the config file.');
         }
+        
     }
 
     protected function setClient()

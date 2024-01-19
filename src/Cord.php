@@ -180,7 +180,7 @@ class Cord
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
 
-        if ($this->requestType !== RequestType::NativeOrganizationRetrieval || $this->requestType !== RequestType::NativeCompanyRetrieval) {
+        if ($this->requestType !== RequestType::NativeOrganizationRetrieval && $this->requestType !== RequestType::NativeCompanyRetrieval) {
             throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization() or company()');
         }
 
@@ -332,6 +332,10 @@ class Cord
     private function checkForErrors()
     {
         if (! $this->targetKey && $this->requestType != RequestType::NativeOrganizationRetrieval) {
+            throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
+        }
+
+        if (! $this->targetKey && $this->requestType != RequestType::NativeCompanyRetrieval) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }

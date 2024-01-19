@@ -5,8 +5,8 @@ namespace Oliverbj\Cord;
 use Illuminate\Support\Facades\Http;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
-use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
+use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -334,8 +334,8 @@ class Cord
 
     private function checkForErrors()
     {
-        
-        if (! $this->targetKey && !in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval])) {
+
+        if (! $this->targetKey && ! in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval])) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }

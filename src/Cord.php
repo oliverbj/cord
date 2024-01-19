@@ -343,7 +343,7 @@ class Cord
         return tap($response, function (&$items) use ($key) {
             // Check if there's only one result with the specified key
             if (is_array($items) && count($items) === 1 && isset($items[$key])) {
-                $items = [$items[$key]];
+                $items = [$items[$key]][0];
             } else {
                 // Process each item for multiple results
                 $items = collect($items)

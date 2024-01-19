@@ -51,10 +51,6 @@ class Cord
             throw new \Exception('URL, Username and password must be set in the config file.');
         }
 
-        if ($this->config['company']) {
-            $this->server($this->config['company']);
-        }
-
     }
 
     protected function setClient()

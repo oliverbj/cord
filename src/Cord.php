@@ -49,8 +49,8 @@ class Cord
         if (! $this->config['url'] || ! $this->config['username'] || ! $this->config['password']) {
             throw new \Exception('URL, Username and password must be set in the config file.');
         }
-        
-        if($this->config['company']){
+
+        if ($this->config['company']) {
             $this->server($this->config['company']);
         }
 

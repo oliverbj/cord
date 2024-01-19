@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
+use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -375,13 +376,13 @@ class Cord
         //If eAdapter response is successful, return data:
         // Handling different request types
         return match ($this->requestType) {
-            RequestType::NativeOrganizationRetrieval => isset($response['Data']['Native']['Body'])
-                ? $response['Data']['Native']['Body']
+            RequestType::NativeOrganizationRetrieval => isset($response['Data']['Native']['Body']['Organization'])
+                ? array_column($response['Data']['Native']['Body']['Organization'], 'OrgHeader')
                 : [],
 
-            RequestType::NativeCompanyRetrieval => isset($response['Data']['Native']['Body'])
-                 ? $response['Data']['Native']['Body']
-                 : [],
+            RequestType::NativeCompanyRetrieval => isset($response['Data']['Native']['Body']['Company'])
+                ? array_column($response['Data']['Native']['Body']['Company'], 'GlbCompany')
+                : [],
 
             // Future implementations for shipment, custom, and booking can be added here
             // RequestType::UniversalShipmentRequest, RequestType::Custom, RequestType::Booking => {

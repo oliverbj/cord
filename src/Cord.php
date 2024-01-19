@@ -187,6 +187,10 @@ class Cord
             throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization() or company()');
         }
 
+        if ($this->targetKey) {
+            throw new \Exception('You have already defined a target key. Calling a criteria group will have no effect.');
+        }
+
         $criteriaGroup = [
             'CriteriaGroup' => [
                 '_attributes' => ['Type' => $type],
@@ -378,13 +382,15 @@ class Cord
         //If eAdapter response is successful, return data:
         // Handling different request types
         return match ($this->requestType) {
-            RequestType::NativeOrganizationRetrieval => isset($response['Data']['Native']['Body']['Organization'])
-                ? array_column($response['Data']['Native']['Body']['Organization'], 'OrgHeader')
-                : [],
+            RequestType::NativeOrganizationRetrieval => collect($response['Data']['Native']['Body']['Organization'] ?? [])
+                ->map(function ($item) {
+                    return $item['OrgHeader'] ?? $item;
+                })->all(),
 
-            RequestType::NativeCompanyRetrieval => isset($response['Data']['Native']['Body']['Company'])
-                ? array_column($response['Data']['Native']['Body']['Company'], 'GlbCompany')
-                : [],
+            RequestType::NativeCompanyRetrieval => collect($response['Data']['Native']['Body']['Company'] ?? [])
+                ->map(function ($item) {
+                    return $item['GlbCompany'] ?? $item;
+                })->all(),
 
             // Future implementations for shipment, custom, and booking can be added here
             // RequestType::UniversalShipmentRequest, RequestType::Custom, RequestType::Booking => {

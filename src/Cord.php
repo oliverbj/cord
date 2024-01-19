@@ -336,6 +336,24 @@ class Cord
         }
     }
 
+    protected function flattenResponse(array $response, string $key)
+    {
+        $response = $response ?? [];
+        
+        return tap($response, function (&$items) use ($key) {
+            // Check if there's only one result with the specified key
+            if (is_array($items) && count($items) === 1 && isset($items[$key])) {
+                $items = [$items[$key]];
+            } else {
+                // Process each item for multiple results
+                $items = collect($items)
+                    ->map(function ($item) use ($key) {
+                        return $item[$key] ?? $item;
+                    })->all();
+            }
+        });
+    }
+
     protected function fetch()
     {
         $this->checkForErrors();
@@ -374,15 +392,8 @@ class Cord
         //If eAdapter response is successful, return data:
         // Handling different request types
         return match ($this->requestType) {
-            RequestType::NativeOrganizationRetrieval => collect($response['Data']['Native']['Body']['Organization'] ?? [])
-                ->map(function ($item) {
-                    return $item['OrgHeader'] ?? $item;
-                })->all(),
-
-            RequestType::NativeCompanyRetrieval => collect($response['Data']['Native']['Body']['Company'] ?? [])
-                ->map(function ($item) {
-                    return $item['GlbCompany'] ?? $item;
-                })->all(),
+            RequestType::NativeOrganizationRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Organization'], 'OrgHeader'),
+            RequestType::NativeCompanyRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Company'], 'GlbCompany'),
 
             // Future implementations for shipment, custom, and booking can be added here
             // RequestType::UniversalShipmentRequest, RequestType::Custom, RequestType::Booking => {

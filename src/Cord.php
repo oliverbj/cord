@@ -175,7 +175,7 @@ class Cord
     }
 
     /**
-     * Add criteriaGroup to the Organization() method.
+     * Add criteriaGroup to the native query methods.
      */
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {

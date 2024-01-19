@@ -2,7 +2,7 @@
 
 namespace Oliverbj\Cord\Requests;
 
-class NativeCompanyRetrival extends NativeRequest
+class NativeCompanyRetrieval extends NativeRequest
 {
     public function schema(): array
     {

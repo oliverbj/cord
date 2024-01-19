@@ -67,21 +67,21 @@ class Cord
         ]);
     }
 
-    public function company(string $company): self
+    public function withCompany(string $company): self
     {
         $this->company = $company;
 
         return $this;
     }
 
-    public function server(string $server): self
+    public function withServer(string $server): self
     {
         $this->server = $server;
 
         return $this;
     }
 
-    public function enterprise(string $enterprise): self
+    public function withEnterprise(string $enterprise): self
     {
         $this->enterprise = $enterprise;
 

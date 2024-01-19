@@ -134,7 +134,8 @@ class Cord
     public function organization(?string $code = null): self
     {
         $this->requestType = RequestType::NativeOrganizationRetrieval;
-
+        $this->target = DataTarget::Organization;
+        
         if ($code) {
             $this->targetKey = $code;
             $this->criteriaGroup([

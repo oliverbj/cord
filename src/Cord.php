@@ -173,6 +173,8 @@ class Cord
                 ],
             ], type: 'Key');
         }
+
+        return $this;
     }
 
     /**

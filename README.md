@@ -50,6 +50,7 @@ Cord comes with connectivity to the following modules:
  - Bookings `booking()`
  - Shipments `shipment()`
  - Customs `custom()`
+ - Organizations `organization`
 
 Similar for all, you must call the `run()` method to 'get' the actual response back from the eAdapter. The response from the eAdapter will be returned in a JSON format.
 
@@ -60,6 +61,10 @@ Cord::shipment('SMIA12345678')
 
 //Get a brokerage job
 Cord::custom('BATL12345678')
+    ->run();
+
+//Get an organization
+Cord::custom('SAGFURHEL')
     ->run();
 ```
 
@@ -93,7 +98,8 @@ The available filters are:
  - **BranchCode** – Retrieve only documents related to the specified branch code.
  - **DepartmentCode** – Retrieve only documents relevant to specified department code.
 
-Similar, it is also possible to upload documents to a file in CargoWise One using `addDocument`:
+### Upload Documents
+Similar to fetching documents, it is also possible to upload documents to a file in CargoWise One using `addDocument`:
 
 ```php
 Cord::shipment('SJFK21060014')

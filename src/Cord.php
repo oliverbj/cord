@@ -183,10 +183,6 @@ class Cord
             throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization() or company()');
         }
 
-        if ($this->targetKey) {
-            throw new \Exception('You have already defined a target key. Calling a criteria group will have no effect.');
-        }
-
         $criteriaGroup = [
             'CriteriaGroup' => [
                 '_attributes' => ['Type' => $type],

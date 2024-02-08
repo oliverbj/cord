@@ -166,6 +166,7 @@ class Cord
 
         foreach ($capabilities as $capability) {
             // Check for the existence of required keys in each capability
+            dd($capability);
             if (! isset($capability['AddressType']) || ! isset($capability['IsMainAddress'])) {
                 throw new \Exception('Missing required keys in capabilities array. Each capability must include "AddressType" and "IsMainAddress".');
             }

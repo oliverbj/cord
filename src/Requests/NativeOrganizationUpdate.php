@@ -6,12 +6,7 @@ class NativeOrganizationUpdate extends NativeRequest
 {
     public function schema(): array
     {
-        $address = $this->cord->address;
-
-        return $this->defineSchema(
-            address: $address
-
-        );
+        return $this->defineSchema($this->cord->address);
     }
 
     private function defineSchema(array $address): array

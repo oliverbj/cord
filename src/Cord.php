@@ -193,7 +193,7 @@ class Cord
                     'Mobile' => $addressDetails['mobile'] ?? null,
                     'Email' => $addressDetails['email'] ?? null,
                     'SuppressAddressValidationError' => 'true',
-                    'OrgAddressCapabilityCollection' => $formattedCapabilities,
+                    //'OrgAddressCapabilityCollection' => $formattedCapabilities,
                 ],
             ],
         ];

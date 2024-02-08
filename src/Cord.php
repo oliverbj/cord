@@ -369,6 +369,7 @@ class Cord
             RequestType::UniversalDocumentRequest => new UniversalDocumentRequest($this),
             RequestType::UniversalEvent => new UniversalEvent($this),
             RequestType::NativeOrganizationRetrieval => new NativeOrganizationRetrieval($this),
+            RequestType::NativeOrganizationUpdate => new NativeOrganizationUpdate($this),
             RequestType::NativeCompanyRetrieval => new NativeCompanyRetrieval($this),
         };
 

@@ -173,29 +173,25 @@ class Cord
         $formattedCapabilities = $this->formatCapabilities($addressDetails['capabilities'] ?? []);
 
         $this->address = [
-            'OrgAddressCollection' => [
-                'OrgAddress' => [
-                    '_Action' => 'INSERT',
-                    'Code' => $addressDetails['code'],
-                    'Address1' => $addressDetails['addressOne'],
-                    'Address2' => $addressDetails['addressTwo'] ?? '',
-                    /* 'CountryCode' => [
-                        'Code' => $addressDetails['country'],
-                    ],
-                    'City' => $addressDetails['city'],
-                    'State' => $addressDetails['state'] ?? null,
-                    'PostCode' => $addressDetails['postcode'] ?? null,
-                    'RelatedPortCode' => [
-                        'Code' => $addressDetails['relatedPort'] ?? null,
-                    ],
-                    'Phone' => $addressDetails['phone'] ?? null,
-                    'Fax' => $addressDetails['fax'] ?? null,
-                    'Mobile' => $addressDetails['mobile'] ?? null,
-                    'Email' => $addressDetails['email'] ?? null,
-                    'SuppressAddressValidationError' => 'true', */
-                    //'OrgAddressCapabilityCollection' => $formattedCapabilities,
-                ],
+            '_attributes' => ['Action' => 'INSERT'],
+            'Code' => $addressDetails['code'],
+            'Address1' => $addressDetails['addressOne'],
+            'Address2' => $addressDetails['addressTwo'] ?? '',
+            /* 'CountryCode' => [
+                'Code' => $addressDetails['country'],
             ],
+            'City' => $addressDetails['city'],
+            'State' => $addressDetails['state'] ?? null,
+            'PostCode' => $addressDetails['postcode'] ?? null,
+            'RelatedPortCode' => [
+                'Code' => $addressDetails['relatedPort'] ?? null,
+            ],
+            'Phone' => $addressDetails['phone'] ?? null,
+            'Fax' => $addressDetails['fax'] ?? null,
+            'Mobile' => $addressDetails['mobile'] ?? null,
+            'Email' => $addressDetails['email'] ?? null,
+            'SuppressAddressValidationError' => 'true', */
+            //'OrgAddressCapabilityCollection' => $formattedCapabilities,
         ];
 
         return $this;

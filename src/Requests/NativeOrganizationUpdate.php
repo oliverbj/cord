@@ -11,6 +11,8 @@ class NativeOrganizationUpdate extends NativeRequest
 
     private function defineSchema(array $address): array
     {
+        dd($this->cord->targetKey);
+
         $schema = [
             'Body' => [
                 'Organization' => [

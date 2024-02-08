@@ -6,11 +6,7 @@ class NativeOrganizationRetrieval extends NativeRequest
 {
     public function schema(): array
     {
-        $criteriaGroups = $this->cord->criteriaGroups;
-
-        return $this->defineSchema(
-            criteriaGroups: $criteriaGroups,
-        );
+        return $this->defineSchema($this->cord->criteriaGroups);
     }
 
     private function defineSchema(array $criteriaGroups): array

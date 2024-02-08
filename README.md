@@ -73,6 +73,27 @@ Cord::company('CPH')
     ->run();
 ```
 
+### Organizations - Add Address
+Cord supports the option to add an address to an organization.
+
+```php
+Cord::organization('SAGFURHEL')
+        ->addAddress([
+            'code' => 'MAIN STREET NO. 1',
+            'addressOne' => 'Main Street',
+            'addressTwo' => 'Number One',
+            'country' => 'US',
+            'city' => 'Anytown',
+            'state' => 'NY',
+            'postcode' => '12345',
+            'relatedPort' => 'USNYC',
+            'capabilities' => [
+                'AddressType' => 'OFC',
+                'IsMainAddress' => 'false',
+            ]
+        ]);
+```
+
 ### Documents / eDocs
 Most entities in CargoWise One have a document tab (called eDocs). It is possible to use Cord to access these documents using the `withDocuments()` method.
 When applying the documents method, Cord will only a `DcoumentCollection` containing the documents from the specified entity.

@@ -153,20 +153,20 @@ class Cord
         return $this;
     }
 
-    public function addAddress(string $code, string $address_one, string $address_two = null, string $countryCode, string $city, string $state = null, string $postcode = null, string $relatedPortCode = null, string $phone = null, string $fax = null, string $mobile = null, string $email = null, array $capabilities = []): self
+    public function addAddress(string $code, string $address_one, ?string $address_two, string $countryCode, string $city, ?string $state = null, ?string $postcode = null, ?string $relatedPortCode = null, ?string $phone = null, ?string $fax = null, ?string $mobile = null, ?string $email = null, array $capabilities = []): self
     {
-        
+
         if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval) {
             throw new \Exception('You must call an organization before adding an address. Use organization(CODEHERE) before calling this method.');
         }
-        
+
         $this->addEvent(date('c'), 'DIM', 'Address added automatically from XML');
 
-       $formattedCapabilities = [];
-        
-       foreach ($capabilities as $capability) {
-           // Check for the existence of required keys in each capability
-            if (!isset($capability['AddressType']) || !isset($capability['IsMainAddress'])) {
+        $formattedCapabilities = [];
+
+        foreach ($capabilities as $capability) {
+            // Check for the existence of required keys in each capability
+            if (! isset($capability['AddressType']) || ! isset($capability['IsMainAddress'])) {
                 throw new \Exception('Missing required keys in capabilities array. Each capability must include "AddressType" and "IsMainAddress".');
             }
 
@@ -177,7 +177,7 @@ class Cord
                 ],
             ];
         }
-        
+
         $this->address = [
             'OrgAddressCollection' => [
                 'OrgAddress' => [
@@ -186,20 +186,20 @@ class Cord
                     'Address1' => $address_one,
                     'Address2' => $address_two,
                     'CountryCode' => [
-                        'Code' => $countryCode
+                        'Code' => $countryCode,
                     ],
                     'City' => $city,
                     'State' => $state,
                     'PostCode' => $postcode,
                     'RelatedPortCode' => [
-                        'Code' => $relatedPortCode
+                        'Code' => $relatedPortCode,
                     ],
                     'Phone' => $phone,
                     'Fax' => $fax,
                     'Mobile' => $mobile,
                     'Email' => $email,
                     'SuppressAddressValidationError' => (string) true,
-                    'OrgAddressCapabilityCollection' => $this->formatCapabilities($capabilities)
+                    'OrgAddressCapabilityCollection' => $this->formatCapabilities($capabilities),
                 ],
             ],
         ];

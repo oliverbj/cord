@@ -8,11 +8,11 @@ class NativeOrganizationRetrieval extends NativeRequest
     {
         $criteriaGroups = $this->cord->criteriaGroups;
         $addresses = $this->cord->addresses;
-        
+
         return $this->defineSchema(
             criteriaGroups: $criteriaGroups,
             addresses: $addresses
-        
+
         );
     }
 
@@ -28,10 +28,10 @@ class NativeOrganizationRetrieval extends NativeRequest
         array_push($schema['Body']['Organization'], $criteriaGroups[0]);
 
         //Push in addresses (if any)
-        if(! empty($addresses)){
+        if (! empty($addresses)) {
             array_push($schema['Body']['Organization'], $addresses);
         }
-        
+
         return $schema;
     }
 }

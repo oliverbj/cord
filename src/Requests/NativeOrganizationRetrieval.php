@@ -11,7 +11,7 @@ class NativeOrganizationRetrieval extends NativeRequest
 
         return $this->defineSchema(
             criteriaGroups: $criteriaGroups,
-            addresses: $addresses
+            address: $address
 
         );
     }

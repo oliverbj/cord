@@ -162,15 +162,15 @@ class Cord
             throw new \Exception('You must call an organization before adding an address. Use organization (CODE HERE) before calling this method.');
         }
 
-        $capabilities = $addressDetails['capabilities'] ?? [];
-
         // Validate required fields in $addressDetails array
         $requiredFields = ['code', 'addressOne', 'country', 'city'];
         foreach ($requiredFields as $field) {
-            if (! isset($capabilities[$field])) {
+            if (! isset($addressDetails[$field])) {
                 throw new \Exception("Missing required field '{$field}' in address details.");
             }
         }
+
+        $capabilities = $addressDetails['capabilities'] ?? [];
 
         $this->address = [
             '_attributes' => ['Action' => 'INSERT'],
@@ -191,7 +191,7 @@ class Cord
             'Mobile' => $addressDetails['mobile'] ?? null,
             'Email' => $addressDetails['email'] ?? null,
             'SuppressAddressValidationError' => 'true',
-            'OrgAddressCapabilityCollection' => $formattedCapabilities,
+            'OrgAddressCapabilityCollection' => $capabilities,
         ];
 
         return $this;

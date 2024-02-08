@@ -195,12 +195,12 @@ class Cord
                 'OrgAddressCapability' => collect($capabilities)->map(function ($capability, $key) {
                     return $capability;
                 })->all(),
-            ]
+            ],
         ];
 
         $this->address['OrgAddressCapabilityCollection']['OrgAddressCapability'] += [
-            "_attributes" => [
-                "Action" => "INSERT"
+            '_attributes' => [
+                'Action' => 'INSERT',
             ],
         ];
 

@@ -23,7 +23,7 @@ class NativeOrganizationUpdate extends NativeRequest
         //Push in addresses (if any)
         if (! empty($address)) {
             $schema['Body']['Organization']['Code'] = $this->cord->targetKey;
-            array_push($schema['Body']['Organization'], $address);
+            //array_push($schema['Body']['Organization'], $address);
         }
 
         return $schema;

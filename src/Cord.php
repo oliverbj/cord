@@ -7,6 +7,7 @@ use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
+use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -155,6 +156,9 @@ class Cord
 
     public function addAddress(array $addressDetails): self
     {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        
         // Validate required fields in $addressDetails array
         $requiredFields = ['code', 'addressOne', 'country', 'city'];
         foreach ($requiredFields as $field) {
@@ -163,7 +167,7 @@ class Cord
             }
         }
 
-        if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval) {
+        if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding an address. Use organization(CODEHERE) before calling this method.');
         }
 

@@ -16,7 +16,7 @@ class NativeOrganizationUpdate extends NativeRequest
             'Body' => [
                 'Organization' => [
                     'Code' => $this->cord->targetKey,
-                    $address
+                    $address,
                 ],
             ],
         ];

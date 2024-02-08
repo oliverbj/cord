@@ -11,7 +11,6 @@ class NativeOrganizationUpdate extends NativeRequest
 
     private function defineSchema(array $address): array
     {
-        dd($this->cord->targetKey);
 
         $schema = [
             'Body' => [
@@ -23,6 +22,7 @@ class NativeOrganizationUpdate extends NativeRequest
 
         //Push in addresses (if any)
         if (! empty($address)) {
+            $schema['Body']['Organization']['Code'] = $this->cord->targetKey;
             array_push($schema['Body']['Organization'], $address);
         }
 

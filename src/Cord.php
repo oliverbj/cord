@@ -194,7 +194,7 @@ class Cord
             'OrgAddressCapabilityCollection' => [
                 'OrgAddressCapability' => [
                     '_attributes' => ['Action' => 'INSERT'],
-                    $capabilities
+                    $capabilities,
                 ],
             ],
         ];

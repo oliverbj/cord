@@ -15,10 +15,12 @@ class NativeOrganizationUpdate extends NativeRequest
         $schema = [
             'Body' => [
                 'Organization' => [
-                    'Code' => $this->cord->targetKey,
-                    'OrgAddressCollection' => [
-                        'OrgAddress' => $this->cord->address,
-                    ],
+                    'OrgHeader' => [
+                        'Code' => $this->cord->targetKey,
+                        'OrgAddressCollection' => [
+                            'OrgAddress' => $this->cord->address,
+                        ],
+                    ]
                 ],
             ],
         ];

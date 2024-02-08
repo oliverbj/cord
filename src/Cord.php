@@ -192,10 +192,15 @@ class Cord
             'Email' => $addressDetails['email'] ?? null,
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [
-                'OrgAddressCapability' => [
-                    '_attributes' => ['Action' => 'INSERT'],
-                    $capabilities,
-                ],
+                'OrgAddressCapability' => collect($capabilities)->map(function ($capability, $key) {
+                    return $capability;
+                })->all(),
+            ]
+        ];
+
+        $this->address['OrgAddressCapabilityCollection']['OrgAddressCapability'] += [
+            "_attributes" => [
+                "Action" => "INSERT"
             ],
         ];
 

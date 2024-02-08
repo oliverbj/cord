@@ -8,5 +8,6 @@ enum RequestType: string
     case UniversalDocumentRequest = 'UniversalDocumentRequest';
     case UniversalEvent = 'UniversalEvent';
     case NativeOrganizationRetrieval = 'NativeOrganizationRetrieval';
+    case NativeOrganizationUpdate = 'NativeOrganizationUpdate';
     case NativeCompanyRetrieval = 'NativeCompanyRetrieval';
 }

@@ -153,7 +153,7 @@ class Cord
         return $this;
     }
 
-    public function addAddress(string $code, string $address_one, ?string $address_two, string $country, string $city, ?string $state = null, ?string $postcode = null, ?string $relatedPort = null, ?string $phone = null, ?string $fax = null, ?string $mobile = null, ?string $email = null, array $capabilities = []): self
+    public function addAddress(string $code, string $addressOne, ?string $addressTwo, string $country, string $city, ?string $state = null, ?string $postcode = null, ?string $relatedPort = null, ?string $phone = null, ?string $fax = null, ?string $mobile = null, ?string $email = null, array $capabilities = []): self
     {
 
         if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval) {
@@ -183,16 +183,16 @@ class Cord
                 'OrgAddress' => [
                     '_Action' => 'INSERT',
                     'Code' => $code,
-                    'Address1' => $address_one,
-                    'Address2' => $address_two,
+                    'Address1' => $addressOne,
+                    'Address2' => $addressTwo,
                     'CountryCode' => [
-                        'Code' => $countryCode,
+                        'Code' => $country,
                     ],
                     'City' => $city,
                     'State' => $state,
                     'PostCode' => $postcode,
                     'RelatedPortCode' => [
-                        'Code' => $relatedPortCode,
+                        'Code' => $relatedPort,
                     ],
                     'Phone' => $phone,
                     'Fax' => $fax,

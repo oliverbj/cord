@@ -178,8 +178,8 @@ class Cord
                     '_Action' => 'INSERT',
                     'Code' => $addressDetails['code'],
                     'Address1' => $addressDetails['addressOne'],
-                    'Address2' => $addressDetails['addressTwo'] ?? null,
-                    'CountryCode' => [
+                    'Address2' => $addressDetails['addressTwo'] ?? '',
+                    /* 'CountryCode' => [
                         'Code' => $addressDetails['country'],
                     ],
                     'City' => $addressDetails['city'],
@@ -192,7 +192,7 @@ class Cord
                     'Fax' => $addressDetails['fax'] ?? null,
                     'Mobile' => $addressDetails['mobile'] ?? null,
                     'Email' => $addressDetails['email'] ?? null,
-                    'SuppressAddressValidationError' => 'true',
+                    'SuppressAddressValidationError' => 'true', */
                     //'OrgAddressCapabilityCollection' => $formattedCapabilities,
                 ],
             ],

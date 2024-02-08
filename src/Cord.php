@@ -192,7 +192,10 @@ class Cord
             'Email' => $addressDetails['email'] ?? null,
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [
-                'OrgAddressCapability' => $capabilities,
+                'OrgAddressCapability' => [
+                    '_attributes' => ['Action' => 'INSERT'],
+                    $capabilities,
+                ],
             ],
         ];
 

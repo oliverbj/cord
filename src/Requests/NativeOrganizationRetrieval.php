@@ -7,16 +7,13 @@ class NativeOrganizationRetrieval extends NativeRequest
     public function schema(): array
     {
         $criteriaGroups = $this->cord->criteriaGroups;
-        $address = $this->cord->address;
 
         return $this->defineSchema(
             criteriaGroups: $criteriaGroups,
-            address: $address
-
         );
     }
 
-    private function defineSchema(array $criteriaGroups, array $address): array
+    private function defineSchema(array $criteriaGroups): array
     {
         $schema = [
             'Body' => [
@@ -26,11 +23,6 @@ class NativeOrganizationRetrieval extends NativeRequest
 
         //Push in the criteria group.
         array_push($schema['Body']['Organization'], $criteriaGroups[0]);
-
-        //Push in addresses (if any)
-        if (! empty($address)) {
-            array_push($schema['Body']['Organization'], $address);
-        }
 
         return $schema;
     }

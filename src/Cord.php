@@ -158,26 +158,26 @@ class Cord
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
 
-        // Validate required fields in $addressDetails array
+        if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before adding an address. Use organization (CODE HERE) before calling this method.');
+        }
+
+        $capabilities = $addressDetails['capabilities'] ?? [];
+
+         // Validate required fields in $addressDetails array
         $requiredFields = ['code', 'addressOne', 'country', 'city'];
         foreach ($requiredFields as $field) {
-            if (! isset($addressDetails[$field])) {
+            if (! isset($capabilities[$field])) {
                 throw new \Exception("Missing required field '{$field}' in address details.");
             }
         }
-
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before adding an address. Use organization(CODEHERE) before calling this method.');
-        }
-
-        $formattedCapabilities = $this->formatCapabilities($addressDetails['capabilities'] ?? []);
-
+        
         $this->address = [
             '_attributes' => ['Action' => 'INSERT'],
             'Code' => $addressDetails['code'],
             'Address1' => $addressDetails['addressOne'],
             'Address2' => $addressDetails['addressTwo'] ?? '',
-            /* 'CountryCode' => [
+            'CountryCode' => [
                 'Code' => $addressDetails['country'],
             ],
             'City' => $addressDetails['city'],
@@ -190,33 +190,13 @@ class Cord
             'Fax' => $addressDetails['fax'] ?? null,
             'Mobile' => $addressDetails['mobile'] ?? null,
             'Email' => $addressDetails['email'] ?? null,
-            'SuppressAddressValidationError' => 'true', */
-            //'OrgAddressCapabilityCollection' => $formattedCapabilities,
+            'SuppressAddressValidationError' => 'true', 
+            'OrgAddressCapabilityCollection' => $formattedCapabilities,
         ];
 
         return $this;
     }
 
-    private function formatCapabilities(array $capabilities): array
-    {
-        $formattedCapabilities = [];
-
-        foreach ($capabilities as $capability) {
-            // Check for the existence of required keys in each capability
-            if (! isset($capability['AddressType']) || ! isset($capability['IsMainAddress'])) {
-                throw new \Exception('Missing required keys in capabilities array. Each capability must include "AddressType", and "IsMainAddress".');
-            }
-
-            $formattedCapabilities[] = [
-                'OrgAddressCapability' => [
-                    'AddressType' => $capability['AddressType'],
-                    'IsMainAddress' => $capability['IsMainAddress'],
-                ],
-            ];
-        }
-
-        return $formattedCapabilities;
-    }
 
     /**
      * Determine if the request is for a shipment.

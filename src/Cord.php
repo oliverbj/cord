@@ -192,8 +192,8 @@ class Cord
             'Email' => $addressDetails['email'] ?? null,
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [
-                'OrgAddressCapability' => $capabilities
-            ]
+                'OrgAddressCapability' => $capabilities,
+            ],
         ];
 
         return $this;

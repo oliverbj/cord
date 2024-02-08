@@ -158,19 +158,19 @@ class Cord
         // Validate required fields in $addressDetails array
         $requiredFields = ['code', 'addressOne', 'country', 'city'];
         foreach ($requiredFields as $field) {
-            if (!isset($addressDetails[$field])) {
+            if (! isset($addressDetails[$field])) {
                 throw new \Exception("Missing required field '{$field}' in address details.");
             }
         }
-    
+
         if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval) {
             throw new \Exception('You must call an organization before adding an address. Use organization(CODEHERE) before calling this method.');
         }
-    
+
         $this->addEvent(date('c'), 'DIM', 'Address added automatically from XML');
-    
+
         $formattedCapabilities = $this->formatCapabilities($addressDetails['capabilities'] ?? []);
-    
+
         $this->address = [
             'OrgAddressCollection' => [
                 'OrgAddress' => [
@@ -196,20 +196,20 @@ class Cord
                 ],
             ],
         ];
-    
+
         return $this;
     }
 
     private function formatCapabilities(array $capabilities): array
     {
         $formattedCapabilities = [];
-    
+
         foreach ($capabilities as $capability) {
             // Check for the existence of required keys in each capability
-            if (!isset($capability['AddressType']) || !isset($capability['IsMainAddress'])) {
+            if (! isset($capability['AddressType']) || ! isset($capability['IsMainAddress'])) {
                 throw new \Exception('Missing required keys in capabilities array. Each capability must include "AddressType", and "IsMainAddress".');
             }
-    
+
             $formattedCapabilities[] = [
                 'OrgAddressCapability' => [
                     'AddressType' => $capability['AddressType'],
@@ -217,10 +217,9 @@ class Cord
                 ],
             ];
         }
-    
+
         return $formattedCapabilities;
     }
-
 
     /**
      * Determine if the request is for a shipment.

@@ -164,14 +164,14 @@ class Cord
 
         $capabilities = $addressDetails['capabilities'] ?? [];
 
-         // Validate required fields in $addressDetails array
+        // Validate required fields in $addressDetails array
         $requiredFields = ['code', 'addressOne', 'country', 'city'];
         foreach ($requiredFields as $field) {
             if (! isset($capabilities[$field])) {
                 throw new \Exception("Missing required field '{$field}' in address details.");
             }
         }
-        
+
         $this->address = [
             '_attributes' => ['Action' => 'INSERT'],
             'Code' => $addressDetails['code'],
@@ -190,13 +190,12 @@ class Cord
             'Fax' => $addressDetails['fax'] ?? null,
             'Mobile' => $addressDetails['mobile'] ?? null,
             'Email' => $addressDetails['email'] ?? null,
-            'SuppressAddressValidationError' => 'true', 
+            'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => $formattedCapabilities,
         ];
 
         return $this;
     }
-
 
     /**
      * Determine if the request is for a shipment.

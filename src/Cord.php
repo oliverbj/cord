@@ -156,7 +156,7 @@ class Cord
     public function addAddress(string $code, string $address_one, string $address_two = null, string $countryCode, string $city, string $state = null, string $postcode = null, string $relatedPortCode = null, string $phone = null, string $fax = null, string $mobile = null, string $email = null, array $capabilities = []): self
     {
         
-        if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval;) {
+        if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval) {
             throw new \Exception('You must call an organization before adding an address. Use organization(CODEHERE) before calling this method.');
         }
         

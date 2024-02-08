@@ -166,9 +166,7 @@ class Cord
         if ($this->target !== DataTarget::Organization || $this->requestType !== RequestType::NativeOrganizationRetrieval) {
             throw new \Exception('You must call an organization before adding an address. Use organization(CODEHERE) before calling this method.');
         }
-
-        $this->addEvent(date('c'), 'DIM', 'Address added automatically from XML');
-
+        
         $formattedCapabilities = $this->formatCapabilities($addressDetails['capabilities'] ?? []);
 
         $this->address = [

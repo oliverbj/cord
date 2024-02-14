@@ -23,6 +23,9 @@ class NativeOrganizationUpdate extends NativeRequest
                         'OrgContactCollection' => [
                             'OrgContact' => $this->cord->contact,
                         ],
+                        'EDICommunicationsModeCollection' => [
+                            'EDICommunicationsMode' => $this->cord->ediCommunication
+                        ]
                     ],
                 ],
             ],

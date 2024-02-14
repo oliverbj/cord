@@ -205,6 +205,8 @@ class Cord
                 })->all(),
             ],
         ];
+
+        return $this;
     }
 
     public function addAddress(array $addressDetails): self

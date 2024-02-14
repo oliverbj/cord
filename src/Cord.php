@@ -190,7 +190,7 @@ class Cord
         });
 
         //If the documents is an associative array
-        if(isset($documents[0]) && is_array($documents[0])) {
+        if (isset($documents[0]) && is_array($documents[0])) {
             $documents = $documents->all();
         } else {
             $documents = $documents->first();
@@ -210,10 +210,10 @@ class Cord
             'HomeWork' => $contactDetails['homePhone'] ?? '',
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
             'OrgDocumentCollection' => [
-                'OrgDocument' => $documents
+                'OrgDocument' => $documents,
             ],
         ];
-        
+
         return $this;
     }
 

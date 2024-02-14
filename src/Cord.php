@@ -39,6 +39,8 @@ class Cord
 
     public $address = [];
 
+    public $contact = [];
+
     protected $xml;
 
     public bool $asXml = false;
@@ -154,12 +156,60 @@ class Cord
         return $this;
     }
 
+    public function addContact(array $contactDetails): self
+    {
+       $this->requestType = RequestType::NativeOrganizationUpdate;
+        
+         if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before adding an address. Use organization() method before calling this method.');
+        }
+
+        // Validate required fields in $addressDetails array
+        $requiredFields = ['name', 'email'];
+        foreach ($requiredFields as $field) {
+            if (! isset($addressDetails[$field])) {
+                throw new \Exception("Missing required field '{$field}' in contact details.");
+            }
+        }
+        
+        $documents = $contactDetails['documents'] ?? [];
+
+
+        $this->contact = [
+            '_attributes' => ['Action' => 'INSERT'],
+            'IsActive' => $contactDetails['active'] ?? 'true',
+            'ContactName' => $contactDetails['name'],
+            'NotifyMode' => $contactDetails['notifyMode'] ?? 'EML',
+            'Title' => $contactDetails['title'] ?? '',
+            'Gender' => $contactDetails['gender'] ?? 'N',
+            'Email' => $contactDetails['email'],
+            'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
+            'OrgDocumentCollection' => [
+                'OrgDocument' => collect($documents)->map(function ($document) {
+                    return [
+                        '_attributes' => [
+                            'Action' => 'INSERT',
+                        ],
+                        'DocumentGroup' => $document['DocumentGroup'] ?? '',
+                        'DefaultContact' => $document['DefaultContact'] ?? 'false',
+                        'AttachmentType' => $document['AttachmentType'],
+                        'DeliveryBy' => $document['DeliveryBy'],
+                        'MenuName' => $document['MenuName'] ?? '',
+                        'BusinessContext' => $document['BusinessContext'] ?? '',
+                        'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
+                        'FilterDirection' => $document['FilterDirection'] ?? 'ALL'
+                    ];
+                })->all(),
+            ],
+        ];
+    }
+    
     public function addAddress(array $addressDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
 
         if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before adding an address. Use organization (CODE HERE) before calling this method.');
+            throw new \Exception('You must call an organization before adding an address. Use organization() method before calling this method.');
         }
 
         // Validate required fields in $addressDetails array

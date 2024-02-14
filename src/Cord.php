@@ -207,12 +207,6 @@ class Cord
             ],
         ];
 
-        $this->address['OrgAddressCapabilityCollection']['OrgAddressCapability'] += [
-            '_attributes' => [
-                'Action' => 'INSERT',
-            ],
-        ];
-
         return $this;
     }
 

@@ -173,6 +173,28 @@ class Cord
         }
 
         $documents = $contactDetails['documentsToDeliver'] ?? [];
+        $documents = collect($documents)->map(function ($document) {
+            return [
+                '_attributes' => [
+                    'Action' => 'INSERT',
+                ],
+                'DocumentGroup' => $document['DocumentGroup'] ?? '',
+                'DefaultContact' => $document['DefaultContact'] ?? 'false',
+                'AttachmentType' => $document['AttachmentType'],
+                'DeliveryBy' => $document['DeliveryBy'],
+                'MenuName' => $document['MenuName'] ?? '',
+                'BusinessContext' => $document['BusinessContext'] ?? '',
+                'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
+                'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
+            ];
+        });
+
+        //If the documents is an associative array
+        if(isset($documents[0]) && is_array($documents[0])) {
+            $documents = $documents->all();
+        } else {
+            $documents = $documents->first();
+        }
 
         $this->contact = [
             '_attributes' => ['Action' => 'INSERT'],
@@ -188,24 +210,10 @@ class Cord
             'HomeWork' => $contactDetails['homePhone'] ?? '',
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
             'OrgDocumentCollection' => [
-                'OrgDocument' => collect($documents)->map(function ($document) {
-                    return [
-                        '_attributes' => [
-                            'Action' => 'INSERT',
-                        ],
-                        'DocumentGroup' => $document['DocumentGroup'] ?? '',
-                        'DefaultContact' => $document['DefaultContact'] ?? 'false',
-                        'AttachmentType' => $document['AttachmentType'],
-                        'DeliveryBy' => $document['DeliveryBy'],
-                        'MenuName' => $document['MenuName'] ?? '',
-                        'BusinessContext' => $document['BusinessContext'] ?? '',
-                        'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
-                        'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
-                    ];
-                })->all(),
+                'OrgDocument' => $documents
             ],
         ];
-
+        
         return $this;
     }
 

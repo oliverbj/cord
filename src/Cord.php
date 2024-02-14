@@ -174,6 +174,7 @@ class Cord
 
         $this->address = [
             '_attributes' => ['Action' => 'INSERT'],
+            'IsActive' => $addressDetails['active'] ?? 'true',
             'Code' => $addressDetails['code'],
             'Address1' => $addressDetails['addressOne'],
             'Address2' => $addressDetails['addressTwo'] ?? '',

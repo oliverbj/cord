@@ -20,6 +20,9 @@ class NativeOrganizationUpdate extends NativeRequest
                         'OrgAddressCollection' => [
                             'OrgAddress' => $this->cord->address,
                         ],
+                        'OrgContactCollection' => [
+                            'OrgContact' => $this->cord->contact,
+                        ],
                     ],
                 ],
             ],

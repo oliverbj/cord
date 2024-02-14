@@ -172,28 +172,33 @@ class Cord
             }
         }
 
-        $documents = $contactDetails['documentsToDeliver'] ?? [];
-        $documents = collect($documents)->map(function ($document) {
-            return [
+        $docsToDeliver = [];
+        if(isset($contactDetails['documentsToDeliver'])) {
+            $docsToDeliver = $contactDetails['documentsToDeliver']['OrgDocument'];
+            if(count($docsToDeliver) === 1) {
+                $docsToDeliver = $docsToDeliver[0];
+            }
+        }
+
+        $documents = [];
+        foreach($docsToDeliver as $document) {
+            $documents[] = [
                 '_attributes' => [
                     'Action' => 'INSERT',
                 ],
                 'DocumentGroup' => $document['DocumentGroup'] ?? '',
                 'DefaultContact' => $document['DefaultContact'] ?? 'false',
-                'AttachmentType' => $document['AttachmentType'],
-                'DeliveryBy' => $document['DeliveryBy'],
-                'MenuName' => $document['MenuName'] ?? '',
-                'BusinessContext' => $document['BusinessContext'] ?? '',
+                'AttachmentType' => $document['AttachmentType'] ?? null,
+                'DeliveryBy' => $document['DeliveryBy'] ?? '',
+                'MenuItem' => isset($document['MenuItem']['BusinessContext']) ? [
+                    'MenuName' => $document['MenuItem']['MenuName'] ?? '',
+                    'BusinessContext' => $document['MenuItem']['BusinessContext'] ?? '',
+                    'MenuPath' => $document['MenuItem']['MenuPath'] ?? '',
+                    'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
+                ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
             ];
-        });
-
-        //If the documents is an associative array
-        if (isset($documents[0]) && is_array($documents[0])) {
-            $documents = $documents->all();
-        } else {
-            $documents = $documents->first();
         }
 
         $this->contact = [

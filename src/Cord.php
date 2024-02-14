@@ -158,9 +158,9 @@ class Cord
 
     public function addContact(array $contactDetails): self
     {
-       $this->requestType = RequestType::NativeOrganizationUpdate;
-        
-         if ($this->target !== DataTarget::Organization) {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding an address. Use organization() method before calling this method.');
         }
 
@@ -171,9 +171,8 @@ class Cord
                 throw new \Exception("Missing required field '{$field}' in contact details.");
             }
         }
-        
-        $documents = $contactDetails['documents'] ?? [];
 
+        $documents = $contactDetails['documents'] ?? [];
 
         $this->contact = [
             '_attributes' => ['Action' => 'INSERT'],
@@ -197,13 +196,13 @@ class Cord
                         'MenuName' => $document['MenuName'] ?? '',
                         'BusinessContext' => $document['BusinessContext'] ?? '',
                         'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
-                        'FilterDirection' => $document['FilterDirection'] ?? 'ALL'
+                        'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
                     ];
                 })->all(),
             ],
         ];
     }
-    
+
     public function addAddress(array $addressDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;

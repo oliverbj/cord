@@ -182,6 +182,10 @@ class Cord
             'Title' => $contactDetails['title'] ?? '',
             'Gender' => $contactDetails['gender'] ?? 'N',
             'Email' => $contactDetails['email'],
+            'Language' => $contactDetails['language'] ?? 'EN',
+            'Phone' => $contactDetails['phone'] ?? '',
+            'Mobile' => $contactDetails['mobilePhone'] ?? '',
+            'HomeWork' => $contactDetails['homePhone'] ?? '',
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
             'OrgDocumentCollection' => [
                 'OrgDocument' => collect($documents)->map(function ($document) {

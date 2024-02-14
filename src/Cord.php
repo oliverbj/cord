@@ -190,6 +190,9 @@ class Cord
             'Fax' => $addressDetails['fax'] ?? null,
             'Mobile' => $addressDetails['mobile'] ?? null,
             'Email' => $addressDetails['email'] ?? null,
+            'FCLEquipmentNeeded' => 'ANY',
+            'FCLEquipmentNeeded' => 'ANY',
+            'AIREquipmentNeeded' => 'ANY',
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [
                 'OrgAddressCapability' => collect($capabilities)->map(function ($capability) {

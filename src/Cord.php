@@ -172,7 +172,7 @@ class Cord
             }
         }
 
-        $documents = $contactDetails['documents'] ?? [];
+        $documents = $contactDetails['documentsToDeliver'] ?? [];
 
         $this->contact = [
             '_attributes' => ['Action' => 'INSERT'],

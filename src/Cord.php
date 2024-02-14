@@ -167,7 +167,7 @@ class Cord
         // Validate required fields in $addressDetails array
         $requiredFields = ['name', 'email'];
         foreach ($requiredFields as $field) {
-            if (! isset($addressDetails[$field])) {
+            if (! isset($contactDetails[$field])) {
                 throw new \Exception("Missing required field '{$field}' in contact details.");
             }
         }

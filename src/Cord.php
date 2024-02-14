@@ -191,7 +191,7 @@ class Cord
             'Mobile' => $addressDetails['mobile'] ?? null,
             'Email' => $addressDetails['email'] ?? null,
             'FCLEquipmentNeeded' => 'ANY',
-            'FCLEquipmentNeeded' => 'ANY',
+            'LCLEquipmentNeeded' => 'ANY',
             'AIREquipmentNeeded' => 'ANY',
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [

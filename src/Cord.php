@@ -173,15 +173,15 @@ class Cord
         }
 
         $docsToDeliver = [];
-        if(isset($contactDetails['documentsToDeliver'])) {
+        if (isset($contactDetails['documentsToDeliver'])) {
             $docsToDeliver = $contactDetails['documentsToDeliver']['OrgDocument'];
-            if(count($docsToDeliver) === 1) {
+            if (count($docsToDeliver) === 1) {
                 $docsToDeliver = $docsToDeliver[0];
             }
         }
 
         $documents = [];
-        foreach($docsToDeliver as $document) {
+        foreach ($docsToDeliver as $document) {
             $documents[] = [
                 '_attributes' => [
                     'Action' => 'INSERT',

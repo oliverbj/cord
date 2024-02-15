@@ -395,7 +395,6 @@ class Cord
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
         $this->requestType = RequestType::UniversalEvent;
-        $this->addEvent(date('c'), 'DIM', 'Document imported automatically from XML');
 
         $this->document = [
             'AttachedDocumentCollection' => [

@@ -26,6 +26,9 @@ class NativeOrganizationUpdate extends NativeRequest
                         'EDICommunicationsModeCollection' => [
                             'EDICommunicationsMode' => $this->cord->ediCommunication,
                         ],
+                        'JobRequiredDocumentCollection' => [
+                            'JobRequiredDocument' => $this->cord->jobRequiredDocument,
+                        ],
                     ],
                 ],
             ],

@@ -671,16 +671,16 @@ class Cord
         };
     }
 
-
     private function addActionRecursively(&$arr, $attribute = 'INSERT')
     {
         // Define a function to check if an array is a "holder of arrays"
         $isHolderOfArrays = function ($item) {
             foreach ($item as $value) {
-                if (!is_array($value)) {
+                if (! is_array($value)) {
                     return false; // Found a non-array item, so it's not just a holder of arrays
                 }
             }
+
             return true; // Every item is an array, so it's a holder of arrays
         };
 
@@ -691,7 +691,7 @@ class Cord
                     $this->addActionRecursively($value);
 
                     // After recursion, add '_attributes' only to "real" arrays, not holders
-                    if (!$isHolderOfArrays($value)) {
+                    if (! $isHolderOfArrays($value)) {
                         $value = array_merge(['_attributes' => ['Action' => $attribute]], $value);
                     }
                 }

@@ -260,7 +260,7 @@ class Cord
 
         return $this;
     }
-    
+
     /**
      * A method to transfer EDI communication from one organization to another.
      */

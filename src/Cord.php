@@ -189,7 +189,7 @@ class Cord
         ];
 
         return $this;
-        
+
     }
 
     public function addContact(array $contactDetails): self

@@ -259,6 +259,41 @@ class Cord
         return $this;
     }
 
+    public function transferAddress(array $address)
+    {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before transferring an address. Use organization() method before calling this method.');
+        }
+
+        //PK is already present in an OrgAddress collection. If it is not, it means that we have received something else...
+        if (! isset($address['PK'])) {
+            throw new \Exception('Invalid address array proivded. Be sure to provide the array data of the OrgAddress array.');
+        }
+
+        $this->addActionRecursively($address);
+        $address = array_merge(['_attributes' => ['Action' => 'INSERT']], $address);
+
+        //CW1 adds an @attributes to some tags. Remove it!
+        $this->removeKeyRecursively($address, '@attributes');
+
+        //Below are related to another table in CW1, so we need to set the action to "UPDATE":
+        $address['RelatedPortCode']['_attributes'] = ['Action' => 'UPDATE'];
+        $address['CountryCode']['_attributes'] = ['Action' => 'UPDATE'];
+
+        //Remove all values that are an empty array!
+        $this->address = collect($address)->filter(function ($value) {
+            return ! empty($value);
+        })->all();
+
+        return $this;
+
+    }
+
+    /**
+     * Todo: WIP - not stable!
+     */
     public function addAddress(array $addressDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
@@ -569,5 +604,47 @@ class Cord
 
             default => $response['Data'],
         };
+    }
+
+
+    private function addActionRecursively(&$arr, $attribute = 'INSERT')
+    {
+        // Define a function to check if an array is a "holder of arrays"
+        $isHolderOfArrays = function ($item) {
+            foreach ($item as $value) {
+                if (!is_array($value)) {
+                    return false; // Found a non-array item, so it's not just a holder of arrays
+                }
+            }
+            return true; // Every item is an array, so it's a holder of arrays
+        };
+
+        if (is_array($arr)) {
+            foreach ($arr as $key => &$value) {
+                // Recursively apply the function to sub-arrays
+                if (is_array($value)) {
+                    $this->addActionRecursively($value);
+
+                    // After recursion, add '_attributes' only to "real" arrays, not holders
+                    if (!$isHolderOfArrays($value)) {
+                        $value = array_merge(['_attributes' => ['Action' => $attribute]], $value);
+                    }
+                }
+            }
+            unset($value); // Unset the reference to prevent unexpected behavior later
+        }
+    }
+
+    private function removeKeyRecursively(&$array, $keyToRemove)
+    {
+        if (is_array($array)) {
+            foreach ($array as $key => &$value) {
+                if ($key === $keyToRemove) {
+                    unset($array[$key]);
+                } elseif (is_array($value)) {
+                    $this->removeKeyRecursively($value, $keyToRemove);
+                }
+            }
+        }
     }
 }

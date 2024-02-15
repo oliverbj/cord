@@ -260,6 +260,41 @@ class Cord
 
         return $this;
     }
+    
+    /**
+     * A method to transfer EDI communication from one organization to another.
+     */
+    public function transferEDICommunication(array $ediCommunication)
+    {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before transferring an EDI communication. Use organization() method before calling this method.');
+        }
+
+        //PK is already present in an EDICommunication collection. If it is not, it means that we have received something else...
+        if (! isset($ediCommunication['PK'])) {
+            throw new \Exception('Invalid EDI communication array proivded. Be sure to provide the array data of the EDICommunicationsMode array.');
+        }
+
+        $this->addActionRecursively($ediCommunication);
+        $ediCommunication = array_merge(['_attributes' => ['Action' => 'INSERT']], $ediCommunication);
+
+        //CW1 adds an @attributes to some tags. Remove it!
+        $this->removeKeyRecursively($ediCommunication, '@attributes');
+
+        //Below we do not want to insert.:
+        if (isset($ediCommunication['MessageVAN'])) {
+            unset($ediCommunication['MessageVAN']);
+        }
+
+        //Remove all values that are an empty array!
+        $this->ediCommunication = collect($ediCommunication)->filter(function ($value) {
+            return ! empty($value);
+        })->all();
+
+        return $this;
+    }
 
     /**
      * A method to transfer a contact from one organization to another.

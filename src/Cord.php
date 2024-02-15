@@ -182,10 +182,11 @@ class Cord
             'CommunicationsTransport' => $ediCommunicationDetails['transport'],
             'Destination' => $ediCommunicationDetails['destination'],
             'FileFormat' => $ediCommunicationDetails['format'],
+            'ServerAddressSubject' => $ediCommunicationDetails['subject'],
             'PublishInternalMilestones' => $ediCommunicationDetails['publishMilestones'] ?? 'false',
             'LocalPartyVanID' => $ediCommunicationDetails['senderVAN'] ?? '',
             'RelatedPartyVanID' => $ediCommunicationDetails['receiverVAN'] ?? '',
-            'FileName' => $ediCommunicationDetails['filename'] ?? '',
+            'Filename' => $ediCommunicationDetails['filename'] ?? '',
         ];
 
         return $this;

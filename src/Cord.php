@@ -275,7 +275,12 @@ class Cord
             }
         }
 
-        $capabilities = $addressDetails['capabilities'] ?? [];
+        $capabilities = $addressDetails['capabilities']['OrgAddressCapability'] ?? [];
+
+        // Check if $capabilities is an associative array or an array of key-value pairs
+        if (!empty($capabilities) && is_array($capabilities) && array_keys($capabilities) !== range(0, count($capabilities) - 1)) {
+            $capabilities = [$capabilities]; // Convert to an array of one element
+        }
 
         $this->address = [
             '_attributes' => ['Action' => 'INSERT'],
@@ -301,15 +306,7 @@ class Cord
             'AIREquipmentNeeded' => $addressDetails['dropModeAIR'] ?? 'ASK',
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [
-                'OrgAddressCapability' => collect($capabilities)->map(function ($capability) {
-                    return [
-                        '_attributes' => [
-                            'Action' => 'INSERT',
-                        ],
-                        'AddressType' => $capability['AddressType'],
-                        'IsMainAddress' => $capability['IsMainAddress'],
-                    ];
-                })->all(),
+                'OrgAddressCapability' => count($capabilities) === 1 ? $capabilities[0] : $capabilities,
             ],
         ];
 

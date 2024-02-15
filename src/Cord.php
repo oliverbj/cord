@@ -41,6 +41,8 @@ class Cord
 
     public $contact = [];
 
+    public $ediCommunication = [];
+
     protected $xml;
 
     public bool $asXml = false;
@@ -156,12 +158,46 @@ class Cord
         return $this;
     }
 
+    public function addEDICommunication(array $ediCommunicationDetails): self
+    {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before adding an EDI communication mode. Use organization() method before calling this method.');
+        }
+
+        // Validate required fields in $addressDetails array
+        $requiredFields = ['module', 'purpose', 'direction', 'format', 'destination', 'transport'];
+        foreach ($requiredFields as $field) {
+            if (! isset($ediCommunicationDetails[$field])) {
+                throw new \Exception("Missing required field '{$field}' in contact details.");
+            }
+        }
+
+        $this->ediCommunication = [
+            '_attributes' => ['Action' => 'INSERT'],
+            'Module' => $ediCommunicationDetails['module'],
+            'MessagePurpose' => $ediCommunicationDetails['purpose'],
+            'CommsDirection' => $ediCommunicationDetails['direction'],
+            'CommunicationsTransport' => $ediCommunicationDetails['transport'],
+            'Destination' => $ediCommunicationDetails['destination'],
+            'FileFormat' => $ediCommunicationDetails['format'],
+            'PublishInternalMilestones' => $ediCommunicationDetails['publishMilestones'] ?? 'false',
+            'LocalPartyVanID' => $ediCommunicationDetails['senderVAN'] ?? '',
+            'RelatedPartyVanID' => $ediCommunicationDetails['receiverVAN'] ?? '',
+            'FileName' => $ediCommunicationDetails['filename'] ?? '',
+        ];
+
+        return $this;
+        
+    }
+
     public function addContact(array $contactDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
 
         if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before adding an address. Use organization() method before calling this method.');
+            throw new \Exception('You must call an organization before adding a contact person. Use organization() method before calling this method.');
         }
 
         // Validate required fields in $addressDetails array

@@ -193,15 +193,13 @@ class Cord
 
     }
 
-        public function addContact(array $contactDetails): self
+    public function addContact(array $contactDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding a contact person. Use organization() method before calling this method.');
         }
-
-
 
         // Validate required fields in $addressDetails array
         $requiredFields = ['name', 'email'];
@@ -214,11 +212,9 @@ class Cord
         $docsToDeliver = $contactDetails['documentsToDeliver']['OrgDocument'];
 
         // Check if $ediCommunications is an associative array or an array of key-value pairs
-        if (!empty($docsToDeliver) && is_array($docsToDeliver) && array_keys($docsToDeliver) !== range(0, count($docsToDeliver) - 1)) {
+        if (! empty($docsToDeliver) && is_array($docsToDeliver) && array_keys($docsToDeliver) !== range(0, count($docsToDeliver) - 1)) {
             $docsToDeliver = [$docsToDeliver]; // Convert to an array of one element
         }
-
-
 
         $documents = [];
         foreach ($docsToDeliver as $document) {
@@ -241,7 +237,6 @@ class Cord
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
             ];
         }
-
 
         $this->contact = [
             '_attributes' => ['Action' => 'INSERT'],

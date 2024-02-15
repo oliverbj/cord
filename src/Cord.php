@@ -226,7 +226,7 @@ class Cord
                 'DocumentGroup' => $document['DocumentGroup'] ?? '',
                 'DefaultContact' => $document['DefaultContact'] ?? 'false',
                 'AttachmentType' => $document['AttachmentType'] ?? null,
-                'DeliveryBy' => $document['DeliveryBy'] ?? '',
+                'DeliverBy' => $document['DeliverBy'] ?? '',
                 'MenuItem' => isset($document['MenuItem']['BusinessContext']) ? [
                     'MenuName' => $document['MenuItem']['MenuName'] ?? '',
                     'BusinessContext' => $document['MenuItem']['BusinessContext'] ?? '',

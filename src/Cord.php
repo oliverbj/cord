@@ -284,11 +284,11 @@ class Cord
         $this->removeKeyRecursively($jobRequiredDocument, '@attributes');
 
         //Below we do not want to insert.:
-        if(isset($jobRequiredDocument['RelatedCountry'])){
+        if (isset($jobRequiredDocument['RelatedCountry'])) {
             unset($jobRequiredDocument['RelatedCountry']);
         }
-        
-        if(isset($jobRequiredDocument['DocumentOwner'])){
+
+        if (isset($jobRequiredDocument['DocumentOwner'])) {
             unset($jobRequiredDocument['DocumentOwner']);
         }
 

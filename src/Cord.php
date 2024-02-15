@@ -282,7 +282,7 @@ class Cord
             $capabilities = [$capabilities]; // Convert to an array of one element
         }
 
-        foreach($capabilities as $key => $capability) {
+        foreach ($capabilities as $key => $capability) {
             $capabilities[$key] = [
                 '_attributes' => ['Action' => 'INSERT'],
                 'AddressType' => $capability['AddressType'] ?? '',

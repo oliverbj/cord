@@ -182,7 +182,7 @@ class Cord
             'CommunicationsTransport' => $ediCommunicationDetails['transport'],
             'Destination' => $ediCommunicationDetails['destination'],
             'FileFormat' => $ediCommunicationDetails['format'],
-            'ServerAddressSubject' => $ediCommunicationDetails['subject'],
+            'ServerAddressSubject' => $ediCommunicationDetails['subject'] ?? '',
             'PublishInternalMilestones' => $ediCommunicationDetails['publishMilestones'] ?? 'false',
             'LocalPartyVanID' => $ediCommunicationDetails['senderVAN'] ?? '',
             'RelatedPartyVanID' => $ediCommunicationDetails['receiverVAN'] ?? '',

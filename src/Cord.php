@@ -282,10 +282,12 @@ class Cord
             $capabilities = [$capabilities]; // Convert to an array of one element
         }
 
-        foreach ($capabilities as $key => $capability) {
-            if (isset($capabilities[$key]['PK'])) {
-                unset($capabilities[$key]['PK']);
-            }
+        foreach($capabilities as $key => $capability) {
+            $capabilities[$key] = [
+                '_attributes' => ['Action' => 'INSERT'],
+                'AddressType' => $capability['AddressType'] ?? '',
+                'IsMainAddress' => $capability['IsMainAddress'] ?? '',
+            ];
         }
 
         $this->address = [

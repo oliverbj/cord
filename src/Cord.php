@@ -282,8 +282,8 @@ class Cord
             $capabilities = [$capabilities]; // Convert to an array of one element
         }
 
-        foreach($capabilities as $key => $capability) {
-            if(isset($capabilities[$key]['PK'])){
+        foreach ($capabilities as $key => $capability) {
+            if (isset($capabilities[$key]['PK'])) {
                 unset($capabilities[$key]['PK']);
             }
         }

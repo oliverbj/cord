@@ -283,6 +283,15 @@ class Cord
         //CW1 adds an @attributes to some tags. Remove it!
         $this->removeKeyRecursively($jobRequiredDocument, '@attributes');
 
+        //Below we do not want to insert.:
+        if(isset($jobRequiredDocument['RelatedCountry'])){
+            unset($jobRequiredDocument['RelatedCountry']);
+        }
+        
+        if(isset($jobRequiredDocument['DocumentOwner'])){
+            unset($jobRequiredDocument['DocumentOwner']);
+        }
+
         //Remove all values that are an empty array!
         $this->jobRequiredDocument = collect($jobRequiredDocument)->filter(function ($value) {
             return ! empty($value);

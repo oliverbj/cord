@@ -397,7 +397,7 @@ class Cord
         $this->requestType = RequestType::UniversalEvent;
 
         $this->addEvent(date('c'), 'DIM', 'Document imported automatically from XML');
-        
+
         $this->document = [
             'AttachedDocumentCollection' => [
                 'AttachedDocument' => [

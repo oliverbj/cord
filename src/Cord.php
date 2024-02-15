@@ -41,6 +41,8 @@ class Cord
 
     public $contact = [];
 
+    public $jobRequiredDocument = [];
+
     public $ediCommunication = [];
 
     protected $xml;
@@ -193,9 +195,6 @@ class Cord
 
     }
 
-    /**
-     * Todo: WIP - not stable!
-     */
     public function addContact(array $contactDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
@@ -258,6 +257,36 @@ class Cord
                 'OrgDocument' => count($documents) === 1 ? $documents[0] : $documents,
             ],
         ];
+
+        return $this;
+    }
+
+    /**
+     * A method to transfer a contact from one organization to another.
+     */
+    public function transferDocumentTracking(array $jobRequiredDocument)
+    {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before transferring a document tracking. Use organization() method before calling this method.');
+        }
+
+        //PK is already present in an JobRequiredDocument collection. If it is not, it means that we have received something else...
+        if (! isset($jobRequiredDocument['PK'])) {
+            throw new \Exception('Invalid document tracking array proivded. Be sure to provide the array data of the JobRequiredDocument array.');
+        }
+
+        $this->addActionRecursively($jobRequiredDocument);
+        $jobRequiredDocument = array_merge(['_attributes' => ['Action' => 'INSERT']], $jobRequiredDocument);
+
+        //CW1 adds an @attributes to some tags. Remove it!
+        $this->removeKeyRecursively($jobRequiredDocument, '@attributes');
+
+        //Remove all values that are an empty array!
+        $this->jobRequiredDocument = collect($jobRequiredDocument)->filter(function ($value) {
+            return ! empty($value);
+        })->all();
 
         return $this;
     }
@@ -642,16 +671,16 @@ class Cord
         };
     }
 
+
     private function addActionRecursively(&$arr, $attribute = 'INSERT')
     {
         // Define a function to check if an array is a "holder of arrays"
         $isHolderOfArrays = function ($item) {
             foreach ($item as $value) {
-                if (! is_array($value)) {
+                if (!is_array($value)) {
                     return false; // Found a non-array item, so it's not just a holder of arrays
                 }
             }
-
             return true; // Every item is an array, so it's a holder of arrays
         };
 
@@ -662,7 +691,7 @@ class Cord
                     $this->addActionRecursively($value);
 
                     // After recursion, add '_attributes' only to "real" arrays, not holders
-                    if (! $isHolderOfArrays($value)) {
+                    if (!$isHolderOfArrays($value)) {
                         $value = array_merge(['_attributes' => ['Action' => $attribute]], $value);
                     }
                 }

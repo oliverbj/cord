@@ -278,7 +278,7 @@ class Cord
         $capabilities = $addressDetails['capabilities']['OrgAddressCapability'] ?? [];
 
         // Check if $capabilities is an associative array or an array of key-value pairs
-        if (!empty($capabilities) && is_array($capabilities) && array_keys($capabilities) !== range(0, count($capabilities) - 1)) {
+        if (! empty($capabilities) && is_array($capabilities) && array_keys($capabilities) !== range(0, count($capabilities) - 1)) {
             $capabilities = [$capabilities]; // Convert to an array of one element
         }
 

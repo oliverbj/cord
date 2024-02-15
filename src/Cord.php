@@ -193,13 +193,15 @@ class Cord
 
     }
 
-    public function addContact(array $contactDetails): self
+        public function addContact(array $contactDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding a contact person. Use organization() method before calling this method.');
         }
+
+
 
         // Validate required fields in $addressDetails array
         $requiredFields = ['name', 'email'];
@@ -209,16 +211,18 @@ class Cord
             }
         }
 
-        $docsToDeliver = [];
-        if (isset($contactDetails['documentsToDeliver'])) {
-            $docsToDeliver = $contactDetails['documentsToDeliver']['OrgDocument'];
-            if (count($docsToDeliver) === 1) {
-                $docsToDeliver = $docsToDeliver[0];
-            }
+        $docsToDeliver = $contactDetails['documentsToDeliver']['OrgDocument'];
+
+        // Check if $ediCommunications is an associative array or an array of key-value pairs
+        if (!empty($docsToDeliver) && is_array($docsToDeliver) && array_keys($docsToDeliver) !== range(0, count($docsToDeliver) - 1)) {
+            $docsToDeliver = [$docsToDeliver]; // Convert to an array of one element
         }
+
+
 
         $documents = [];
         foreach ($docsToDeliver as $document) {
+
             $documents[] = [
                 '_attributes' => [
                     'Action' => 'INSERT',
@@ -238,6 +242,7 @@ class Cord
             ];
         }
 
+
         $this->contact = [
             '_attributes' => ['Action' => 'INSERT'],
             'IsActive' => $contactDetails['active'] ?? 'true',
@@ -252,7 +257,7 @@ class Cord
             'HomeWork' => $contactDetails['homePhone'] ?? '',
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
             'OrgDocumentCollection' => [
-                'OrgDocument' => $documents,
+                'OrgDocument' => count($documents) === 1 ? $documents[0] : $documents,
             ],
         ];
 

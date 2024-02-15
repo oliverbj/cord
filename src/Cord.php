@@ -422,10 +422,6 @@ class Cord
     {
         $this->requestType = RequestType::UniversalEvent;
 
-        /*if ($this->event) {
-            throw new \Exception('Only one event can be added to a request');
-        }*/
-
         if (! $date) {
             $date = date('c');
         }

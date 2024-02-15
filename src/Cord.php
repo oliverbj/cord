@@ -193,6 +193,9 @@ class Cord
 
     }
 
+    /**
+     * Todo: WIP - not stable!
+     */
     public function addContact(array $contactDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
@@ -259,6 +262,39 @@ class Cord
         return $this;
     }
 
+    /**
+     * A method to transfer a contact from one organization to another.
+     */
+    public function transferContact(array $contact)
+    {
+        $this->requestType = RequestType::NativeOrganizationUpdate;
+
+        if ($this->target !== DataTarget::Organization) {
+            throw new \Exception('You must call an organization before transferring a contact. Use organization() method before calling this method.');
+        }
+
+        //PK is already present in an OrgContact collection. If it is not, it means that we have received something else...
+        if (! isset($contact['PK'])) {
+            throw new \Exception('Invalid contact array proivded. Be sure to provide the array data of the OrgContact array.');
+        }
+
+        $this->addActionRecursively($contact);
+        $contact = array_merge(['_attributes' => ['Action' => 'INSERT']], $contact);
+
+        //CW1 adds an @attributes to some tags. Remove it!
+        $this->removeKeyRecursively($contact, '@attributes');
+
+        //Remove all values that are an empty array!
+        $this->contact = collect($contact)->filter(function ($value) {
+            return ! empty($value);
+        })->all();
+
+        return $this;
+    }
+
+    /**
+     * A method to transfer an address from one organization to another.
+     */
     public function transferAddress(array $address)
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;

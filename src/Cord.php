@@ -223,7 +223,7 @@ class Cord
 
             $documents[] = [
                 '_attributes' => [
-                    'Action' => 'INSERT',
+                    'Action' => 'MERGE',
                 ],
                 'DocumentGroup' => $document['DocumentGroup'] ?? '',
                 'DefaultContact' => $document['DefaultContact'] ?? 'false',
@@ -239,6 +239,7 @@ class Cord
                 ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
+                'EmailSubjectMacro' => $document['EmailSubjectMacro'] ?? '',
             ];
         }
 

@@ -256,9 +256,9 @@ class Cord
             'Mobile' => $contactDetails['mobilePhone'] ?? '',
             'HomeWork' => $contactDetails['homePhone'] ?? '',
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
-            /*'OrgDocumentCollection' => [
+            'OrgDocumentCollection' => [
                 'OrgDocument' => count($documents) === 1 ? $documents[0] : $documents,
-            ], */
+            ], 
         ];
 
         return $this;
@@ -368,9 +368,11 @@ class Cord
             }
 
             foreach ($contact['OrgDocumentCollection']['OrgDocument'] as $key => $docs) {
-                $contact['OrgDocumentCollection']['OrgDocument'][$key]['_attributes'] = [
-                    'Action' => 'MERGE',
-                ];
+                if(isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem'])){
+                    $contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['_attributes'] = [
+                        'Action' => 'MERGE',
+                    ];
+                }
             }
 
         }

@@ -364,11 +364,11 @@ class Cord
             $docsToDeliver = $contact['OrgDocumentCollection']['OrgDocument'] ?? [];
             // Check if $capabilities is an associative array or an array of key-value pairs
             if (! empty($docsToDeliver) && is_array($docsToDeliver) && array_keys($docsToDeliver) !== range(0, count($docsToDeliver) - 1)) {
-                $docsToDeliver = [$docsToDeliver]; // Convert to an array of one element
+                $contact['OrgDocumentCollection']['OrgDocument'] = [$contact['OrgDocumentCollection']['OrgDocument']]; // Convert to an array of one element
             }
 
-            foreach ($docsToDeliver as $key => $docs) {
-                $docs['_attributes'] = [
+            foreach ($contact['OrgDocumentCollection']['OrgDocument'] as $key => $docs) {
+                $contact['OrgDocumentCollection']['OrgDocument'][$key]['_attributes'] = [
                     'Action' => 'MERGE',
                 ];
             }

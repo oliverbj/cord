@@ -223,7 +223,7 @@ class Cord
 
             $documents[] = [
                 '_attributes' => [
-                    'Action' => 'MERGE',
+                    'Action' => 'INSERT',
                 ],
                 'DocumentGroup' => $document['DocumentGroup'] ?? '',
                 'DefaultContact' => $document['DefaultContact'] ?? 'false',

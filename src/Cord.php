@@ -230,13 +230,15 @@ class Cord
                 'AttachmentType' => $document['AttachmentType'] ?? null,
                 'DeliverBy' => $document['DeliverBy'] ?? '',
                 'MenuItem' => isset($document['MenuItem']['BusinessContext']) ? [
+                    '_attributes' => [
+                        'Action' => 'INSERT',
+                    ],
                     'MenuName' => $document['MenuItem']['MenuName'] ?? '',
                     'BusinessContext' => $document['MenuItem']['BusinessContext'] ?? '',
                     'MenuPath' => $document['MenuItem']['MenuPath'] ?? '',
                     'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
                     'IsSystemDefined' => $document['MenuItem']['IsSystemDefined'] ?? 'false',
                     'FilterList' => $document['MenuItem']['FilterList'] ?? '',
-                    'StaffCode' => 'OJ0',
                 ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',

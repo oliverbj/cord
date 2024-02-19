@@ -236,7 +236,7 @@ class Cord
                     'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
                     'IsSystemDefined' => $document['MenuItem']['IsSystemDefined'] ?? 'false',
                     'FilterList' => $document['MenuItem']['FilterList'] ?? '',
-                    'StaffCode' => 'OJ0'
+                    'StaffCode' => 'OJ0',
                 ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',

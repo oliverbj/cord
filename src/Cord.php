@@ -234,6 +234,8 @@ class Cord
                     'BusinessContext' => $document['MenuItem']['BusinessContext'] ?? '',
                     'MenuPath' => $document['MenuItem']['MenuPath'] ?? '',
                     'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
+                    'IsSystemDefined' => $document['MenuItem']['IsSystemDefined'] ?? 'false',
+                    'FilterList' => $document['MenuItem']['FilterList'] ?? '',
                 ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',

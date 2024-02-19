@@ -723,6 +723,12 @@ class Cord
         //If eAdapter response is successful, return data:
         // Handling different request types
         return match ($this->requestType) {
+            
+            \Log::debug('Request Type', [
+                'type' => $this->requestType,
+                'response' => $response,
+            ]);
+        
             RequestType::NativeOrganizationRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Organization'], 'OrgHeader'),
             RequestType::NativeCompanyRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Company'], 'GlbCompany'),
 

@@ -236,8 +236,7 @@ class Cord
                     'MenuPath' => $document['MenuItem']['MenuPath'] ?? '',
                     'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
                     'IsSystemDefined' => $document['MenuItem']['IsSystemDefined'] ?? 'false',
-                    //'FilterList' => $document['MenuItem']['FilterList'] ?? '',
-                    'FilterList' => Str::random(6),
+                    'FilterList' => $document['MenuItem']['FilterList'] ?? '',
                 ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
@@ -258,9 +257,9 @@ class Cord
             'Mobile' => $contactDetails['mobilePhone'] ?? '',
             'HomeWork' => $contactDetails['homePhone'] ?? '',
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
-            'OrgDocumentCollection' => [
+            /*'OrgDocumentCollection' => [
                 'OrgDocument' => count($documents) === 1 ? $documents[0] : $documents,
-            ],
+            ], */
         ];
 
         return $this;

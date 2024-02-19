@@ -720,7 +720,7 @@ class Cord
             return $xmlResponse->Data->children()[0];
         }
 
-        \Log::debug('Request Type', [
+        \Log::debug('Request Type is', [
             'type' => $this->requestType,
             'response' => $response,
         ]);

@@ -258,7 +258,7 @@ class Cord
             'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
             'OrgDocumentCollection' => [
                 'OrgDocument' => count($documents) === 1 ? $documents[0] : $documents,
-            ], 
+            ],
         ];
 
         return $this;
@@ -368,7 +368,7 @@ class Cord
             }
 
             foreach ($contact['OrgDocumentCollection']['OrgDocument'] as $key => $docs) {
-                if(isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem'])){
+                if (isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem'])) {
                     $contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['_attributes'] = [
                         'Action' => 'MERGE',
                     ];

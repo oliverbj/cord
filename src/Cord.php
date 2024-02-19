@@ -3,7 +3,6 @@
 namespace Oliverbj\Cord;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;

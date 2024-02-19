@@ -12,6 +12,7 @@ use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
 use Request;
+use Illuminate\Support\Str;
 
 class Cord
 {
@@ -230,15 +231,13 @@ class Cord
                 'AttachmentType' => $document['AttachmentType'] ?? null,
                 'DeliverBy' => $document['DeliverBy'] ?? '',
                 'MenuItem' => isset($document['MenuItem']['BusinessContext']) ? [
-                    '_attributes' => [
-                        'Action' => 'INSERT',
-                    ],
                     'MenuName' => $document['MenuItem']['MenuName'] ?? '',
                     'BusinessContext' => $document['MenuItem']['BusinessContext'] ?? '',
                     'MenuPath' => $document['MenuItem']['MenuPath'] ?? '',
                     'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
                     'IsSystemDefined' => $document['MenuItem']['IsSystemDefined'] ?? 'false',
-                    'FilterList' => $document['MenuItem']['FilterList'] ?? '',
+                    //'FilterList' => $document['MenuItem']['FilterList'] ?? '',
+                    'FilterList' => Str::random(6),
                 ] : null,
                 'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
                 'FilterDirection' => $document['FilterDirection'] ?? 'ALL',

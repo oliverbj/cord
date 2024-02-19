@@ -370,7 +370,7 @@ class Cord
             foreach($docsToDeliver as $key => $docs){
                 $docs['_attributes'] = [
                     'Action' => 'MERGE',
-                ],
+                ];
             }
             
         }

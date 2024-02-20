@@ -722,7 +722,11 @@ class Cord
 
         \Log::debug('Request Type is', [
             'type' => $this->requestType,
+            'targetKey' => $this->targetKey,
+            'target' => $this->target,
+            'company' => $this->company,
             'response' => $response,
+            'XML' => $this->xml
         ]);
 
         //If eAdapter response is successful, return data:

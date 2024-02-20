@@ -390,7 +390,7 @@ class Cord
 
             foreach ($contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'] as $key => $docs) {
                 if (isset($contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'][$key]['Group'])) {
-                    $contact['OrgDocumentCollection']['OrgDocument'][$key]['Group']['_attributes'] = [
+                    $contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'][$key]['Group']['_attributes'] = [
                         'Action' => 'MERGE',
                     ];
                 }

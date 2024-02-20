@@ -374,9 +374,17 @@ class Cord
 
             foreach ($contact['OrgDocumentCollection']['OrgDocument'] as $key => $docs) {
                 if (isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem'])) {
+                    //Action must be merge.
                     $contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['_attributes'] = [
                         'Action' => 'MERGE',
                     ];
+
+                    //Remove the StaffCode tag, as the staff codes is company specific.
+                    unset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCode']);
+                    if(isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCodeExternal'])){
+                        unset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCodeExternal']);
+                    }
+                    
                 }
             }
         }

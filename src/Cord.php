@@ -145,7 +145,7 @@ class Cord
     {
         //Reset the criteria group.
         $this->criteriaGroups = [];
-        
+
         $this->requestType = RequestType::NativeOrganizationRetrieval;
         $this->target = DataTarget::Organization;
 

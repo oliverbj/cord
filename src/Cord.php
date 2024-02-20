@@ -380,7 +380,7 @@ class Cord
             }
         }
 
-        //Make sure that "Documents to Deliver" can be transferred (must be a "merge")
+        //Make sure that "Documents to Deliver" can be transferred (must be a "merge").
         if (isset($contact['GlbGroupOrgContactLinkCollection'])) {
             $contactGroups = $contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'] ?? [];
             // Check if $capabilities is an associative array or an array of key-value pairs

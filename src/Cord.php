@@ -365,8 +365,7 @@ class Cord
         $this->removeKeyRecursively($contact, '@attributes');
 
         //If the "OrgAddress" is blank in the source, remove it, as we cannot insert a new contact person with a blank address through eAdaptor.
-        if(! isset($contact['OrgAddress']['Code']))
-        {
+        if (! isset($contact['OrgAddress']['Code'])) {
             unset($contact['OrgAddress']);
         }
 

@@ -12,6 +12,7 @@ use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
 use Request;
+use Illuminate\Support\Arr;
 
 class Cord
 {
@@ -293,6 +294,7 @@ class Cord
         if (isset($ediCommunication['MessageVAN'])) {
             unset($ediCommunication['MessageVAN']);
         }
+        
 
         //Remove all values that are an empty array!
         $this->ediCommunication = collect($ediCommunication)->filter(function ($value) {
@@ -380,10 +382,13 @@ class Cord
             }
         }
 
-        //We are not transferring web security groups.
-        if (isset($contact['GlbGroupOrgContactLinkCollection'])) {
-            unset($contact['GlbGroupOrgContactLinkCollection']);
-        }
+        //We are not transferring below from contacts.
+        $contact = Arr::except($contact, [
+           'GlbGroupOrgContactLinkCollection',
+           'OrgSecurityContactsCollection',
+           'AddressOverride',
+           'Nationality'
+        ]);
 
         //Remove all values that are an empty array!
         $this->contact = collect($contact)->filter(function ($value) {

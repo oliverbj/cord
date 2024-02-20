@@ -387,7 +387,7 @@ class Cord
             'OrgSecurityContactsCollection',
             'AddressOverride',
             'Nationality',
-            'OrgAddress'
+            'OrgAddress',
         ]);
 
         //Remove all values that are an empty array!

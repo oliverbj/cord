@@ -364,16 +364,6 @@ class Cord
         //CW1 adds an @attributes to some tags. Remove it!
         $this->removeKeyRecursively($contact, '@attributes');
 
-        //If the "OrgAddress" is blank in the source, remove it, as we cannot insert a new contact person with a blank address through eAdaptor.
-        \Log::info('OrgAddress is', [
-            'OA' => $contact['OrgAddress'],
-            'CC' => $contact,
-        ]);
-
-        if (empty($contact['OrgAddress'])) {
-            unset($contact['OrgAddress']);
-        }
-
         //Make sure that "Documents to Deliver" can be transferred (must be a "merge")
         if (isset($contact['OrgDocumentCollection'])) {
             $docsToDeliver = $contact['OrgDocumentCollection']['OrgDocument'] ?? [];
@@ -397,6 +387,7 @@ class Cord
             'OrgSecurityContactsCollection',
             'AddressOverride',
             'Nationality',
+            'OrgAddress'
         ]);
 
         //Remove all values that are an empty array!

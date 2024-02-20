@@ -365,11 +365,11 @@ class Cord
         $this->removeKeyRecursively($contact, '@attributes');
 
         //If the "OrgAddress" is blank in the source, remove it, as we cannot insert a new contact person with a blank address through eAdaptor.
-         \Log::info('OrgAddress is', [
-                'OA' => $contact['OrgAddress'],
-                 'CC' => $contact
-         ]);
-        
+        \Log::info('OrgAddress is', [
+            'OA' => $contact['OrgAddress'],
+            'CC' => $contact,
+        ]);
+
         if (empty($contact['OrgAddress'])) {
             unset($contact['OrgAddress']);
         }

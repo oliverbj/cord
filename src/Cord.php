@@ -363,6 +363,7 @@ class Cord
         //CW1 adds an @attributes to some tags. Remove it!
         $this->removeKeyRecursively($contact, '@attributes');
 
+        //Make sure that "Documents to Deliver" can be transferred (must be a "merge")
         if (isset($contact['OrgDocumentCollection'])) {
             $docsToDeliver = $contact['OrgDocumentCollection']['OrgDocument'] ?? [];
             // Check if $capabilities is an associative array or an array of key-value pairs
@@ -377,7 +378,23 @@ class Cord
                     ];
                 }
             }
+        }
 
+        //Make sure that "Documents to Deliver" can be transferred (must be a "merge")
+        if (isset($contact['GlbGroupOrgContactLinkCollection'])) {
+            $contactGroups = $contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'] ?? [];
+            // Check if $capabilities is an associative array or an array of key-value pairs
+            if (! empty($contactGroups) && is_array($contactGroups) && array_keys($contactGroups) !== range(0, count($contactGroups) - 1)) {
+                $contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'] = [$contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink']]; // Convert to an array of one element
+            }
+
+            foreach ($contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'] as $key => $docs) {
+                if (isset($contact['GlbGroupOrgContactLinkCollection']['GlbGroupOrgContactLink'][$key]['Group'])) {
+                    $contact['OrgDocumentCollection']['OrgDocument'][$key]['Group']['_attributes'] = [
+                        'Action' => 'MERGE',
+                    ];
+                }
+            }
         }
 
         //Remove all values that are an empty array!

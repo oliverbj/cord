@@ -381,10 +381,10 @@ class Cord
 
                     //Remove the StaffCode tag, as the staff codes is company specific.
                     unset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCode']);
-                    if(isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCodeExternal'])){
+                    if (isset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCodeExternal'])) {
                         unset($contact['OrgDocumentCollection']['OrgDocument'][$key]['MenuItem']['StaffCodeExternal']);
                     }
-                    
+
                 }
             }
         }

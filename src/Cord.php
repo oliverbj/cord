@@ -143,6 +143,9 @@ class Cord
      */
     public function organization(?string $code = null): self
     {
+        //Reset the criteria group.
+        $this->criteriaGroups = [];
+        
         $this->requestType = RequestType::NativeOrganizationRetrieval;
         $this->target = DataTarget::Organization;
 

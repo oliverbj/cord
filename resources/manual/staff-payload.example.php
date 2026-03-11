@@ -1,26 +1,25 @@
 <?php
 
 return [
+    'company' => 'CPH',
     'code' => 'BVO',
     'loginName' => 'user.test',
     'password' => 'change-me',
     'fullName' => 'User Test',
-    'friendlyName' => 'User Test',
-    'addressOne' => 'Test address',
-    'city' => 'Tst city',
-    'postcode' => '31700',
-    'title' => 'Operations Specialist',
+    'addressLine1' => 'Test address',
     'workPhone' => '+111',
     'email' => 'user.test@test.com',
     'homeBranch' => 'TLS',
     'homeDepartment' => 'FES',
     'country' => 'FR',
-    'groups' => ['ORGALL', 'OPSALL', 'LOGFRTLS', 'ALL'],
-    'workingHours' => [
-        'monday' => '*******************',
-        'tuesday' => '*******************',
-        'wednesday' => '*******************',
-        'thursday' => '*******************',
-        'friday' => '*******************',
+    'groups' => ['ORGALL', 'OPSALL'],
+    'attributes' => [
+        'FriendlyName' => 'User Test',
+        'Title' => 'Operations Specialist',
+        'GlbWorkTime' => [
+            '_attributes' => ['Action' => 'Insert'],
+            'MondayWorkingHours' => '*******************',
+            'TuesdayWorkingHours' => '*******************',
+        ],
     ],
 ];

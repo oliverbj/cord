@@ -306,41 +306,79 @@ Staff creation is sent as a native `Native` request. Company context is required
 
 ```php
 Cord::withCompany('CPH')
-    ->addStaff([
-        'code' => 'BVO',
-        'loginName' => 'user.test',
-        'password' => '1234',
-        'fullName' => 'User Test',
-        'friendlyName' => 'User Test',
-        'addressOne' => 'Test address',
-        'city' => 'Tst city',
-        'postcode' => '31700',
-        'title' => 'Operations Specialist',
-        'workPhone' => '+111',
-        'email' => 'user.test@test.com',
-        'homeBranch' => 'TLS',
-        'homeDepartment' => 'FES',
-        'country' => 'FR',
-        'groups' => ['ORGALL', 'OPSALL', 'LOGFRTLS', 'ALL'],
-        'workingHours' => [
-            'monday' => '*******************',
-            'tuesday' => '*******************',
-            'wednesday' => '*******************',
-            'thursday' => '*******************',
-            'friday' => '*******************',
+    ->staff()
+    ->create()
+    ->code('BVO')
+    ->loginName('user.test')
+    ->password('1234')
+    ->fullName('User Test')
+    ->email('user.test@test.com')
+    ->branch('TLS')
+    ->department('FES')
+    ->phone('+111')
+    ->isActive(true)
+    ->country('FR')
+    ->replaceGroups(['ORGALL', 'OPSALL'])
+    ->withPayload([
+        'FriendlyName' => 'User Test',
+        'Title' => 'Operations Specialist',
+        'GlbWorkTime' => [
+            '_attributes' => ['Action' => 'Insert'],
+            'MondayWorkingHours' => '*******************',
+            'TuesdayWorkingHours' => '*******************',
         ],
     ])
     ->run();
 ```
 
-Common `addStaff()` keys:
+Common fluent setters:
 
-- `code`, `loginName`, `password`, `fullName`, `homeBranch`, `homeDepartment`, and `country` are required.
-- `withCompany('CPH')` is required for staff creation, unless you include `company` directly in the `addStaff()` payload.
-- `friendlyName`, `addressOne`, `addressTwo`, `city`, `postcode`, `title`, `workPhone`, and `email` map to the most common staff fields.
-- `groups` accepts either simple group codes or arrays with `code`, `membershipType`, `skillLevel`, and `action`.
-- `workingHours` accepts `sunday` through `saturday`.
-- `attributes` can be used as a raw passthrough for additional CargoWise fields not yet covered by the friendly wrapper.
+- `code`, `loginName`, `password`, `fullName`, `branch`, `department`, and `country` are required for create requests.
+- `withCompany('CPH')` is required for native staff create/update requests.
+- `password(...)` automatically sets `ChangePasswordAtNextLogin` to `true`.
+- new staff create payloads automatically include `IsOperational=true`.
+- `replaceGroups([...])` and `addGroup(...)` are available for explicit group semantics.
+- `withPayload([...])` can be used as a passthrough for CargoWise fields not yet wrapped by dedicated methods.
+- `toPayload()` returns the compiled staff payload without sending a request.
+
+Method introspection:
+
+```php
+$schema = Cord::staff()->describe();
+```
+
+`describe()` returns structured metadata about the staff API surface:
+
+- resource name
+- supported actions
+- available fluent methods with parameter types
+- required intent context (`required_for`)
+- method descriptions and examples
+
+### Edit Staff
+
+Staff updates are sent as native `Native` requests with `Action="UPDATE"`.
+
+```php
+Cord::withCompany('CPH')
+    ->staff('BVO')
+    ->update()
+    ->fullName('Updated User')
+    ->email('updated@example.com')
+    ->branch('CPH')
+    ->department('OPS')
+    ->phone('+4511223344')
+    ->country('DK')
+    ->withPayload([
+        'FriendlyName' => 'Updated',
+        'Title' => 'Branch Manager',
+        'GlbWorkTime' => [
+            '_attributes' => ['Action' => 'Update'],
+            'MondayWorkingHours' => '********',
+        ],
+    ])
+    ->run();
+```
 
 ## Multiple Connections
 
@@ -405,9 +443,11 @@ return response($xml, 200, ['Content-Type' => 'application/xml']);
 composer test
 ```
 
+`composer test` now covers both staff creation and non-collection staff updates.
+
 ### Manual staff test
 
-For controlled manual testing, Cord includes a local runner script that builds the staff payload and only sends it when you explicitly opt in.
+For controlled manual testing, Cord includes a local runner script that builds the staff payload and only sends it when you explicitly opt in. By default it creates staff; add `--update` to send an update instead.
 
 1. Create a local `.env` from `.env.example` and fill in your connection details.
 2. Copy `resources/manual/staff-payload.example.php` to `resources/manual/staff-payload.local.php`.
@@ -424,6 +464,13 @@ When you are ready to post the request, run:
 
 ```bash
 composer manual-staff-test -- --connection=NTG_TRN --company=CPH --send
+```
+
+To update an existing staff row such as `XX0`, keep the `code` in your payload and add `--update`:
+
+```bash
+composer manual-staff-test -- --connection=NTG_TRN --payload=resources/manual/staff-payload.local.php --update
+composer manual-staff-test -- --connection=NTG_TRN --payload=resources/manual/staff-payload.local.php --update --send
 ```
 
 Example local `.env`:

@@ -7,16 +7,7 @@ class NativeStaffCreation extends NativeRequest
     public function schema(): array
     {
         return [
-            'Header' => [
-                'DataContext' => [
-                    'CodesMappedToTarget' => $this->cord->enableCodeMapping ? 'true' : 'false',
-                    'Company' => [
-                        'Code' => $this->cord->company,
-                    ],
-                    'EnterpriseID' => $this->cord->resolveEnterpriseId(),
-                    'ServerID' => $this->cord->resolveServerId(),
-                ],
-            ],
+            'Header' => $this->cord->nativeHeader(),
             'Body' => [
                 'Staff' => [
                     '_attributes' => ['version' => '1.0'],

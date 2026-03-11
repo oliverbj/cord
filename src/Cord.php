@@ -8,6 +8,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request as RequestFacade;
+use Illuminate\Validation\ValidationException;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Interfaces\RequestInterface;
@@ -15,6 +16,7 @@ use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
 use Oliverbj\Cord\Requests\NativeStaffCreation;
+use Oliverbj\Cord\Requests\NativeStaffUpdate;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -58,6 +60,10 @@ class Cord
     public array $ediCommunication = [];
 
     public array $staff = [];
+
+    protected ?string $staffIntent = null;
+
+    protected array $staffDraft = [];
 
     protected ?string $xml = null;
 
@@ -212,6 +218,473 @@ class Cord
         }
 
         return $this;
+    }
+
+    /**
+     * Select the CargoWise staff resource.
+     *
+     * Optionally pre-select a staff code for update flows.
+     *
+     * Examples:
+     * `->staff()`
+     * `->staff('OJ0')`
+     */
+    public function staff(?string $code = null): self
+    {
+        $this->target = DataTarget::Staff;
+        $this->targetKey = $code;
+        $this->staffIntent = null;
+        $this->staffDraft = [];
+        $this->staff = [];
+
+        return $this;
+    }
+
+    /**
+     * Set the intent to retrieve a resource.
+     *
+     * Staff retrieval is not implemented yet.
+     *
+     * Example:
+     * `->get()`
+     */
+    public function get(): self
+    {
+        if ($this->target === DataTarget::Staff) {
+            throw new \Exception('Staff get() is not implemented yet. Use staff() endpoints that already support retrieval.');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the intent to create a new staff member.
+     *
+     * Call this before using staff payload setters.
+     *
+     * Example:
+     * `->staff()->create()`
+     */
+    public function create(): self
+    {
+        if ($this->target !== DataTarget::Staff) {
+            throw new \Exception('create() is currently implemented for staff only.');
+        }
+
+        $this->staffIntent = 'create';
+        $this->requestType = RequestType::NativeStaffCreation;
+
+        return $this;
+    }
+
+    /**
+     * Set the intent to update an existing staff member.
+     *
+     * Call this before using staff payload setters.
+     *
+     * Example:
+     * `->staff('OJ0')->update()`
+     */
+    public function update(): self
+    {
+        if ($this->target !== DataTarget::Staff) {
+            throw new \Exception('update() is currently implemented for staff only.');
+        }
+
+        $this->staffIntent = 'update';
+        $this->requestType = RequestType::NativeStaffUpdate;
+
+        if ($this->targetKey) {
+            $this->staffDraft['code'] = $this->targetKey;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the intent to delete a resource.
+     *
+     * Staff delete is not implemented yet.
+     *
+     * Example:
+     * `->delete()`
+     */
+    public function delete(): self
+    {
+        if ($this->target === DataTarget::Staff) {
+            throw new \Exception('Staff delete() is not implemented yet.');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the intent to upsert a resource.
+     *
+     * Staff upsert is reserved for a later implementation.
+     *
+     * Example:
+     * `->upsert()`
+     */
+    public function upsert(): self
+    {
+        if ($this->target === DataTarget::Staff) {
+            throw new \Exception('Staff upsert() is not implemented yet.');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the unique CargoWise staff code.
+     *
+     * Required for create and update staff requests.
+     *
+     * Example:
+     * `->code('OJ0')`
+     */
+    public function code(string $code): self
+    {
+        return $this->setStaffDraftValue('code', $code, true);
+    }
+
+    /**
+     * Set the CargoWise login name for the staff member.
+     *
+     * Required for create requests.
+     *
+     * Example:
+     * `->loginName('oliver.busk')`
+     */
+    public function loginName(string $loginName): self
+    {
+        return $this->setStaffDraftValue('loginName', $loginName);
+    }
+
+    /**
+     * Set the staff password.
+     *
+     * Required for create requests.
+     *
+     * Example:
+     * `->password('secret')`
+     */
+    public function password(string $password): self
+    {
+        $this->setStaffDraftValue('password', $password);
+
+        // Password updates must always force a rotation on next login.
+        return $this->setStaffDraftValue('changePasswordAtNextLogin', true);
+    }
+
+    /**
+     * Set the full display name of the staff member.
+     *
+     * Required for create requests.
+     *
+     * Example:
+     * `->fullName('Oliver Busk')`
+     */
+    public function fullName(string $fullName): self
+    {
+        return $this->setStaffDraftValue('fullName', $fullName);
+    }
+
+    /**
+     * Set the staff email address.
+     *
+     * Example:
+     * `->email('oliver@example.com')`
+     */
+    public function email(string $email): self
+    {
+        return $this->setStaffDraftValue('email', $email);
+    }
+
+    /**
+     * Set whether the staff member is active.
+     *
+     * Example:
+     * `->isActive(true)`
+     */
+    public function isActive(bool $isActive): self
+    {
+        return $this->setStaffDraftValue('active', $isActive);
+    }
+
+    /**
+     * Set the home branch code.
+     *
+     * Required for create requests.
+     *
+     * Example:
+     * `->branch('CPH')`
+     */
+    public function branch(string $branch): self
+    {
+        return $this->setStaffDraftValue('homeBranch', $branch);
+    }
+
+    /**
+     * Set the home department code.
+     *
+     * Required for create requests.
+     *
+     * Example:
+     * `->department('OPS')`
+     */
+    public function department(string $department): self
+    {
+        return $this->setStaffDraftValue('homeDepartment', $department);
+    }
+
+    /**
+     * Set the staff work phone number.
+     *
+     * Maps to `WorkPhone` in the CargoWise payload.
+     *
+     * Example:
+     * `->phone('+4511223344')`
+     */
+    public function phone(string $phone): self
+    {
+        return $this->setStaffDraftValue('workPhone', $phone);
+    }
+
+    /**
+     * Set the staff country code.
+     *
+     * Required for create requests.
+     *
+     * Example:
+     * `->country('DK')`
+     */
+    public function country(string $country): self
+    {
+        return $this->setStaffDraftValue('country', $country);
+    }
+
+    /**
+     * Set the first staff address line.
+     *
+     * Example:
+     * `->addressLine1('Main Street 1')`
+     */
+    public function addressLine1(string $addressLine1): self
+    {
+        return $this->setStaffDraftValue('addressOne', $addressLine1);
+    }
+
+    /**
+     * Add a single group membership to the outgoing payload.
+     *
+     * This appends to the current group list.
+     *
+     * Example:
+     * `->addGroup('OPS')`
+     */
+    public function addGroup(string $code): self
+    {
+        $this->assertStaffBuilderContext('addGroup');
+
+        if (! isset($this->staffDraft['groups']) || ! is_array($this->staffDraft['groups'])) {
+            $this->staffDraft['groups'] = [];
+        }
+
+        $this->staffDraft['groups'][] = $code;
+
+        return $this;
+    }
+
+    /**
+     * Replace all group memberships for the staff member.
+     *
+     * This overwrites existing groups in the outgoing payload.
+     *
+     * Example:
+     * `->replaceGroups(['ADM', 'OPS'])`
+     *
+     * @param  array<int, string>  $codes
+     */
+    public function replaceGroups(array $codes): self
+    {
+        $this->assertStaffBuilderContext('replaceGroups');
+
+        foreach ($codes as $index => $code) {
+            if (! is_string($code)) {
+                throw ValidationException::withMessages([
+                    'groups.'.$index => ['Group codes must be strings.'],
+                ]);
+            }
+        }
+
+        $this->staffDraft['groups'] = array_values($codes);
+
+        return $this;
+    }
+
+    /**
+     * Merge raw CargoWise payload attributes into the staff payload.
+     *
+     * Use this as an escape hatch for fields that do not have dedicated
+     * fluent setter methods yet.
+     *
+     * Example:
+     * `->withPayload(['CustomFieldX' => 'foo'])`
+     */
+    public function withPayload(array $payload): self
+    {
+        $this->assertStaffBuilderContext('withPayload');
+
+        $this->staffDraft['attributes'] = array_replace_recursive(
+            $this->staffDraft['attributes'] ?? [],
+            $payload
+        );
+
+        return $this;
+    }
+
+    /**
+     * Compile and return the staff payload without sending the request.
+     *
+     * Useful for validation, logging, and approval workflows.
+     *
+     * Example:
+     * `$payload = Cord::staff()->create()->code('OJ0')->toPayload();`
+     */
+    public function toPayload(): array
+    {
+        $this->syncFluentStaffPayload();
+
+        return $this->staff;
+    }
+
+    /**
+     * Describe the currently selected resource surface as structured metadata.
+     *
+     * This is intended for AI and tooling introspection so consumers can
+     * discover supported actions and fluent methods programmatically.
+     *
+     * Example:
+     * `$schema = Cord::staff()->describe();`
+     */
+    public function describe(): array
+    {
+        if ($this->target !== DataTarget::Staff) {
+            throw new \Exception('describe() is currently implemented for staff only. Call staff() first.');
+        }
+
+        return [
+            'resource' => 'staff',
+            'actions' => ['create', 'update', 'upsert'],
+            'methods' => [
+                [
+                    'name' => 'code',
+                    'parameters' => ['code' => 'string'],
+                    'required_for' => ['create', 'update'],
+                    'description' => 'Set the unique CargoWise staff code.',
+                    'example' => "->code('OJ0')",
+                ],
+                [
+                    'name' => 'loginName',
+                    'parameters' => ['loginName' => 'string'],
+                    'required_for' => ['create'],
+                    'description' => 'Set the CargoWise login name.',
+                    'example' => "->loginName('oliver.busk')",
+                ],
+                [
+                    'name' => 'password',
+                    'parameters' => ['password' => 'string'],
+                    'required_for' => ['create'],
+                    'description' => 'Set the staff password.',
+                    'example' => "->password('secret')",
+                ],
+                [
+                    'name' => 'fullName',
+                    'parameters' => ['fullName' => 'string'],
+                    'required_for' => ['create'],
+                    'description' => 'Set the full display name of the staff member.',
+                    'example' => "->fullName('Oliver Busk')",
+                ],
+                [
+                    'name' => 'email',
+                    'parameters' => ['email' => 'string'],
+                    'required_for' => [],
+                    'description' => 'Set the staff email address.',
+                    'example' => "->email('oliver@example.com')",
+                ],
+                [
+                    'name' => 'isActive',
+                    'parameters' => ['isActive' => 'bool'],
+                    'required_for' => [],
+                    'description' => 'Set whether the staff member is active.',
+                    'example' => '->isActive(true)',
+                ],
+                [
+                    'name' => 'branch',
+                    'parameters' => ['branch' => 'string'],
+                    'required_for' => ['create'],
+                    'description' => 'Set the home branch code.',
+                    'example' => "->branch('CPH')",
+                ],
+                [
+                    'name' => 'department',
+                    'parameters' => ['department' => 'string'],
+                    'required_for' => ['create'],
+                    'description' => 'Set the home department code.',
+                    'example' => "->department('OPS')",
+                ],
+                [
+                    'name' => 'country',
+                    'parameters' => ['country' => 'string'],
+                    'required_for' => ['create'],
+                    'description' => 'Set the staff country code.',
+                    'example' => "->country('DK')",
+                ],
+                [
+                    'name' => 'phone',
+                    'parameters' => ['phone' => 'string'],
+                    'required_for' => [],
+                    'description' => 'Set the staff work phone number.',
+                    'example' => "->phone('+4511223344')",
+                ],
+                [
+                    'name' => 'addressLine1',
+                    'parameters' => ['addressLine1' => 'string'],
+                    'required_for' => [],
+                    'description' => 'Set the first staff address line.',
+                    'example' => "->addressLine1('Main Street 1')",
+                ],
+                [
+                    'name' => 'addGroup',
+                    'parameters' => ['code' => 'string'],
+                    'required_for' => [],
+                    'description' => 'Add one group membership to the payload.',
+                    'example' => "->addGroup('OPS')",
+                ],
+                [
+                    'name' => 'replaceGroups',
+                    'parameters' => ['groups' => 'string[]'],
+                    'required_for' => [],
+                    'description' => 'Replace all group memberships.',
+                    'example' => "->replaceGroups(['ADM', 'OPS'])",
+                ],
+                [
+                    'name' => 'withPayload',
+                    'parameters' => ['payload' => 'array'],
+                    'required_for' => [],
+                    'description' => 'Merge raw CargoWise payload fields.',
+                    'example' => "->withPayload(['CustomFieldX' => 'foo'])",
+                ],
+                [
+                    'name' => 'toPayload',
+                    'parameters' => [],
+                    'required_for' => [],
+                    'description' => 'Compile and return payload without sending.',
+                    'example' => '->toPayload()',
+                ],
+            ],
+        ];
     }
 
     public function addEDICommunication(array $ediCommunicationDetails): self
@@ -561,114 +1034,6 @@ class Cord
         return $this;
     }
 
-    public function addStaff(array $staffDetails): self
-    {
-        $this->requestType = RequestType::NativeStaffCreation;
-        $this->target = DataTarget::Staff;
-
-        if (isset($staffDetails['company']) && ! $this->company) {
-            $this->company = (string) $staffDetails['company'];
-        }
-
-        $requiredFields = ['code', 'loginName', 'password', 'fullName', 'homeBranch', 'homeDepartment', 'country'];
-        foreach ($requiredFields as $field) {
-            if (! isset($staffDetails[$field])) {
-                throw new \Exception("Missing required field '{$field}' in staff details.");
-            }
-        }
-
-        if (! $this->company) {
-            throw new \Exception('Company code must be provided when creating staff. Call withCompany() or include a company key in the addStaff payload.');
-        }
-
-        $this->targetKey = $staffDetails['code'];
-
-        $payload = [
-            '_attributes' => ['Action' => $staffDetails['action'] ?? 'Insert'],
-            'Code' => $staffDetails['code'],
-            'IsActive' => $this->normalizeBoolean($staffDetails['active'] ?? true),
-            'LoginName' => $staffDetails['loginName'],
-            'Password' => $staffDetails['password'],
-            'IsSalesRep' => $this->normalizeBoolean($staffDetails['isSalesRep'] ?? false),
-            'IsController' => $this->normalizeBoolean($staffDetails['isController'] ?? false),
-            'IsSystemAccount' => $this->normalizeBoolean($staffDetails['isSystemAccount'] ?? false),
-            'IsDeveloper' => $this->normalizeBoolean($staffDetails['isDeveloper'] ?? false),
-            'IsBackupOperator' => $this->normalizeBoolean($staffDetails['isBackupOperator'] ?? false),
-            'IsReadOnlyDBUser' => $this->normalizeBoolean($staffDetails['isReadOnlyDbUser'] ?? false),
-            'EmploymentBasis' => $staffDetails['employmentBasis'] ?? '',
-            'NameTitle' => $staffDetails['nameTitle'] ?? '',
-            'FullName' => $staffDetails['fullName'],
-            'NameSuffix' => $staffDetails['nameSuffix'] ?? '',
-            'FriendlyName' => $staffDetails['friendlyName'] ?? $staffDetails['fullName'],
-            'UserAddress1' => $staffDetails['addressOne'] ?? '',
-            'UserAddress2' => $staffDetails['addressTwo'] ?? '',
-            'City' => $staffDetails['city'] ?? '',
-            'Postcode' => $staffDetails['postcode'] ?? '',
-            'Title' => $staffDetails['title'] ?? '',
-            'WorkPhone' => $staffDetails['workPhone'] ?? '',
-            'PublishWorkPhone' => $this->normalizeBoolean($staffDetails['publishWorkPhone'] ?? true),
-            'Pager' => $staffDetails['pager'] ?? '',
-            'FaxNum' => $staffDetails['faxNumber'] ?? '',
-            'PublishFaxNum' => $this->normalizeBoolean($staffDetails['publishFaxNumber'] ?? true),
-            'EmailAddress' => $staffDetails['email'] ?? '',
-            'PublishEmailAddress' => $this->normalizeBoolean($staffDetails['publishEmailAddress'] ?? true),
-            'GlbWorkTime' => $this->normalizeStaffWorkingHours(
-                $staffDetails['workingHours'] ?? [],
-                $staffDetails['workTimeAction'] ?? 'Insert',
-            ),
-            'EftWages' => $this->normalizeBoolean($staffDetails['eftWages'] ?? false),
-            'WagesBankName' => $staffDetails['wagesBankName'] ?? '',
-            'WagesBankAccount' => $staffDetails['wagesBankAccount'] ?? '',
-            'WagesBankBsb' => $staffDetails['wagesBankBsb'] ?? '',
-            'WagesBankSwift' => $staffDetails['wagesBankSwift'] ?? '',
-            'UserSignature' => $staffDetails['signature'] ?? '',
-            'DueBack' => $staffDetails['dueBack'] ?? '',
-            'OutOnTask' => $staffDetails['outOnTask'] ?? '',
-            'PersonalEDIMailBox' => $staffDetails['personalEdiMailBox'] ?? '',
-            'BrokerID' => $staffDetails['brokerId'] ?? '',
-            'BrokerPassword' => $staffDetails['brokerPassword'] ?? '',
-            'BrokerWorkingPassword' => $staffDetails['brokerWorkingPassword'] ?? '',
-            'BrokerPasswordStatus' => $staffDetails['brokerPasswordStatus'] ?? '',
-            'NationalityCode' => $staffDetails['nationalityCode'] ?? '',
-            'Passport' => $staffDetails['passport'] ?? '',
-            'IsInTrainingMode' => $this->normalizeBoolean($staffDetails['isInTrainingMode'] ?? false),
-            'ChangePasswordAtNextLogin' => $this->normalizeBoolean($staffDetails['changePasswordAtNextLogin'] ?? true),
-            'LockoutDateTime' => $staffDetails['lockoutDateTime'] ?? '',
-            'PasswordNeverChanges' => $this->normalizeBoolean($staffDetails['passwordNeverChanges'] ?? false),
-            'NextReviewDate' => $staffDetails['nextReviewDate'] ?? '',
-            'IsResource' => $this->normalizeBoolean($staffDetails['isResource'] ?? false),
-            'ResourceType' => $staffDetails['resourceType'] ?? '',
-            'SecurityCardNumber' => $staffDetails['securityCardNumber'] ?? '',
-            'EnterpriseCertificationID' => $staffDetails['enterpriseCertificationId'] ?? '',
-            'LastActivityDate' => $staffDetails['lastActivityDate'] ?? '',
-            'CommissionBasis' => $staffDetails['commissionBasis'] ?? '',
-            'NewClientCommissionRate' => $staffDetails['newClientCommissionRate'] ?? '0.0',
-            'EstablishedClientCommissionRate' => $staffDetails['establishedClientCommissionRate'] ?? '0.0000',
-            'CommissionMinimumEarning' => $staffDetails['commissionMinimumEarning'] ?? '0.0000',
-            'NextOfKinRelationship' => $staffDetails['nextOfKinRelationship'] ?? '',
-            'EmergencyContactRelationship' => $staffDetails['emergencyContactRelationship'] ?? '',
-            'LastPasswordAttemptDateTime_UTC' => $staffDetails['lastPasswordAttemptDateTimeUtc'] ?? '',
-            'LockoutDateTime_UTC' => $staffDetails['lockoutDateTimeUtc'] ?? '',
-            'ProfilePhoto' => $staffDetails['profilePhoto'] ?? '',
-            'IsActivityLogged' => $this->normalizeBoolean($staffDetails['isActivityLogged'] ?? false),
-            'ActiveDirectoryObjectGuid' => $staffDetails['activeDirectoryObjectGuid'] ?? '',
-            'HomeBranch' => $this->normalizeStaffReference($staffDetails['homeBranch'], 'GlbBranch'),
-            'HomeDepartment' => $this->normalizeStaffReference($staffDetails['homeDepartment'], 'GlbDepartment'),
-            'CountryCode' => $this->normalizeStaffReference($staffDetails['country'], 'RefCountry'),
-        ];
-
-        $groups = $this->normalizeStaffGroups($staffDetails['groups'] ?? []);
-        if (! empty($groups)) {
-            $payload['GlbGroupLinkCollection'] = [
-                'GlbGroupLink' => count($groups) === 1 ? $groups[0] : $groups,
-            ];
-        }
-
-        $this->staff = array_replace_recursive($payload, $staffDetails['attributes'] ?? []);
-
-        return $this;
-    }
-
     /**
      * Determine if the request is for a shipment.
      */
@@ -811,6 +1176,7 @@ class Cord
      */
     public function run(): mixed
     {
+        $this->syncFluentStaffPayload();
         $this->xml = $this->buildRequest()->xml();
 
         return $this->fetch();
@@ -821,6 +1187,7 @@ class Cord
      */
     public function inspect(): string
     {
+        $this->syncFluentStaffPayload();
         $this->checkForErrors();
         $this->xml = $this->buildRequest()->xml();
 
@@ -839,6 +1206,8 @@ class Cord
 
     protected function buildRequest(): RequestInterface
     {
+        $this->syncFluentStaffPayload();
+
         return match ($this->requestType) {
             RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
             RequestType::UniversalDocumentRequest => new UniversalDocumentRequest($this),
@@ -847,11 +1216,13 @@ class Cord
             RequestType::NativeOrganizationUpdate => new NativeOrganizationUpdate($this),
             RequestType::NativeCompanyRetrieval => new NativeCompanyRetrieval($this),
             RequestType::NativeStaffCreation => new NativeStaffCreation($this),
+            RequestType::NativeStaffUpdate => new NativeStaffUpdate($this),
         };
     }
 
     private function checkForErrors()
     {
+        $this->syncFluentStaffPayload();
 
         if (! $this->targetKey && ! in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval])) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
@@ -1054,6 +1425,291 @@ class Cord
         ];
     }
 
+    private function buildCompleteStaffPayload(array $staffDetails): array
+    {
+        $payload = [
+            '_attributes' => ['Action' => $staffDetails['action'] ?? 'Insert'],
+            'Code' => $staffDetails['code'],
+            'IsActive' => $this->normalizeBoolean($staffDetails['active'] ?? true),
+            'LoginName' => $staffDetails['loginName'],
+            'Password' => $staffDetails['password'],
+            'IsSalesRep' => $this->normalizeBoolean($staffDetails['isSalesRep'] ?? false),
+            'IsController' => $this->normalizeBoolean($staffDetails['isController'] ?? false),
+            'IsSystemAccount' => $this->normalizeBoolean($staffDetails['isSystemAccount'] ?? false),
+            'IsDeveloper' => $this->normalizeBoolean($staffDetails['isDeveloper'] ?? false),
+            'IsBackupOperator' => $this->normalizeBoolean($staffDetails['isBackupOperator'] ?? false),
+            'IsReadOnlyDBUser' => $this->normalizeBoolean($staffDetails['isReadOnlyDbUser'] ?? false),
+            'EmploymentBasis' => $staffDetails['employmentBasis'] ?? '',
+            'NameTitle' => $staffDetails['nameTitle'] ?? '',
+            'FullName' => $staffDetails['fullName'],
+            'NameSuffix' => $staffDetails['nameSuffix'] ?? '',
+            'FriendlyName' => $staffDetails['friendlyName'] ?? $staffDetails['fullName'],
+            'UserAddress1' => $staffDetails['addressOne'] ?? '',
+            'UserAddress2' => $staffDetails['addressTwo'] ?? '',
+            'City' => $staffDetails['city'] ?? '',
+            'Postcode' => $staffDetails['postcode'] ?? '',
+            'Title' => $staffDetails['title'] ?? '',
+            'WorkPhone' => $staffDetails['workPhone'] ?? '',
+            'PublishWorkPhone' => $this->normalizeBoolean($staffDetails['publishWorkPhone'] ?? true),
+            'Pager' => $staffDetails['pager'] ?? '',
+            'FaxNum' => $staffDetails['faxNumber'] ?? '',
+            'PublishFaxNum' => $this->normalizeBoolean($staffDetails['publishFaxNumber'] ?? true),
+            'EmailAddress' => $staffDetails['email'] ?? '',
+            'PublishEmailAddress' => $this->normalizeBoolean($staffDetails['publishEmailAddress'] ?? true),
+            'GlbWorkTime' => $this->normalizeStaffWorkingHours(
+                $staffDetails['workingHours'] ?? [],
+                $staffDetails['workTimeAction'] ?? 'Insert',
+            ),
+            'EftWages' => $this->normalizeBoolean($staffDetails['eftWages'] ?? false),
+            'WagesBankName' => $staffDetails['wagesBankName'] ?? '',
+            'WagesBankAccount' => $staffDetails['wagesBankAccount'] ?? '',
+            'WagesBankBsb' => $staffDetails['wagesBankBsb'] ?? '',
+            'WagesBankSwift' => $staffDetails['wagesBankSwift'] ?? '',
+            'UserSignature' => $staffDetails['signature'] ?? '',
+            'DueBack' => $staffDetails['dueBack'] ?? '',
+            'OutOnTask' => $staffDetails['outOnTask'] ?? '',
+            'PersonalEDIMailBox' => $staffDetails['personalEdiMailBox'] ?? '',
+            'BrokerID' => $staffDetails['brokerId'] ?? '',
+            'BrokerPassword' => $staffDetails['brokerPassword'] ?? '',
+            'BrokerWorkingPassword' => $staffDetails['brokerWorkingPassword'] ?? '',
+            'BrokerPasswordStatus' => $staffDetails['brokerPasswordStatus'] ?? '',
+            'NationalityCode' => $staffDetails['nationalityCode'] ?? '',
+            'Passport' => $staffDetails['passport'] ?? '',
+            'IsInTrainingMode' => $this->normalizeBoolean($staffDetails['isInTrainingMode'] ?? false),
+            'ChangePasswordAtNextLogin' => $this->normalizeBoolean($staffDetails['changePasswordAtNextLogin'] ?? true),
+            'LockoutDateTime' => $staffDetails['lockoutDateTime'] ?? '',
+            'PasswordNeverChanges' => $this->normalizeBoolean($staffDetails['passwordNeverChanges'] ?? false),
+            'NextReviewDate' => $staffDetails['nextReviewDate'] ?? '',
+            'IsResource' => $this->normalizeBoolean($staffDetails['isResource'] ?? false),
+            'ResourceType' => $staffDetails['resourceType'] ?? '',
+            'SecurityCardNumber' => $staffDetails['securityCardNumber'] ?? '',
+            'EnterpriseCertificationID' => $staffDetails['enterpriseCertificationId'] ?? '',
+            'LastActivityDate' => $staffDetails['lastActivityDate'] ?? '',
+            'CommissionBasis' => $staffDetails['commissionBasis'] ?? '',
+            'NewClientCommissionRate' => $staffDetails['newClientCommissionRate'] ?? '0.0',
+            'EstablishedClientCommissionRate' => $staffDetails['establishedClientCommissionRate'] ?? '0.0000',
+            'CommissionMinimumEarning' => $staffDetails['commissionMinimumEarning'] ?? '0.0000',
+            'NextOfKinRelationship' => $staffDetails['nextOfKinRelationship'] ?? '',
+            'EmergencyContactRelationship' => $staffDetails['emergencyContactRelationship'] ?? '',
+            'LastPasswordAttemptDateTime_UTC' => $staffDetails['lastPasswordAttemptDateTimeUtc'] ?? '',
+            'LockoutDateTime_UTC' => $staffDetails['lockoutDateTimeUtc'] ?? '',
+            'ProfilePhoto' => $staffDetails['profilePhoto'] ?? '',
+            'IsActivityLogged' => $this->normalizeBoolean($staffDetails['isActivityLogged'] ?? false),
+            'ActiveDirectoryObjectGuid' => $staffDetails['activeDirectoryObjectGuid'] ?? '',
+            'HomeBranch' => $this->normalizeStaffReference($staffDetails['homeBranch'], 'GlbBranch'),
+            'HomeDepartment' => $this->normalizeStaffReference($staffDetails['homeDepartment'], 'GlbDepartment'),
+            'CountryCode' => $this->normalizeStaffReference($staffDetails['country'], 'RefCountry'),
+        ];
+
+        $groups = $this->normalizeStaffGroups($staffDetails['groups'] ?? []);
+        if (! empty($groups)) {
+            $payload['GlbGroupLinkCollection'] = [
+                'GlbGroupLink' => count($groups) === 1 ? $groups[0] : $groups,
+            ];
+        }
+
+        $payload = array_replace_recursive($payload, $staffDetails['attributes'] ?? []);
+        $payload['IsOperational'] = 'true';
+
+        return $payload;
+    }
+
+    private function buildSparseStaffPayload(array $staffDetails, string $code): array
+    {
+        $payload = [
+            '_attributes' => ['Action' => $staffDetails['action'] ?? 'UPDATE'],
+            'Code' => $code,
+        ];
+
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'active', 'IsActive', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'loginName', 'LoginName');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'password', 'Password');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isSalesRep', 'IsSalesRep', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isController', 'IsController', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isSystemAccount', 'IsSystemAccount', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isDeveloper', 'IsDeveloper', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isBackupOperator', 'IsBackupOperator', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isReadOnlyDbUser', 'IsReadOnlyDBUser', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'employmentBasis', 'EmploymentBasis');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'nameTitle', 'NameTitle');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'fullName', 'FullName');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'nameSuffix', 'NameSuffix');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'friendlyName', 'FriendlyName');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'addressOne', 'UserAddress1');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'addressTwo', 'UserAddress2');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'city', 'City');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'postcode', 'Postcode');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'title', 'Title');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'workPhone', 'WorkPhone');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'publishWorkPhone', 'PublishWorkPhone', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'pager', 'Pager');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'faxNumber', 'FaxNum');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'publishFaxNumber', 'PublishFaxNum', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'email', 'EmailAddress');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'publishEmailAddress', 'PublishEmailAddress', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'eftWages', 'EftWages', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'wagesBankName', 'WagesBankName');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'wagesBankAccount', 'WagesBankAccount');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'wagesBankBsb', 'WagesBankBsb');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'wagesBankSwift', 'WagesBankSwift');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'signature', 'UserSignature');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'dueBack', 'DueBack');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'outOnTask', 'OutOnTask');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'personalEdiMailBox', 'PersonalEDIMailBox');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'brokerId', 'BrokerID');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'brokerPassword', 'BrokerPassword');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'brokerWorkingPassword', 'BrokerWorkingPassword');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'brokerPasswordStatus', 'BrokerPasswordStatus');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'nationalityCode', 'NationalityCode');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'passport', 'Passport');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isInTrainingMode', 'IsInTrainingMode', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'changePasswordAtNextLogin', 'ChangePasswordAtNextLogin', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'lockoutDateTime', 'LockoutDateTime');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'passwordNeverChanges', 'PasswordNeverChanges', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'nextReviewDate', 'NextReviewDate');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isResource', 'IsResource', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'resourceType', 'ResourceType');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'securityCardNumber', 'SecurityCardNumber');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'enterpriseCertificationId', 'EnterpriseCertificationID');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'lastActivityDate', 'LastActivityDate');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'commissionBasis', 'CommissionBasis');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'newClientCommissionRate', 'NewClientCommissionRate');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'establishedClientCommissionRate', 'EstablishedClientCommissionRate');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'commissionMinimumEarning', 'CommissionMinimumEarning');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'nextOfKinRelationship', 'NextOfKinRelationship');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'emergencyContactRelationship', 'EmergencyContactRelationship');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'lastPasswordAttemptDateTimeUtc', 'LastPasswordAttemptDateTime_UTC');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'lockoutDateTimeUtc', 'LockoutDateTime_UTC');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'profilePhoto', 'ProfilePhoto');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'isActivityLogged', 'IsActivityLogged', fn ($value) => $this->normalizeBoolean($value));
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'activeDirectoryObjectGuid', 'ActiveDirectoryObjectGuid');
+
+        if (array_key_exists('workingHours', $staffDetails)) {
+            $payload['GlbWorkTime'] = $this->normalizeStaffWorkingHours(
+                $staffDetails['workingHours'] ?? [],
+                $staffDetails['workTimeAction'] ?? 'Update',
+            );
+        }
+
+        if (array_key_exists('homeBranch', $staffDetails)) {
+            $payload['HomeBranch'] = $this->normalizeStaffReference($staffDetails['homeBranch'], 'GlbBranch');
+        }
+
+        if (array_key_exists('homeDepartment', $staffDetails)) {
+            $payload['HomeDepartment'] = $this->normalizeStaffReference($staffDetails['homeDepartment'], 'GlbDepartment');
+        }
+
+        if (array_key_exists('country', $staffDetails)) {
+            $payload['CountryCode'] = $this->normalizeStaffReference($staffDetails['country'], 'RefCountry');
+        }
+
+        return array_replace_recursive($payload, $staffDetails['attributes'] ?? []);
+    }
+
+    private function syncFluentStaffPayload(): void
+    {
+        if ($this->target !== DataTarget::Staff || ! $this->staffIntent) {
+            return;
+        }
+
+        if ($this->staffIntent === 'create') {
+            $this->validateFluentStaffCreatePayload($this->staffDraft);
+            $this->requestType = RequestType::NativeStaffCreation;
+            $this->target = DataTarget::Staff;
+
+            if (isset($this->staffDraft['company']) && ! $this->company) {
+                $this->company = (string) $this->staffDraft['company'];
+            }
+
+            $this->targetKey = (string) $this->staffDraft['code'];
+            $this->staff = $this->buildCompleteStaffPayload($this->staffDraft);
+
+            return;
+        }
+
+        if ($this->staffIntent === 'update') {
+            $this->validateFluentStaffUpdatePayload($this->staffDraft);
+            $this->requestType = RequestType::NativeStaffUpdate;
+            $this->target = DataTarget::Staff;
+
+            if (isset($this->staffDraft['company']) && ! $this->company) {
+                $this->company = (string) $this->staffDraft['company'];
+            }
+
+            $code = (string) ($this->staffDraft['code'] ?? $this->targetKey ?? '');
+            $this->targetKey = $code;
+            $this->staff = $this->buildSparseStaffPayload($this->staffDraft, $code);
+        }
+    }
+
+    private function validateFluentStaffCreatePayload(array $payload): void
+    {
+        $errors = [];
+
+        foreach (['code', 'loginName', 'password', 'fullName', 'homeBranch', 'homeDepartment', 'country'] as $requiredField) {
+            $value = $payload[$requiredField] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                $errors[$requiredField] = ['The '.$requiredField.' field is required.'];
+            }
+        }
+
+        if (array_key_exists('groups', $payload) && is_array($payload['groups'])) {
+            foreach ($payload['groups'] as $index => $groupCode) {
+                if (! is_string($groupCode)) {
+                    $errors['groups.'.$index] = ['Group codes must be strings.'];
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function validateFluentStaffUpdatePayload(array $payload): void
+    {
+        $errors = [];
+
+        $value = $payload['code'] ?? $this->targetKey;
+
+        if (! is_string($value) || trim($value) === '') {
+            $errors['code'] = ['The code field is required.'];
+        }
+
+        if (array_key_exists('groups', $payload) && is_array($payload['groups'])) {
+            foreach ($payload['groups'] as $index => $groupCode) {
+                if (! is_string($groupCode)) {
+                    $errors['groups.'.$index] = ['Group codes must be strings.'];
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function assertStaffBuilderContext(string $method): void
+    {
+        if ($this->target !== DataTarget::Staff || ! in_array($this->staffIntent, ['create', 'update'], true)) {
+            throw new \Exception("{$method}() requires a staff builder intent. Call staff()->create() or staff()->update() first.");
+        }
+    }
+
+    private function setStaffDraftValue(string $field, mixed $value, bool $isCode = false): self
+    {
+        $this->assertStaffBuilderContext($field);
+
+        $this->staffDraft[$field] = $value;
+
+        if ($isCode) {
+            $this->targetKey = is_string($value) ? $value : null;
+        }
+
+        return $this;
+    }
+
     private function assertConnectionConfig(): void
     {
         // If the url, username and password are not set in the config file, throw an exception.
@@ -1080,6 +1736,16 @@ class Cord
             'enterprise' => $matches[1],
             'server' => $matches[2],
         ];
+    }
+
+    private function setStaffValueIfProvided(array &$payload, array $staffDetails, string $inputKey, string $outputKey, ?callable $transform = null): void
+    {
+        if (! array_key_exists($inputKey, $staffDetails)) {
+            return;
+        }
+
+        $value = $staffDetails[$inputKey];
+        $payload[$outputKey] = $transform ? $transform($value) : $value;
     }
 
     private function normalizeStaffWorkingHours(array $workingHours, string $action = 'Insert'): array

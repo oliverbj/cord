@@ -13,13 +13,14 @@ class CordCommand extends Command
         {--company= : Company code used for native DataContext and derived SenderID}
         {--enterprise= : Override the EnterpriseID instead of deriving it from the URL}
         {--server= : Override the ServerID instead of deriving it from the URL}
+        {--update : Update an existing staff row instead of creating one}
         {--send : Actually send the request to eAdapter}
         {--force : Skip the send confirmation prompt}
         {--sender-id= : Override the derived UniversalInterchange sender ID}
         {--recipient-id= : Override the UniversalInterchange recipient ID}
         {--disable-code-mapping : Disable native code mapping for this request}';
 
-    public $description = 'Inspect or manually send a staff creation request using a named Cord connection.';
+    public $description = 'Inspect or manually send a staff create/update request using a named Cord connection.';
 
     public function handle(): int
     {
@@ -61,6 +62,8 @@ class CordCommand extends Command
 
             if ($company = $this->option('company')) {
                 $cord->withCompany((string) $company);
+            } elseif (isset($payload['company'])) {
+                $cord->withCompany((string) $payload['company']);
             }
 
             if ($enterprise = $this->option('enterprise')) {
@@ -83,7 +86,67 @@ class CordCommand extends Command
                 $cord->withCodeMapping(false);
             }
 
-            $xml = $cord->addStaff($payload)->inspect();
+            $builder = $this->option('update')
+                ? $cord->staff((string) ($payload['code'] ?? ''))->update()
+                : $cord->staff()->create();
+
+            if (isset($payload['code'])) {
+                $builder->code((string) $payload['code']);
+            }
+
+            if (isset($payload['loginName'])) {
+                $builder->loginName((string) $payload['loginName']);
+            }
+
+            if (isset($payload['password'])) {
+                $builder->password((string) $payload['password']);
+            }
+
+            if (isset($payload['fullName'])) {
+                $builder->fullName((string) $payload['fullName']);
+            }
+
+            if (isset($payload['email'])) {
+                $builder->email((string) $payload['email']);
+            }
+
+            if (isset($payload['homeBranch'])) {
+                $builder->branch((string) $payload['homeBranch']);
+            }
+
+            if (isset($payload['homeDepartment'])) {
+                $builder->department((string) $payload['homeDepartment']);
+            }
+
+            if (isset($payload['active'])) {
+                $builder->isActive((bool) $payload['active']);
+            }
+
+            if (isset($payload['country'])) {
+                $builder->country((string) $payload['country']);
+            }
+
+            if (isset($payload['phone'])) {
+                $builder->phone((string) $payload['phone']);
+            } elseif (isset($payload['workPhone'])) {
+                $builder->phone((string) $payload['workPhone']);
+            }
+
+            if (isset($payload['addressLine1'])) {
+                $builder->addressLine1((string) $payload['addressLine1']);
+            } elseif (isset($payload['addressOne'])) {
+                $builder->addressLine1((string) $payload['addressOne']);
+            }
+
+            if (isset($payload['groups']) && is_array($payload['groups'])) {
+                $builder->replaceGroups($payload['groups']);
+            }
+
+            if (isset($payload['attributes']) && is_array($payload['attributes'])) {
+                $builder->withPayload($payload['attributes']);
+            }
+
+            $xml = $builder->inspect();
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
 
@@ -92,6 +155,7 @@ class CordCommand extends Command
 
         $this->info('Resolved request');
         $this->line('Connection: '.(string) $this->option('connection'));
+        $this->line('Mode: '.($this->option('update') ? 'update' : 'create'));
         $this->line('Payload: '.$payloadPath);
         $this->newLine();
         $this->line($this->redactSensitiveXml($xml));

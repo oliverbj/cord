@@ -89,25 +89,23 @@ it('supports the receivable alias for document requests', function () {
 
 it('builds a native staff creation payload with headers, groups, and working hours', function () {
     $xml = Cord::withCompany('CPH')
-        ->addStaff([
-            'code' => 'BVO',
-            'loginName' => 'user.test',
-            'password' => '1234',
-            'fullName' => 'User Test',
-            'friendlyName' => 'User Test',
-            'addressOne' => 'Test address',
-            'city' => 'Tst city',
-            'postcode' => '31700',
-            'title' => 'Operations Specialist',
-            'workPhone' => '+111',
-            'email' => 'user.test@test.com',
-            'homeBranch' => 'TLS',
-            'homeDepartment' => 'FES',
-            'country' => 'FR',
-            'groups' => ['ORGALL', 'OPSALL'],
-            'workingHours' => [
-                'monday' => '*******************',
-                'tuesday' => '*******************',
+        ->staff()
+        ->create()
+        ->code('BVO')
+        ->loginName('user.test')
+        ->password('1234')
+        ->fullName('User Test')
+        ->email('user.test@test.com')
+        ->branch('TLS')
+        ->department('FES')
+        ->phone('+111')
+        ->isActive(true)
+        ->country('FR')
+        ->replaceGroups(['ORGALL', 'OPSALL'])
+        ->withPayload([
+            'GlbWorkTime' => [
+                '_attributes' => ['Action' => 'Insert'],
+                'MondayWorkingHours' => '*******************',
             ],
         ])
         ->inspect();
@@ -120,8 +118,10 @@ it('builds a native staff creation payload with headers, groups, and working hou
         ->toContain('<ServerID>TRN</ServerID>')
         ->toContain('<GlbStaff Action="Insert">')
         ->toContain('<Code>BVO</Code>')
+        ->toContain('<IsOperational>true</IsOperational>')
         ->toContain('<GlbGroupLink Action="MERGE">')
         ->toContain('<Code>ORGALL</Code>')
+        ->toContain('<WorkPhone>+111</WorkPhone>')
         ->toContain('<MondayWorkingHours>*******************</MondayWorkingHours>')
         ->toContain('<HomeBranch TableName="GlbBranch">')
         ->toContain('<Code>TLS</Code>');
@@ -131,29 +131,197 @@ it('supports disabling code mapping and the withRecepientId alias', function () 
     $xml = Cord::withCompany('CPH')
         ->withRecepientId('PartnerSystem')
         ->withCodeMapping(false)
-        ->addStaff([
-            'code' => 'BVO',
-            'loginName' => 'user.test',
-            'password' => '1234',
-            'fullName' => 'User Test',
-            'homeBranch' => 'TLS',
-            'homeDepartment' => 'FES',
-            'country' => 'FR',
-        ])
+        ->staff()
+        ->create()
+        ->code('BVO')
+        ->loginName('user.test')
+        ->password('1234')
+        ->fullName('User Test')
+        ->branch('TLS')
+        ->department('FES')
+        ->country('FR')
         ->inspect();
 
     expect($xml)
         ->toContain('<CodesMappedToTarget>false</CodesMappedToTarget>');
 });
 
+it('builds a native staff update payload for non-collection fields', function () {
+    $xml = Cord::withCompany('CPH')
+        ->staff('BVO')
+        ->update()
+        ->fullName('Updated User')
+        ->email('updated@example.com')
+        ->branch('CPH')
+        ->department('OPS')
+        ->country('DK')
+        ->withPayload([
+            'FriendlyName' => 'Updated',
+            'Title' => 'Branch Manager',
+            'GlbWorkTime' => [
+                '_attributes' => ['Action' => 'Update'],
+                'MondayWorkingHours' => '********',
+            ],
+        ])
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<GlbStaff Action="UPDATE">')
+        ->toContain('<Code>BVO</Code>')
+        ->toContain('<FullName>Updated User</FullName>')
+        ->toContain('<FriendlyName>Updated</FriendlyName>')
+        ->toContain('<Title>Branch Manager</Title>')
+        ->toContain('<EmailAddress>updated@example.com</EmailAddress>')
+        ->toContain('<GlbWorkTime Action="Update">')
+        ->toContain('<MondayWorkingHours>********</MondayWorkingHours>')
+        ->toContain('<HomeBranch TableName="GlbBranch"><Code>CPH</Code></HomeBranch>')
+        ->toContain('<HomeDepartment TableName="GlbDepartment"><Code>OPS</Code></HomeDepartment>')
+        ->toContain('<CountryCode TableName="RefCountry"><Code>DK</Code></CountryCode>')
+        ->not->toContain('GlbGroupLinkCollection');
+});
+
 it('requires a company when creating staff', function () {
-    expect(fn () => Cord::addStaff([
-        'code' => 'BVO',
-        'loginName' => 'user.test',
-        'password' => '1234',
-        'fullName' => 'User Test',
-        'homeBranch' => 'TLS',
-        'homeDepartment' => 'FES',
-        'country' => 'FR',
-    ]))->toThrow(Exception::class, 'Company code must be provided when creating staff.');
+    expect(fn () => Cord::staff()
+        ->create()
+        ->code('BVO')
+        ->loginName('user.test')
+        ->password('1234')
+        ->fullName('User Test')
+        ->branch('TLS')
+        ->department('FES')
+        ->country('FR')
+        ->inspect())
+        ->toThrow(Exception::class, 'Company code must be provided for native write requests.');
+});
+
+it('supports fluent staff create with toPayload and raw payload passthrough', function () {
+    $builder = Cord::staff()
+        ->create()
+        ->code('BVO')
+        ->loginName('user.test')
+        ->password('1234')
+        ->fullName('User Test')
+        ->branch('TLS')
+        ->department('FES')
+        ->country('FR')
+        ->replaceGroups(['ORGALL', 'OPSALL'])
+        ->withPayload([
+            'CustomFieldX' => 'foo',
+        ]);
+
+    $payload = $builder->toPayload();
+
+    expect($payload['Code'])->toBe('BVO')
+        ->and($payload['LoginName'])->toBe('user.test')
+        ->and($payload['GlbGroupLinkCollection']['GlbGroupLink'][0]['GlbGroup']['Code'])->toBe('ORGALL')
+        ->and($payload['CustomFieldX'])->toBe('foo');
+
+    $xml = Cord::withCompany('CPH')
+        ->staff()
+        ->create()
+        ->code('BVO')
+        ->loginName('user.test')
+        ->password('1234')
+        ->fullName('User Test')
+        ->branch('TLS')
+        ->department('FES')
+        ->country('FR')
+        ->replaceGroups(['ORGALL'])
+        ->withPayload([
+            'CustomFieldX' => 'foo',
+        ])
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<GlbStaff Action="Insert">')
+        ->toContain('<Code>BVO</Code>')
+        ->toContain('<GlbGroupLink Action="MERGE">')
+        ->toContain('<Code>ORGALL</Code>')
+        ->toContain('<CustomFieldX>foo</CustomFieldX>');
+});
+
+it('supports fluent staff update setters', function () {
+    $xml = Cord::withCompany('CPH')
+        ->staff('BVO')
+        ->update()
+        ->addressLine1('Test 123')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<GlbStaff Action="UPDATE">')
+        ->toContain('<Code>BVO</Code>')
+        ->toContain('<UserAddress1>Test 123</UserAddress1>');
+});
+
+it('forces ChangePasswordAtNextLogin when password is set', function () {
+    $xml = Cord::withCompany('CPH')
+        ->staff('BVO')
+        ->update()
+        ->password('new-secret')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<Password>new-secret</Password>')
+        ->toContain('<ChangePasswordAtNextLogin>true</ChangePasswordAtNextLogin>');
+});
+
+it('returns deterministic validation errors for fluent staff update', function () {
+    $errors = null;
+
+    try {
+        Cord::staff()
+            ->update()
+            ->toPayload();
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toBe([
+        'code' => ['The code field is required.'],
+    ]);
+});
+
+it('returns deterministic validation errors for invalid group codes', function () {
+    $errors = null;
+
+    try {
+        Cord::staff()
+            ->update()
+            ->code('BVO')
+            ->replaceGroups(['1234', 214]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toBe([
+        'groups.1' => ['Group codes must be strings.'],
+    ]);
+});
+
+it('exposes structured staff method metadata via describe', function () {
+    $description = Cord::staff()->describe();
+
+    expect($description['resource'])->toBe('staff')
+        ->and($description['actions'])->toBe(['create', 'update', 'upsert'])
+        ->and($description['methods'])->toBeArray()
+        ->and(collect($description['methods'])->firstWhere('name', 'code'))->toMatchArray([
+            'name' => 'code',
+            'parameters' => ['code' => 'string'],
+            'required_for' => ['create', 'update'],
+        ])
+        ->and(collect($description['methods'])->firstWhere('name', 'branch'))->toMatchArray([
+            'name' => 'branch',
+            'parameters' => ['branch' => 'string'],
+            'required_for' => ['create'],
+        ])
+        ->and(collect($description['methods'])->firstWhere('name', 'phone'))->toMatchArray([
+            'name' => 'phone',
+            'parameters' => ['phone' => 'string'],
+            'required_for' => [],
+        ])
+        ->and(collect($description['methods'])->firstWhere('name', 'replaceGroups'))->toMatchArray([
+            'name' => 'replaceGroups',
+            'parameters' => ['groups' => 'string[]'],
+            'required_for' => [],
+        ]);
 });

@@ -22,6 +22,7 @@ $options = getopt('', [
     'company::',
     'enterprise::',
     'server::',
+    'update',
     'send',
     'sender-id::',
     'recipient-id::',
@@ -32,7 +33,7 @@ $options = getopt('', [
 if (isset($options['help'])) {
     fwrite(STDOUT, <<<'TXT'
 Usage:
-  php bin/manual-staff-test.php [--connection=NTG_TRN] [--company=CPH] [--payload=resources/manual/staff-payload.local.php] [--send]
+  php bin/manual-staff-test.php [--connection=NTG_TRN] [--company=CPH] [--payload=resources/manual/staff-payload.local.php] [--update] [--send]
 
 Defaults:
   --connection=base
@@ -41,6 +42,8 @@ Defaults:
 Behavior:
   Without --send the script only prints the XML.
   With --send it posts the payload to the configured eAdapter connection.
+  Without --update it creates staff.
+  With --update it updates staff using Action="UPDATE".
   EnterpriseID and ServerID are derived from the configured CORD_URL unless overridden.
 
 TXT);
@@ -49,6 +52,7 @@ TXT);
 }
 
 $connection = (string) ($options['connection'] ?? 'base');
+$isUpdate = isset($options['update']);
 $payloadOption = (string) ($options['payload'] ?? 'resources/manual/staff-payload.local.php');
 $payloadPath = isAbsolutePath($payloadOption) ? $payloadOption : CORD_MANUAL_ROOT.'/'.$payloadOption;
 
@@ -90,6 +94,8 @@ try {
 
     if (isset($options['company'])) {
         $cord->withCompany((string) $options['company']);
+    } elseif (isset($payload['company'])) {
+        $cord->withCompany((string) $payload['company']);
     }
 
     if (isset($options['enterprise'])) {
@@ -112,7 +118,67 @@ try {
         $cord->withCodeMapping(false);
     }
 
-    $xml = $cord->addStaff($payload)->inspect();
+    $builder = $isUpdate
+        ? $cord->staff((string) ($payload['code'] ?? ''))->update()
+        : $cord->staff()->create();
+
+    if (isset($payload['code'])) {
+        $builder->code((string) $payload['code']);
+    }
+
+    if (isset($payload['loginName'])) {
+        $builder->loginName((string) $payload['loginName']);
+    }
+
+    if (isset($payload['password'])) {
+        $builder->password((string) $payload['password']);
+    }
+
+    if (isset($payload['fullName'])) {
+        $builder->fullName((string) $payload['fullName']);
+    }
+
+    if (isset($payload['email'])) {
+        $builder->email((string) $payload['email']);
+    }
+
+    if (isset($payload['homeBranch'])) {
+        $builder->branch((string) $payload['homeBranch']);
+    }
+
+    if (isset($payload['homeDepartment'])) {
+        $builder->department((string) $payload['homeDepartment']);
+    }
+
+    if (isset($payload['active'])) {
+        $builder->isActive((bool) $payload['active']);
+    }
+
+    if (isset($payload['country'])) {
+        $builder->country((string) $payload['country']);
+    }
+
+    if (isset($payload['phone'])) {
+        $builder->phone((string) $payload['phone']);
+    } elseif (isset($payload['workPhone'])) {
+        $builder->phone((string) $payload['workPhone']);
+    }
+
+    if (isset($payload['addressLine1'])) {
+        $builder->addressLine1((string) $payload['addressLine1']);
+    } elseif (isset($payload['addressOne'])) {
+        $builder->addressLine1((string) $payload['addressOne']);
+    }
+
+    if (isset($payload['groups']) && is_array($payload['groups'])) {
+        $builder->replaceGroups($payload['groups']);
+    }
+
+    if (isset($payload['attributes']) && is_array($payload['attributes'])) {
+        $builder->withPayload($payload['attributes']);
+    }
+
+    $xml = $builder->inspect();
 } catch (Throwable $e) {
     fwrite(STDERR, $e->getMessage()."\n");
 
@@ -120,6 +186,7 @@ try {
 }
 
 fwrite(STDOUT, "Connection: {$connection}\n");
+fwrite(STDOUT, 'Mode: '.($isUpdate ? 'update' : 'create')."\n");
 fwrite(STDOUT, "Payload: {$payloadPath}\n\n");
 fwrite(STDOUT, redactSensitiveXml($xml)."\n");
 

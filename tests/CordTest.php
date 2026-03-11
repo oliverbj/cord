@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 use Oliverbj\Cord\Facades\Cord;
 
 it('builds request xml without sending a network request when inspecting', function () {
@@ -272,7 +273,7 @@ it('returns deterministic validation errors for fluent staff update', function (
         Cord::staff()
             ->update()
             ->toPayload();
-    } catch (\Illuminate\Validation\ValidationException $e) {
+    } catch (ValidationException $e) {
         $errors = $e->errors();
     }
 
@@ -289,7 +290,7 @@ it('returns deterministic validation errors for invalid group codes', function (
             ->update()
             ->code('BVO')
             ->replaceGroups(['1234', 214]);
-    } catch (\Illuminate\Validation\ValidationException $e) {
+    } catch (ValidationException $e) {
         $errors = $e->errors();
     }
 

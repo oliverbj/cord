@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
+use Dotenv\Dotenv;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Oliverbj\Cord\Cord;
-use Dotenv\Dotenv;
 
 define('CORD_MANUAL_ROOT', dirname(__DIR__));
 define('TESTBENCH_WORKING_PATH', CORD_MANUAL_ROOT);

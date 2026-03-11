@@ -11,15 +11,10 @@ class NativeOrganizationRetrieval extends NativeRequest
 
     private function defineSchema(array $criteriaGroups): array
     {
-        $schema = [
+        return [
             'Body' => [
-                'Organization' => [],
+                'Organization' => $criteriaGroups,
             ],
         ];
-
-        //Push in the criteria group.
-        array_push($schema['Body']['Organization'], $criteriaGroups[0]);
-
-        return $schema;
     }
 }

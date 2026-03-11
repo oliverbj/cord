@@ -10,9 +10,7 @@ abstract class NativeRequest implements RequestInterface
 {
     protected string $rootElement = 'Native';
 
-    public function __construct(public Cord $cord)
-    {
-    }
+    public function __construct(public Cord $cord) {}
 
     public function xml(): string
     {
@@ -23,7 +21,7 @@ abstract class NativeRequest implements RequestInterface
             ],
         ]);
 
-        //Remove the "<?xml version="1.0".. " tag from the XML string.
+        // Remove the "<?xml version="1.0".. " tag from the XML string.
         return preg_replace('!^[^>]+>(\r\n|\n)!', '', $xml);
     }
 }

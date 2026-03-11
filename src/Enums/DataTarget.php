@@ -9,4 +9,5 @@ enum DataTarget: string
     case Custom = 'CustomsDeclaration';
     case Receiveable = 'AccountingInvoice';
     case Organization = 'Organization';
+    case Staff = 'Staff';
 }

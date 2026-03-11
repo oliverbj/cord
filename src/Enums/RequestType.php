@@ -10,4 +10,5 @@ enum RequestType: string
     case NativeOrganizationRetrieval = 'NativeOrganizationRetrieval';
     case NativeOrganizationUpdate = 'NativeOrganizationUpdate';
     case NativeCompanyRetrieval = 'NativeCompanyRetrieval';
+    case NativeStaffCreation = 'NativeStaffCreation';
 }

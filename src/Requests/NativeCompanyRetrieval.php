@@ -11,14 +11,10 @@ class NativeCompanyRetrieval extends NativeRequest
 
     private function defineSchema(array $criteriaGroups): array
     {
-        $schema = [
+        return [
             'Body' => [
-                'Company' => [],
+                'Company' => $criteriaGroups,
             ],
         ];
-
-        array_push($schema['Body']['Company'], $criteriaGroups[0]);
-
-        return $schema;
     }
 }

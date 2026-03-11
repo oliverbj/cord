@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\Facade;
  */
 class Cord extends Facade
 {
+    protected static $cached = false;
+
     protected static function getFacadeAccessor()
     {
-        //return \Oliverbj\Cord\Cord::class;
         return 'cord';
     }
 }

@@ -1,42 +1,62 @@
-# Seamless integration to CargoWise One's eAdapter using the HTTP service using Laravel!
+# Seamless integration to CargoWise One's eAdapter using Laravel
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/oliverbj/cord.svg?style=flat-square)](https://packagist.org/packages/oliverbj/cord)
 [![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/oliverbj/cord/run-tests?label=tests)](https://github.com/oliverbj/cord/actions?query=workflow%3Arun-tests+branch%3Amain)
 [![GitHub Code Style Action Status](https://img.shields.io/github/workflow/status/oliverbj/cord/Fix%20PHP%20code%20style%20issues?label=code%20style)](https://github.com/oliverbj/cord/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/oliverbj/cord.svg?style=flat-square)](https://packagist.org/packages/oliverbj/cord)
 
-Cord offers a expressive, chainable and easy API to interact with CargoWise One's eAdapter using their HTTP Webservice.
+Cord offers an expressive, chainable API for interacting with CargoWise One's eAdapter over HTTP.
+
+## Table of Contents
+
+- [Support](#support)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Documents / eDocs](#documents--edocs)
+- [Native](#native)
+- [Multiple Connections](#multiple-connections)
+- [Debugging](#debugging)
+- [Testing](#testing)
+
+## Support
+
+Cord currently targets:
+
+- PHP `8.2+`
+- Laravel `11` and `12`
 
 ## Installation
 
-You can install the package via composer:
+Install the package via Composer:
 
 ```bash
 composer require oliverbj/cord
 ```
 
-You can publish the config file with:
+Publish the config file:
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
 ```
 
-This is the contents of the published config file:
+## Configuration
+
+The published `config/cord.php` file looks like this:
 
 ```php
 return [
-    'eadapter_connection' => [
-        'url' => env('CORD_URL', ''),
-        'username' => env('CORD_USERNAME', ''),
-        'password' => env('CORD_PASSWORD', ''),
+    'base' => [
+        'eadapter_connection' => [
+            'url' => env('CORD_URL', ''),
+            'username' => env('CORD_USERNAME', ''),
+            'password' => env('CORD_PASSWORD', ''),
+        ],
     ],
 ];
 ```
 
-## Usage
-
-### Setting environment
-In order to use Cord, you must specify the appropiate login details for your CargoWise One eAdapter service:
+Set your CargoWise eAdapter credentials in `.env`:
 
 ```env
 CORD_URL=
@@ -44,204 +64,295 @@ CORD_USERNAME=
 CORD_PASSWORD=
 ```
 
-### Modules
+## Usage
 
-Cord comes with connectivity to the following modules:
- - Bookings `booking()`
- - Shipments `shipment()`
- - Customs `custom()`
- - Organizations `organization()`
- - Companies `company()`
+Start with a target, then call `run()` to execute the request. By default Cord returns the decoded eAdapter payload as an array.
 
-Similar for all, you must call the `run()` method to 'get' the actual response back from the eAdapter. The response from the eAdapter will be returned in a JSON format.
+### Targets
+
+Cord currently supports these main targets:
+
+- Bookings via `booking()`
+- Shipments via `shipment()`
+- Customs declarations via `custom()`
+- Organizations via `organization()`
+- Companies via `company()`
+- Receivables / invoices via `receivable()` or `receiveable()` for document requests
 
 ```php
-//Get a shipment
+use Oliverbj\Cord\Facades\Cord;
+
+Cord::shipment('SMIA12345678')->run();
+
+Cord::custom('BATL12345678')->run();
+
+Cord::organization('SAGFURHEL')->run();
+
+Cord::company('CPH')->run();
+```
+
+### Request context
+
+You can scope a request to a specific CargoWise company:
+
+```php
 Cord::shipment('SMIA12345678')
-    ->run();
-
-//Get a brokerage job
-Cord::custom('BATL12345678')
-    ->run();
-
-//Get an organization
-Cord::organization('SAGFURHEL')
-    ->run();
-
-//Get a company
-Cord::company('CPH')
+    ->withCompany('CPH')
     ->run();
 ```
 
-### Organizations - Add Address
-Cord supports the option to add an address to an organization.
+## Documents / eDocs
+
+Most entities in CargoWise One expose eDocs. Use `withDocuments()` to retrieve a document collection for the selected target.
 
 ```php
-Cord::organization('SAGFURHEL')
-        ->addAddress([
-            'code' => 'MAIN STREET NO. 1',
-            'addressOne' => 'Main Street',
-            'addressTwo' => 'Number One',
-            'country' => 'US',
-            'city' => 'Anytown',
-            'state' => 'NY',
-            'postcode' => '12345',
-            'relatedPort' => 'USNYC',
-            'capabilities' => [
-                'AddressType' => 'OFC',
-                'IsMainAddress' => 'false',
-            ]
-        ]);
-```
-
-### Documents / eDocs
-Most entities in CargoWise One have a document tab (called eDocs). It is possible to use Cord to access these documents using the `withDocuments()` method.
-When applying the documents method, Cord will only a `DcoumentCollection` containing the documents from the specified entity.
-
-```php
-//Get all the available documents from a shipment file
 Cord::shipment('SMIA12345678')
     ->withDocuments()
     ->run();
 ```
-When interacting with the eDocs of CargoWise One (getting documents), we can provide filters to the request:
+
+When fetching documents you can add filters:
 
 ```php
-//Get only documents from a shipment file that is the type "ARN"
 Cord::shipment('SMIA92838292')
     ->withDocuments()
     ->filter('DocumentType', 'ARN')
-    ->filter('IsPublished', True)
+    ->filter('IsPublished', true)
     ->run();
 ```
 
-The available filters are:
- - **DocumentType** – Retrieve only documents matching the specified document type.
- - **IsPublished** – Retrieve only published or un-published documents. The values for this filter are: `True` and `False`. This can only be specified once.
- - **SaveDateUTCFrom** – Retrieve only documents that were added or modified on or after the specified date/time (provided in UTC time). This can only be specified once.
- - **SaveDateUTCTo** – Retrieve only documents that were added or modified on or before the specified date/time (provided in UTC time). This can only be specified once.
- - **CompanyCode** – Retrieve only documents related to the specified company or non-company specific. The default behavior without this Type being filtered is to return all documents regardless of company affiliation.
- - **BranchCode** – Retrieve only documents related to the specified branch code.
- - **DepartmentCode** – Retrieve only documents relevant to specified department code.
+Available filters:
 
-### Upload Documents
-Similar to fetching documents, it is also possible to upload documents to a file in CargoWise One using `addDocument`:
+- `DocumentType` retrieves only documents matching the specified document type.
+- `IsPublished` retrieves only published or unpublished documents. Valid values are `true` and `false`.
+- `SaveDateUTCFrom` retrieves only documents added or modified on or after the specified UTC timestamp.
+- `SaveDateUTCTo` retrieves only documents added or modified on or before the specified UTC timestamp.
+- `CompanyCode` retrieves only documents related to the specified company, or non-company-specific documents.
+- `BranchCode` retrieves only documents related to the specified branch.
+- `DepartmentCode` retrieves only documents related to the specified department.
 
-```php
-Cord::shipment('SJFK21060014')
-        ->addDocument(
-            file_contents: base64_decode(file_get_contents("myfile.pdf")),
-            name: 'myfile.pdf',
-            type: 'MSC'
-            description: '(Optional)',
-            isPublished: true //default is *false*
-        )
-        ->run();
-```
+### Upload documents
 
-Cord also supports interacting with CargoWise One's event engine, meaning we can add events to jobs:
+You can upload a document to a CargoWise file with `addDocument()`:
 
 ```php
 Cord::shipment('SJFK21060014')
-        ->addEvent(
-            date: date('c'),
-            type: 'DIM',
-            reference: 'My Reference',
-            isEstimate: true //default is *false*
-        )
-        ->run();
+    ->addDocument(
+        file_contents: base64_encode(file_get_contents('myfile.pdf')),
+        name: 'myfile.pdf',
+        type: 'MSC',
+        description: 'Optional description',
+        isPublished: true,
+    )
+    ->run();
 ```
 
-### Native Query Component
+### Add events
 
-You can query all supported native query components that eAdaptor provides. Similar to all native query components is that you can run the `criteriaGroup()` method, to "query" your results.
+Cord can also push events to jobs:
 
-Example: When querying organizations, you can specify different criteria groups to filter the results using `criteriaGroup()`:
+```php
+Cord::shipment('SJFK21060014')
+    ->addEvent(
+        date: now()->toIso8601String(),
+        type: 'DIM',
+        reference: 'My Reference',
+        isEstimate: true,
+    )
+    ->run();
+```
+
+## Native
+
+Cord groups native functionality into query and update flows.
+
+### Query Organization
+
+Use `organization()` with one or more `criteriaGroup()` calls for native organization queries.
 
 ```php
 Cord::organization()
-        ->criteriaGroup([
-            [
-                'Entity' => 'OrgHeader',
-                'FieldName' => 'Code',
-                'Value' => 'US%'
-            ],
-            [
-                'Entity' => 'OrgHeader',
-                'FieldName' => 'IsBroker',
-                'Value' => 'True'
-            ],
-        ], type: "Partial")
-        ->run();
+    ->criteriaGroup([
+        [
+            'Entity' => 'OrgHeader',
+            'FieldName' => 'Code',
+            'Value' => 'US%',
+        ],
+        [
+            'Entity' => 'OrgHeader',
+            'FieldName' => 'IsBroker',
+            'Value' => 'True',
+        ],
+    ], type: 'Partial')
+    ->run();
 ```
 
-The `criteriaGroup()` method accepts a nested array of different criteria. The above will search for all organizations where the organization code starts with `US` and the organization is a broker. The `type` parameter can be either `Partial` or `Key`. The default is `Key`.
+The `type` argument can be either `Key` or `Partial`. `Key` is the default.
 
-The XML that is generated by the above code is:
-
-```xml
-<Native xmlns="http://www.cargowise.com/Schemas/Native">
-   <Body>
-      <Organization>
-         <CriteriaGroup Type="Partial">
-            <Criteria Entity="OrgHeader" FieldName="Code">US%</Criteria>
-            <Criteria Entity="OrgHeader" FieldName="IsBroker">True</Criteria>
-         </CriteriaGroup>
-      </Organization>
-   </Body>
-</Native>
-```
-You are free to define as many criteria groups as you want:
+You can define multiple criteria groups. Multiple groups behave like an `OR` statement:
 
 ```php
 Cord::organization()
-        ->criteriaGroup([
-            [
-                'Entity' => 'OrgHeader',
-                'FieldName' => 'Code',
-                'Value' => 'US%'
-            ],
-        ], type: "Partial")
-        ->criteriaGroup([
-            [
-                'Entity' => 'OrgHeader',
-                'FieldName' => 'IsBroker',
-                'Value' => 'True'
-            ],
-        ], type: "Partial")
-        ->run();
+    ->criteriaGroup([
+        [
+            'Entity' => 'OrgHeader',
+            'FieldName' => 'Code',
+            'Value' => 'US%',
+        ],
+    ], type: 'Partial')
+    ->criteriaGroup([
+        [
+            'Entity' => 'OrgHeader',
+            'FieldName' => 'IsBroker',
+            'Value' => 'True',
+        ],
+    ], type: 'Partial')
+    ->run();
 ```
 
-> Info: Multiple criteria group acts as an "OR" statement.
 
-The above with multiple criteria groups will generate the following XML:
-```xml
-<Native xmlns="http://www.cargowise.com/Schemas/Native">
-   <Body>
-      <Organization>
-         <CriteriaGroup Type="Partial">
-            <Criteria Entity="OrgHeader" FieldName="Code">US%</Criteria>
-         </CriteriaGroup>
-         <CriteriaGroup Type="Partial">
-            <Criteria Entity="OrgHeader" FieldName="IsBroker">True</Criteria>
-         </CriteriaGroup>
-      </Organization>
-   </Body>
-</Native>
-```
+### Update Organization
 
-### Multiple Connections
+Native organization updates are anchored on `organization('CODE')`. 
 
-Sometimes you may want to connect to multiple eAdapters. This can be done by using the `withConfig` method:
+#### Add an address
 
 ```php
-$config = "my_custom_connection";
-Cord::shipment('SJFK21060014')
-      ->withConfig($config)
-      ->run();
+Cord::::organization('SAGFURHEL')
+    ->addAddress([
+        'code' => 'MAIN STREET NO. 1',
+        'addressOne' => 'Main Street',
+        'addressTwo' => 'Number One',
+        'country' => 'US',
+        'city' => 'Anytown',
+        'state' => 'NY',
+        'postcode' => '12345',
+        'relatedPort' => 'USNYC',
+        'capabilities' => [
+            'AddressType' => 'OFC',
+            'IsMainAddress' => 'false',
+        ],
+    ])
+    ->run();
 ```
 
-Then you can add the connection details to your `config/cord.php` file:
+#### Add a contact
+
+```php
+Cord::organization('SAGFURHEL')
+    ->addContact([
+        'name' => 'Jane Doe',
+        'email' => 'jane@example.com',
+        'phone' => '+1 555 123 4567',
+        'language' => 'EN',
+    ])
+    ->run();
+```
+
+You can also include optional `documentsToDeliver` data when creating the contact.
+
+### Query Company
+
+Company queries follow the same native query pattern:
+
+```php
+Cord::company()
+    ->criteriaGroup([
+        [
+            'Entity' => 'GlbCompany',
+            'FieldName' => 'Code',
+            'Value' => 'CPH',
+        ],
+    ])
+    ->run();
+```
+
+#### Add EDI communication details
+
+```php
+Cord::organization('SAGFURHEL')
+    ->addEDICommunication([
+        'module' => 'IMP',
+        'purpose' => 'CUS',
+        'direction' => 'OUT',
+        'transport' => 'EML',
+        'destination' => 'ops@example.com',
+        'format' => 'XML',
+    ])
+    ->run();
+```
+
+#### Transfer existing organization data
+
+The transfer helpers are useful when you already have data from an organization payload and want to copy it to another organization:
+
+- `transferAddress()`
+- `transferContact()`
+- `transferEDICommunication()`
+- `transferDocumentTracking()`
+
+```php
+$source = Cord::organization('SOURCE')->run();
+
+Cord::withCompany('CPH')
+    ->organization('TARGET')
+    ->transferContact($source['OrgContactCollection']['OrgContact'][0])
+    ->run();
+```
+
+### Add Staff
+
+Staff creation is sent as a native `Native` request. Company context is required. `EnterpriseID` and `ServerID` are derived from the configured `url`, and `CodesMappedToTarget` defaults to `true`. You can override the native context with `withEnterprise()`, `withServer()`, or `withCodeMapping(false)`.
+
+```php
+Cord::withCompany('CPH')
+    ->addStaff([
+        'code' => 'BVO',
+        'loginName' => 'user.test',
+        'password' => '1234',
+        'fullName' => 'User Test',
+        'friendlyName' => 'User Test',
+        'addressOne' => 'Test address',
+        'city' => 'Tst city',
+        'postcode' => '31700',
+        'title' => 'Operations Specialist',
+        'workPhone' => '+111',
+        'email' => 'user.test@test.com',
+        'homeBranch' => 'TLS',
+        'homeDepartment' => 'FES',
+        'country' => 'FR',
+        'groups' => ['ORGALL', 'OPSALL', 'LOGFRTLS', 'ALL'],
+        'workingHours' => [
+            'monday' => '*******************',
+            'tuesday' => '*******************',
+            'wednesday' => '*******************',
+            'thursday' => '*******************',
+            'friday' => '*******************',
+        ],
+    ])
+    ->run();
+```
+
+Common `addStaff()` keys:
+
+- `code`, `loginName`, `password`, `fullName`, `homeBranch`, `homeDepartment`, and `country` are required.
+- `withCompany('CPH')` is required for staff creation, unless you include `company` directly in the `addStaff()` payload.
+- `friendlyName`, `addressOne`, `addressTwo`, `city`, `postcode`, `title`, `workPhone`, and `email` map to the most common staff fields.
+- `groups` accepts either simple group codes or arrays with `code`, `membershipType`, `skillLevel`, and `action`.
+- `workingHours` accepts `sunday` through `saturday`.
+- `attributes` can be used as a raw passthrough for additional CargoWise fields not yet covered by the friendly wrapper.
+
+## Multiple Connections
+
+If you need to connect to multiple eAdapters, use `withConfig()`:
+
+```php
+Cord::shipment('SJFK21060014')
+    ->withConfig('archive')
+    ->run();
+```
+
+Then add the additional connection to `config/cord.php`:
 
 ```php
 return [
@@ -253,43 +364,86 @@ return [
         ],
     ],
 
-    'my_custom_connection' => [
+    'archive' => [
         'eadapter_connection' => [
-            'url' => env('CORD_URL', ''),
-            'username' => env('CORD_USERNAME', ''),
-            'password' => env('CORD_PASSWORD', ''),
+            'url' => env('CORD_ARCHIVE_URL', ''),
+            'username' => env('CORD_ARCHIVE_USERNAME', ''),
+            'password' => env('CORD_ARCHIVE_PASSWORD', ''),
         ],
     ],
 ];
 ```
 
-The URL does not neccessarily need to be directly to the eAdaptor URL. It can also point to a middleware, as long as the middleware forwards the request to the eAdaptor and returns the response.
+The configured URL does not have to point directly at the eAdapter itself. It can point to middleware, as long as that middleware forwards the request and returns the eAdapter response. If you want enterprise and server auto-detection for native write requests, the URL should preserve the CargoWise host pattern such as `https://demo1trnservices.example.invalid/eAdaptor`.
 
-### Response as XML
-If you want to return the original eAdaptor response directly as XML, call `toXml()` before you call the `run()` method:
+## Response as XML
+
+If you want the original eAdapter response as XML, call `toXml()` before `run()`:
 
 ```php
-Cord::shipment('SJFK21041242')->toXml()->run();
+Cord::shipment('SJFK21041242')
+    ->toXml()
+    ->run();
 ```
 
-### Debugging
-Sometimes you may want to inspect the XML request before it's sent to the eAdapter. To do this, you can simply call the `inspect()` method. This will return the XML string repesentation:
+## Debugging
+
+Use `inspect()` to build and inspect the outgoing XML without sending the HTTP request:
 
 ```php
 $xml = Cord::custom('BJFK21041242')
-            ->documents()
-            ->filter('DocumentType', 'ARN')
-            ->inspect();
+    ->withDocuments()
+    ->filter('DocumentType', 'ARN')
+    ->inspect();
 
 return response($xml, 200, ['Content-Type' => 'application/xml']);
 ```
-
-
 
 ## Testing
 
 ```bash
 composer test
+```
+
+### Manual staff test
+
+For controlled manual testing, Cord includes a local runner script that builds the staff payload and only sends it when you explicitly opt in.
+
+1. Create a local `.env` from `.env.example` and fill in your connection details.
+2. Copy `resources/manual/staff-payload.example.php` to `resources/manual/staff-payload.local.php`.
+3. Edit the local payload file with the staff data you want to test.
+4. Run an inspect-only dry run first:
+
+```bash
+composer manual-staff-test -- --connection=NTG_TRN --company=CPH
+```
+
+That prints the exact XML and does not send anything.
+
+When you are ready to post the request, run:
+
+```bash
+composer manual-staff-test -- --connection=NTG_TRN --company=CPH --send
+```
+
+Example local `.env`:
+
+```env
+CORD_URL=https://demo1trnservices.example.invalid/eAdaptor
+CORD_USERNAME=your-eadapter-user
+CORD_PASSWORD=xxxx
+```
+
+The runner derives `EnterpriseID=XXX` and `ServerID=TRN` from that URL and uses them in the native `DataContext`.
+
+You can still override the derived native context per run if needed:
+
+```bash
+composer manual-staff-test -- \
+  --connection=MY_TRN \
+  --company=CPH \
+  --enterprise=XXX \
+  --server=TRN
 ```
 
 ## Changelog

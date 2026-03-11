@@ -13,6 +13,7 @@ class NativeOrganizationUpdate extends NativeRequest
     {
 
         $schema = [
+            'Header' => $this->cord->nativeHeader(),
             'Body' => [
                 'Organization' => [
                     'OrgHeader' => [

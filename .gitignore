@@ -1,4 +1,8 @@
+.env
+.env.*
+!.env.example
 .idea
+.phpunit.cache
 .phpunit.result.cache
 build
 composer.lock
@@ -6,6 +10,7 @@ coverage
 docs
 phpunit.xml
 phpstan.neon
+resources/manual/*.local.php
 testbench.yaml
 vendor
 node_modules

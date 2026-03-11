@@ -20,6 +20,14 @@ return [
         ],
     ],
 
-    //Add more connections here if you need to connect to multiple CargoWise One eAdapters.
+    'NTG_TRN' => [
+        'eadapter_connection' => [
+            'url' => env('CORD_URL', ''),
+            'username' => env('CORD_USERNAME', ''),
+            'password' => env('CORD_PASSWORD', ''),
+        ],
+    ],
+
+    // Add more connections here if you need to connect to multiple CargoWise One eAdapters.
 
 ];

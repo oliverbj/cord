@@ -337,7 +337,7 @@ Common fluent setters:
 - `withCompany('CPH')` is required for native staff create/update requests.
 - `password(...)` automatically sets `ChangePasswordAtNextLogin` to `true`.
 - new staff create payloads automatically include `IsOperational=true`.
-- `replaceGroups([...])` and `addGroup(...)` are available for explicit group semantics.
+- `replaceGroups([...])`, `addGroup(...)`, and `removeGroup(...)` are available for explicit group semantics.
 - `withPayload([...])` can be used as a passthrough for CargoWise fields not yet wrapped by dedicated methods.
 - `toPayload()` returns the compiled staff payload without sending a request.
 
@@ -367,6 +367,8 @@ Cord::withCompany('CPH')
     ->email('updated@example.com')
     ->branch('CPH')
     ->department('OPS')
+    ->removeGroup('OLDOPS')
+    ->addGroup('NEWOPS')
     ->phone('+4511223344')
     ->country('DK')
     ->withPayload([

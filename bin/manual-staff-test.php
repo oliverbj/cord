@@ -174,6 +174,15 @@ try {
         $builder->replaceGroups($payload['groups']);
     }
 
+    $groupsToRemove = $payload['groupsToRemove'] ?? $payload['removeGroups'] ?? null;
+    if (is_array($groupsToRemove)) {
+        foreach ($groupsToRemove as $groupCode) {
+            if (is_string($groupCode)) {
+                $builder->removeGroup($groupCode);
+            }
+        }
+    }
+
     if (isset($payload['attributes']) && is_array($payload['attributes'])) {
         $builder->withPayload($payload['attributes']);
     }

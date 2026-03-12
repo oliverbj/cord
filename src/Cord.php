@@ -524,6 +524,31 @@ class Cord
     }
 
     /**
+     * Remove a single group membership from an existing staff member.
+     *
+     * This emits a `GlbGroupLink` row with `Action="DELETE"` in update payloads.
+     *
+     * Example:
+     * `->removeGroup('OPS')`
+     */
+    public function removeGroup(string $code): self
+    {
+        $this->assertStaffBuilderContext('removeGroup');
+
+        if ($this->staffIntent !== 'update') {
+            throw new \Exception('removeGroup() is only supported for staff update() requests.');
+        }
+
+        if (! isset($this->staffDraft['groupsToRemove']) || ! is_array($this->staffDraft['groupsToRemove'])) {
+            $this->staffDraft['groupsToRemove'] = [];
+        }
+
+        $this->staffDraft['groupsToRemove'][] = $code;
+
+        return $this;
+    }
+
+    /**
      * Merge raw CargoWise payload attributes into the staff payload.
      *
      * Use this as an escape hatch for fields that do not have dedicated
@@ -668,6 +693,13 @@ class Cord
                     'required_for' => [],
                     'description' => 'Replace all group memberships.',
                     'example' => "->replaceGroups(['ADM', 'OPS'])",
+                ],
+                [
+                    'name' => 'removeGroup',
+                    'parameters' => ['code' => 'string'],
+                    'required_for' => ['update'],
+                    'description' => 'Remove one group membership using Action=DELETE.',
+                    'example' => "->removeGroup('OPS')",
                 ],
                 [
                     'name' => 'withPayload',
@@ -1603,6 +1635,23 @@ class Cord
             $payload['CountryCode'] = $this->normalizeStaffReference($staffDetails['country'], 'RefCountry');
         }
 
+        $groupsToMerge = [];
+        if (array_key_exists('groups', $staffDetails)) {
+            $groupsToMerge = $this->normalizeStaffGroups($staffDetails['groups'] ?? []);
+        }
+
+        $groupsToDelete = [];
+        if (array_key_exists('groupsToRemove', $staffDetails)) {
+            $groupsToDelete = $this->normalizeStaffGroups($staffDetails['groupsToRemove'] ?? [], 'DELETE');
+        }
+
+        $groups = array_values(array_merge($groupsToMerge, $groupsToDelete));
+        if ($groups !== []) {
+            $payload['GlbGroupLinkCollection'] = [
+                'GlbGroupLink' => count($groups) === 1 ? $groups[0] : $groups,
+            ];
+        }
+
         return array_replace_recursive($payload, $staffDetails['attributes'] ?? []);
     }
 
@@ -1658,6 +1707,14 @@ class Cord
             foreach ($payload['groups'] as $index => $groupCode) {
                 if (! is_string($groupCode)) {
                     $errors['groups.'.$index] = ['Group codes must be strings.'];
+                }
+            }
+        }
+
+        if (array_key_exists('groupsToRemove', $payload) && is_array($payload['groupsToRemove'])) {
+            foreach ($payload['groupsToRemove'] as $index => $groupCode) {
+                if (! is_string($groupCode)) {
+                    $errors['groupsToRemove.'.$index] = ['Group codes must be strings.'];
                 }
             }
         }
@@ -1762,19 +1819,19 @@ class Cord
         ];
     }
 
-    private function normalizeStaffGroups(array $groups): array
+    private function normalizeStaffGroups(array $groups, string $defaultAction = 'MERGE'): array
     {
         if ($groups !== [] && array_keys($groups) !== range(0, count($groups) - 1)) {
             $groups = [$groups];
         }
 
-        return array_map(function ($group) {
+        return array_map(function ($group) use ($defaultAction) {
             if (is_string($group)) {
                 $group = ['code' => $group];
             }
 
             return [
-                '_attributes' => ['Action' => $group['action'] ?? 'MERGE'],
+                '_attributes' => ['Action' => $group['action'] ?? $defaultAction],
                 'MembershipType' => $group['membershipType'] ?? 'UDF',
                 'SkillLevel' => (string) ($group['skillLevel'] ?? 0),
                 'GlbGroup' => [

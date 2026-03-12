@@ -266,6 +266,18 @@ it('forces ChangePasswordAtNextLogin when password is set', function () {
         ->toContain('<ChangePasswordAtNextLogin>true</ChangePasswordAtNextLogin>');
 });
 
+it('can remove a group on staff update using Action DELETE', function () {
+    $xml = Cord::withCompany('CPH')
+        ->staff('BVO')
+        ->update()
+        ->removeGroup('OPS')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<GlbGroupLink Action="DELETE">')
+        ->toContain('<Code>OPS</Code>');
+});
+
 it('returns deterministic validation errors for fluent staff update', function () {
     $errors = null;
 
@@ -324,5 +336,10 @@ it('exposes structured staff method metadata via describe', function () {
             'name' => 'replaceGroups',
             'parameters' => ['groups' => 'string[]'],
             'required_for' => [],
+        ])
+        ->and(collect($description['methods'])->firstWhere('name', 'removeGroup'))->toMatchArray([
+            'name' => 'removeGroup',
+            'parameters' => ['code' => 'string'],
+            'required_for' => ['update'],
         ]);
 });

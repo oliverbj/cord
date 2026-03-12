@@ -2,21 +2,11 @@
 
 namespace Oliverbj\Cord\Tests;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
 use Oliverbj\Cord\CordServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'Oliverbj\\Cord\\Database\\Factories\\'.class_basename($modelName).'Factory'
-        );
-    }
-
     protected function getPackageProviders($app)
     {
         return [
@@ -42,10 +32,5 @@ class TestCase extends Orchestra
             'username' => 'ntg-user',
             'password' => 'ntg-password',
         ]);
-
-        /*
-        $migration = include __DIR__.'/../database/migrations/create_cord_table.php.stub';
-        $migration->up();
-        */
     }
 }

@@ -37,8 +37,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Oliverbj\\Cord\\": "src",
-            "Oliverbj\\Cord\\Database\\Factories\\": "database/factories"
+            "Oliverbj\\Cord\\": "src"
         }
     },
     "autoload-dev": {

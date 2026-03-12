@@ -218,7 +218,7 @@ Native organization updates are anchored on `organization('CODE')`.
 #### Add an address
 
 ```php
-Cord::::organization('SAGFURHEL')
+Cord::organization('SAGFURHEL')
     ->addAddress([
         'code' => 'MAIN STREET NO. 1',
         'addressOne' => 'Main Street',

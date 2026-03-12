@@ -343,3 +343,266 @@ it('exposes structured staff method metadata via describe', function () {
             'required_for' => ['update'],
         ]);
 });
+
+it('builds a one-off quote create payload with empty key', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->serviceLevel('STD')
+        ->incoterm('DAP')
+        ->additionalTerms('Export Only')
+        ->isDomesticFreight(false)
+        ->totalWeight(5000, 'KG')
+        ->totalVolume(19.2, 'M3')
+        ->goodsValue(15000, 'AUD')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<UniversalShipmentRequest>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<PortOfOrigin><Code>AUSYD</Code></PortOfOrigin>')
+        ->toContain('<PortOfDestination><Code>NZAKL</Code></PortOfDestination>')
+        ->toContain('<AdditionalTerms>Export Only</AdditionalTerms>')
+        ->toContain('<IsDomesticFreight>false</IsDomesticFreight>')
+        ->toContain('<GoodsValue>15000</GoodsValue>');
+
+    expect(str_contains($xml, '<Key></Key>') || str_contains($xml, '<Key/>'))->toBeTrue();
+});
+
+it('supports typed addresses and charge lines for one-off quote create', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->clientAddress(fn ($a) => $a
+            ->addressLine1('3 TENTH AVENUE')
+            ->city('OYSTER BAY')
+            ->country('AU')
+            ->organizationCode('AU10IMSYD')
+            ->phone('+61288361212'))
+        ->pickupAddress(fn ($a) => $a
+            ->addressLine1('3 TENTH AVENUE')
+            ->city('OYSTER BAY')
+            ->country('AU'))
+        ->deliveryAddress(fn ($a) => $a
+            ->addressLine1('10 TEST ROAD')
+            ->city('AUCKLAND')
+            ->country('NZ'))
+        ->addChargeLine(fn ($c) => $c
+            ->chargeCode('FRT')
+            ->description('International Freight')
+            ->costAmount('500.0000', 'AUD')
+            ->sellAmount('1500.0000', 'AUD'))
+        ->addChargeLine(fn ($c) => $c
+            ->chargeCode('SURF')
+            ->description('Surcharge Fees')
+            ->costAmount('250.0000', 'NZD')
+            ->sellAmount('300.0000', 'NZD')
+            ->branch('B01', 'Branch 2')
+            ->department('OPS', 'Operations'))
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<AddressType>QuotationClientAddress</AddressType>')
+        ->toContain('<AddressType>OneOffQuotePickupAddress</AddressType>')
+        ->toContain('<AddressType>OneOffQuoteDeliveryAddress</AddressType>')
+        ->toContain('<OrganizationCode>AU10IMSYD</OrganizationCode>')
+        ->toContain('<ChargeCode><Code>FRT</Code></ChargeCode>')
+        ->toContain('<ChargeCode><Code>SURF</Code></ChargeCode>')
+        ->toContain('<CostOSCurrency><Code>AUD</Code></CostOSCurrency>')
+        ->toContain('<SellOSCurrency><Code>AUD</Code></SellOSCurrency>')
+        ->toContain('<CostOSCurrency><Code>NZD</Code></CostOSCurrency>')
+        ->toContain('<SellOSCurrency><Code>NZD</Code></SellOSCurrency>')
+        ->toContain('<Branch><Code>B01</Code><Name>Branch 2</Name></Branch>')
+        ->toContain('<Department><Code>OPS</Code><Name>Operations</Name></Department>');
+
+    expect(substr_count($xml, '<ChargeLine>'))->toBe(2);
+    expect((bool) preg_match('/<JobCosting>.*<Branch><Code>A01<\/Code><\/Branch>.*<Department><Code>FES<\/Code><\/Department>/s', $xml))->toBeTrue();
+});
+
+it('supports attached documents for one-off quote create', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->addAttachedDocument(fn ($d) => $d
+            ->fileName('quote.pdf')
+            ->imageData(base64_encode('quote-data'))
+            ->type('QUO')
+            ->isPublished(true))
+        ->addAttachedDocument(fn ($d) => $d
+            ->fileName('terms.txt')
+            ->imageData(base64_encode('terms'))
+            ->type('TXT'))
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<AttachedDocumentCollection>')
+        ->toContain('<FileName>quote.pdf</FileName>')
+        ->toContain('<Type><Code>QUO</Code></Type>')
+        ->toContain('<IsPublished>true</IsPublished>')
+        ->toContain('<FileName>terms.txt</FileName>')
+        ->toContain('<Type><Code>TXT</Code></Type>');
+
+    expect(substr_count($xml, '<AttachedDocument>'))->toBe(2);
+});
+
+it('supports one-off quote raw payload merge without clobbering fluent fields', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->withPayload([
+            'CustomizedFieldCollection' => [
+                'CustomizedField' => [
+                    'DataType' => 'String',
+                    'Key' => 'Test User',
+                    'Value' => 'Janice Testing',
+                ],
+            ],
+        ])
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<CustomizedFieldCollection>')
+        ->toContain('<Key>Test User</Key>')
+        ->toContain('<Value>Janice Testing</Value>');
+});
+
+it('exposes structured one-off quote method metadata via describe', function () {
+    $description = Cord::oneOffQuote()->describe();
+
+    expect($description['resource'])->toBe('oneOffQuote')
+        ->and($description['actions'])->toBe(['create'])
+        ->and(collect($description['methods'])->firstWhere('name', 'transportMode'))->toMatchArray([
+            'name' => 'transportMode',
+            'required_for' => ['create'],
+        ])
+        ->and(collect($description['methods'])->firstWhere('name', 'addChargeLine'))->toMatchArray([
+            'name' => 'addChargeLine',
+            'required_for' => [],
+        ])
+        ->and(collect($description['methods'])->firstWhere('name', 'addAttachedDocument'))->toMatchArray([
+            'name' => 'addAttachedDocument',
+            'required_for' => [],
+        ]);
+});
+
+it('returns deterministic validation errors for one-off quote create required fields', function () {
+    $errors = null;
+
+    try {
+        Cord::withCompany('CPH')
+            ->oneOffQuote()
+            ->create()
+            ->toPayload();
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'branch' => ['The branch field is required.'],
+        'department' => ['The department field is required.'],
+        'transportMode' => ['The transportMode field is required.'],
+        'portOfOrigin' => ['The portOfOrigin field is required.'],
+        'portOfDestination' => ['The portOfDestination field is required.'],
+    ]);
+});
+
+it('returns deterministic validation errors for one-off quote nested fields', function () {
+    $errors = null;
+
+    try {
+        Cord::withCompany('CPH')
+            ->oneOffQuote()
+            ->create()
+            ->branch('A01')
+            ->department('FES')
+            ->transportMode('SEA')
+            ->portOfOrigin('AUSYD')
+            ->portOfDestination('NZAKL')
+            ->clientAddress(fn ($a) => $a
+                ->addressLine1('3 TENTH AVENUE')
+                ->country('AU'))
+            ->addChargeLine(fn ($c) => $c
+                ->chargeCode('FRT'))
+            ->toPayload();
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'addresses.client.city' => ['The city field is required.'],
+        'chargeLines.0.description' => ['The description field is required.'],
+    ]);
+});
+
+it('returns deterministic validation errors for one-off quote attached documents', function () {
+    $errors = null;
+
+    try {
+        Cord::withCompany('CPH')
+            ->oneOffQuote()
+            ->create()
+            ->branch('A01')
+            ->department('FES')
+            ->transportMode('SEA')
+            ->portOfOrigin('AUSYD')
+            ->portOfDestination('NZAKL')
+            ->addAttachedDocument(fn ($d) => $d
+                ->fileName('quote.pdf'))
+            ->toPayload();
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'attachedDocuments.0.imageData' => ['The imageData field is required.'],
+        'attachedDocuments.0.typeCode' => ['The typeCode field is required.'],
+    ]);
+});
+
+it('requires company context for one-off quote create', function () {
+    $errors = null;
+
+    try {
+        Cord::oneOffQuote()
+            ->create()
+            ->branch('A01')
+            ->department('FES')
+            ->transportMode('SEA')
+            ->portOfOrigin('AUSYD')
+            ->portOfDestination('NZAKL')
+            ->toPayload();
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'company' => ['The company field is required.'],
+    ]);
+});
+
+it('does not support one-off quote update in v1', function () {
+    expect(fn () => Cord::oneOffQuote('00001063')->update())
+        ->toThrow(Exception::class, 'OneOffQuote update() is not implemented yet.');
+});

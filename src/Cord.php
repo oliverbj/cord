@@ -2,6 +2,7 @@
 
 namespace Oliverbj\Cord;
 
+use Closure;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
@@ -9,6 +10,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request as RequestFacade;
 use Illuminate\Validation\ValidationException;
+use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Interfaces\RequestInterface;
@@ -61,9 +65,15 @@ class Cord
 
     public array $staff = [];
 
+    public array $oneOffQuote = [];
+
     protected ?string $staffIntent = null;
 
     protected array $staffDraft = [];
+
+    protected ?string $oneOffQuoteIntent = null;
+
+    protected array $oneOffQuoteDraft = [];
 
     protected ?string $xml = null;
 
@@ -195,6 +205,27 @@ class Cord
     }
 
     /**
+     * Select the CargoWise one-off quote resource.
+     *
+     * Key is optional for create requests.
+     *
+     * Examples:
+     * `->oneOffQuote()`
+     * `->oneOffQuote('00001063')`
+     */
+    public function oneOffQuote(?string $key = null): self
+    {
+        $this->target = DataTarget::OneOffQuote;
+        $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->targetKey = $key;
+        $this->oneOffQuoteIntent = null;
+        $this->oneOffQuoteDraft = [];
+        $this->oneOffQuote = [];
+
+        return $this;
+    }
+
+    /**
      * Determine if the request is for a native request.
      */
     public function organization(?string $code = null): self
@@ -254,6 +285,10 @@ class Cord
             throw new \Exception('Staff get() is not implemented yet. Use staff() endpoints that already support retrieval.');
         }
 
+        if ($this->target === DataTarget::OneOffQuote) {
+            throw new \Exception('OneOffQuote get() is not implemented yet.');
+        }
+
         return $this;
     }
 
@@ -267,14 +302,22 @@ class Cord
      */
     public function create(): self
     {
-        if ($this->target !== DataTarget::Staff) {
-            throw new \Exception('create() is currently implemented for staff only.');
+        if ($this->target === DataTarget::Staff) {
+            $this->staffIntent = 'create';
+            $this->requestType = RequestType::NativeStaffCreation;
+
+            return $this;
         }
 
-        $this->staffIntent = 'create';
-        $this->requestType = RequestType::NativeStaffCreation;
+        if ($this->target === DataTarget::OneOffQuote) {
+            $this->oneOffQuoteIntent = 'create';
+            $this->requestType = RequestType::UniversalShipmentRequest;
+            $this->targetKey = $this->targetKey ?? '';
 
-        return $this;
+            return $this;
+        }
+
+        throw new \Exception('create() is currently implemented for staff and oneOffQuote only.');
     }
 
     /**
@@ -287,18 +330,22 @@ class Cord
      */
     public function update(): self
     {
-        if ($this->target !== DataTarget::Staff) {
-            throw new \Exception('update() is currently implemented for staff only.');
+        if ($this->target === DataTarget::Staff) {
+            $this->staffIntent = 'update';
+            $this->requestType = RequestType::NativeStaffUpdate;
+
+            if ($this->targetKey) {
+                $this->staffDraft['code'] = $this->targetKey;
+            }
+
+            return $this;
         }
 
-        $this->staffIntent = 'update';
-        $this->requestType = RequestType::NativeStaffUpdate;
-
-        if ($this->targetKey) {
-            $this->staffDraft['code'] = $this->targetKey;
+        if ($this->target === DataTarget::OneOffQuote) {
+            throw new \Exception('OneOffQuote update() is not implemented yet.');
         }
 
-        return $this;
+        throw new \Exception('update() is currently implemented for staff only.');
     }
 
     /**
@@ -313,6 +360,10 @@ class Cord
     {
         if ($this->target === DataTarget::Staff) {
             throw new \Exception('Staff delete() is not implemented yet.');
+        }
+
+        if ($this->target === DataTarget::OneOffQuote) {
+            throw new \Exception('OneOffQuote delete() is not implemented yet.');
         }
 
         return $this;
@@ -330,6 +381,10 @@ class Cord
     {
         if ($this->target === DataTarget::Staff) {
             throw new \Exception('Staff upsert() is not implemented yet.');
+        }
+
+        if ($this->target === DataTarget::OneOffQuote) {
+            throw new \Exception('OneOffQuote upsert() is not implemented yet.');
         }
 
         return $this;
@@ -422,6 +477,10 @@ class Cord
      */
     public function branch(string $branch): self
     {
+        if ($this->target === DataTarget::OneOffQuote) {
+            return $this->setOneOffQuoteDraftValue('branch', $branch);
+        }
+
         return $this->setStaffDraftValue('homeBranch', $branch);
     }
 
@@ -435,6 +494,10 @@ class Cord
      */
     public function department(string $department): self
     {
+        if ($this->target === DataTarget::OneOffQuote) {
+            return $this->setOneOffQuoteDraftValue('department', $department);
+        }
+
         return $this->setStaffDraftValue('homeDepartment', $department);
     }
 
@@ -473,6 +536,202 @@ class Cord
     public function addressLine1(string $addressLine1): self
     {
         return $this->setStaffDraftValue('addressOne', $addressLine1);
+    }
+
+    /**
+     * Set one-off quote transport mode.
+     */
+    public function transportMode(string $code): self
+    {
+        $this->assertOneOffQuoteBuilderContext('transportMode');
+
+        $this->oneOffQuoteDraft['transportMode'] = [
+            'code' => $code,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote origin port.
+     */
+    public function portOfOrigin(string $code): self
+    {
+        $this->assertOneOffQuoteBuilderContext('portOfOrigin');
+
+        $this->oneOffQuoteDraft['portOfOrigin'] = [
+            'code' => $code,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote destination port.
+     */
+    public function portOfDestination(string $code): self
+    {
+        $this->assertOneOffQuoteBuilderContext('portOfDestination');
+
+        $this->oneOffQuoteDraft['portOfDestination'] = [
+            'code' => $code,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote service level.
+     */
+    public function serviceLevel(string $code): self
+    {
+        $this->assertOneOffQuoteBuilderContext('serviceLevel');
+
+        $this->oneOffQuoteDraft['serviceLevel'] = [
+            'code' => $code,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote incoterm.
+     */
+    public function incoterm(string $code): self
+    {
+        $this->assertOneOffQuoteBuilderContext('incoterm');
+
+        $this->oneOffQuoteDraft['incoterm'] = [
+            'code' => $code,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote total weight.
+     */
+    public function totalWeight(float|int|string $value, string $unitCode): self
+    {
+        $this->assertOneOffQuoteBuilderContext('totalWeight');
+
+        $this->oneOffQuoteDraft['totalWeight'] = [
+            'value' => $value,
+            'unitCode' => $unitCode,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote total volume.
+     */
+    public function totalVolume(float|int|string $value, string $unitCode): self
+    {
+        $this->assertOneOffQuoteBuilderContext('totalVolume');
+
+        $this->oneOffQuoteDraft['totalVolume'] = [
+            'value' => $value,
+            'unitCode' => $unitCode,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote goods value.
+     */
+    public function goodsValue(float|int|string $amount, string $currencyCode): self
+    {
+        $this->assertOneOffQuoteBuilderContext('goodsValue');
+
+        $this->oneOffQuoteDraft['goodsValue'] = [
+            'amount' => $amount,
+            'currencyCode' => $currencyCode,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Set one-off quote additional terms.
+     */
+    public function additionalTerms(string $value): self
+    {
+        return $this->setOneOffQuoteDraftValue('additionalTerms', $value);
+    }
+
+    /**
+     * Set one-off quote domestic freight flag.
+     */
+    public function isDomesticFreight(bool $value): self
+    {
+        return $this->setOneOffQuoteDraftValue('isDomesticFreight', $value);
+    }
+
+    /**
+     * Set one-off quote client address.
+     */
+    public function clientAddress(Closure $builder): self
+    {
+        return $this->setOneOffQuoteTypedAddress('client', $builder);
+    }
+
+    /**
+     * Set one-off quote pickup address.
+     */
+    public function pickupAddress(Closure $builder): self
+    {
+        return $this->setOneOffQuoteTypedAddress('pickup', $builder);
+    }
+
+    /**
+     * Set one-off quote delivery address.
+     */
+    public function deliveryAddress(Closure $builder): self
+    {
+        return $this->setOneOffQuoteTypedAddress('delivery', $builder);
+    }
+
+    /**
+     * Add a single charge line to the one-off quote.
+     */
+    public function addChargeLine(Closure $builder): self
+    {
+        $this->assertOneOffQuoteBuilderContext('addChargeLine');
+
+        $chargeLineBuilder = new OneOffQuoteChargeLineBuilder;
+        $builder($chargeLineBuilder);
+
+        if (! isset($this->oneOffQuoteDraft['chargeLines']) || ! is_array($this->oneOffQuoteDraft['chargeLines'])) {
+            $this->oneOffQuoteDraft['chargeLines'] = [];
+        }
+
+        $this->oneOffQuoteDraft['chargeLines'][] = $chargeLineBuilder->toArray();
+
+        return $this;
+    }
+
+    /**
+     * Append an attached document to a one-off quote payload.
+     *
+     * Example:
+     * `->addAttachedDocument(fn ($d) => $d->fileName('quote.pdf')->imageData($base64)->type('QUO'))`
+     */
+    public function addAttachedDocument(Closure $builder): self
+    {
+        $this->assertOneOffQuoteBuilderContext('addAttachedDocument');
+
+        $documentBuilder = new OneOffQuoteAttachedDocumentBuilder;
+        $builder($documentBuilder);
+
+        if (! isset($this->oneOffQuoteDraft['attachedDocuments']) || ! is_array($this->oneOffQuoteDraft['attachedDocuments'])) {
+            $this->oneOffQuoteDraft['attachedDocuments'] = [];
+        }
+
+        $this->oneOffQuoteDraft['attachedDocuments'][] = $documentBuilder->toArray();
+
+        return $this;
     }
 
     /**
@@ -559,14 +818,25 @@ class Cord
      */
     public function withPayload(array $payload): self
     {
-        $this->assertStaffBuilderContext('withPayload');
+        if ($this->target === DataTarget::Staff && in_array($this->staffIntent, ['create', 'update'], true)) {
+            $this->staffDraft['attributes'] = array_replace_recursive(
+                $this->staffDraft['attributes'] ?? [],
+                $payload
+            );
 
-        $this->staffDraft['attributes'] = array_replace_recursive(
-            $this->staffDraft['attributes'] ?? [],
-            $payload
-        );
+            return $this;
+        }
 
-        return $this;
+        if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
+            $this->oneOffQuoteDraft['attributes'] = array_replace_recursive(
+                $this->oneOffQuoteDraft['attributes'] ?? [],
+                $payload
+            );
+
+            return $this;
+        }
+
+        throw new \Exception('withPayload() requires a supported builder context.');
     }
 
     /**
@@ -579,7 +849,12 @@ class Cord
      */
     public function toPayload(): array
     {
+        $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
+
+        if ($this->target === DataTarget::OneOffQuote) {
+            return $this->oneOffQuote;
+        }
 
         return $this->staff;
     }
@@ -595,8 +870,157 @@ class Cord
      */
     public function describe(): array
     {
+        if ($this->target === DataTarget::OneOffQuote) {
+            return [
+                'resource' => 'oneOffQuote',
+                'actions' => ['create'],
+                'methods' => [
+                    [
+                        'name' => 'create',
+                        'parameters' => [],
+                        'required_for' => [],
+                        'description' => 'Set create intent for one-off quote.',
+                        'example' => '->create()',
+                    ],
+                    [
+                        'name' => 'branch',
+                        'parameters' => ['branch' => 'string'],
+                        'required_for' => ['create'],
+                        'description' => 'Set quote branch code.',
+                        'example' => "->branch('A01')",
+                    ],
+                    [
+                        'name' => 'department',
+                        'parameters' => ['department' => 'string'],
+                        'required_for' => ['create'],
+                        'description' => 'Set quote department code.',
+                        'example' => "->department('FES')",
+                    ],
+                    [
+                        'name' => 'transportMode',
+                        'parameters' => ['code' => 'string'],
+                        'required_for' => ['create'],
+                        'description' => 'Set quote transport mode.',
+                        'example' => "->transportMode('SEA')",
+                    ],
+                    [
+                        'name' => 'portOfOrigin',
+                        'parameters' => ['code' => 'string'],
+                        'required_for' => ['create'],
+                        'description' => 'Set origin port.',
+                        'example' => "->portOfOrigin('AUSYD')",
+                    ],
+                    [
+                        'name' => 'portOfDestination',
+                        'parameters' => ['code' => 'string'],
+                        'required_for' => ['create'],
+                        'description' => 'Set destination port.',
+                        'example' => "->portOfDestination('NZAKL')",
+                    ],
+                    [
+                        'name' => 'serviceLevel',
+                        'parameters' => ['code' => 'string'],
+                        'required_for' => [],
+                        'description' => 'Set service level.',
+                        'example' => "->serviceLevel('STD')",
+                    ],
+                    [
+                        'name' => 'incoterm',
+                        'parameters' => ['code' => 'string'],
+                        'required_for' => [],
+                        'description' => 'Set shipment incoterm.',
+                        'example' => "->incoterm('DAP')",
+                    ],
+                    [
+                        'name' => 'totalWeight',
+                        'parameters' => ['value' => 'float|int|string', 'unitCode' => 'string'],
+                        'required_for' => [],
+                        'description' => 'Set total weight and unit.',
+                        'example' => "->totalWeight(5000, 'KG')",
+                    ],
+                    [
+                        'name' => 'totalVolume',
+                        'parameters' => ['value' => 'float|int|string', 'unitCode' => 'string'],
+                        'required_for' => [],
+                        'description' => 'Set total volume and unit.',
+                        'example' => "->totalVolume(19.2, 'M3')",
+                    ],
+                    [
+                        'name' => 'goodsValue',
+                        'parameters' => ['amount' => 'float|int|string', 'currencyCode' => 'string'],
+                        'required_for' => [],
+                        'description' => 'Set goods value and currency.',
+                        'example' => "->goodsValue(15000, 'AUD')",
+                    ],
+                    [
+                        'name' => 'additionalTerms',
+                        'parameters' => ['value' => 'string'],
+                        'required_for' => [],
+                        'description' => 'Set additional quote terms.',
+                        'example' => "->additionalTerms('Export Only')",
+                    ],
+                    [
+                        'name' => 'isDomesticFreight',
+                        'parameters' => ['value' => 'bool'],
+                        'required_for' => [],
+                        'description' => 'Set domestic freight flag.',
+                        'example' => '->isDomesticFreight(false)',
+                    ],
+                    [
+                        'name' => 'clientAddress',
+                        'parameters' => ['builder' => 'Closure'],
+                        'required_for' => [],
+                        'description' => 'Set client address.',
+                        'example' => '->clientAddress(fn ($a) => $a->addressLine1(...))',
+                    ],
+                    [
+                        'name' => 'pickupAddress',
+                        'parameters' => ['builder' => 'Closure'],
+                        'required_for' => [],
+                        'description' => 'Set pickup address.',
+                        'example' => '->pickupAddress(fn ($a) => $a->addressLine1(...))',
+                    ],
+                    [
+                        'name' => 'deliveryAddress',
+                        'parameters' => ['builder' => 'Closure'],
+                        'required_for' => [],
+                        'description' => 'Set delivery address.',
+                        'example' => '->deliveryAddress(fn ($a) => $a->addressLine1(...))',
+                    ],
+                    [
+                        'name' => 'addChargeLine',
+                        'parameters' => ['builder' => 'Closure'],
+                        'required_for' => [],
+                        'description' => 'Append a quote charge line.',
+                        'example' => '->addChargeLine(fn ($c) => $c->chargeCode(...)->description(...))',
+                    ],
+                    [
+                        'name' => 'addAttachedDocument',
+                        'parameters' => ['builder' => 'Closure'],
+                        'required_for' => [],
+                        'description' => 'Append a quote attached document.',
+                        'example' => '->addAttachedDocument(fn ($d) => $d->fileName(...)->imageData(...)->type(...))',
+                    ],
+                    [
+                        'name' => 'withPayload',
+                        'parameters' => ['payload' => 'array'],
+                        'required_for' => [],
+                        'description' => 'Merge raw one-off quote payload fields.',
+                        'example' => "->withPayload(['CustomFieldX' => 'foo'])",
+                    ],
+                    [
+                        'name' => 'toPayload',
+                        'parameters' => [],
+                        'required_for' => [],
+                        'description' => 'Compile and return payload without sending.',
+                        'example' => '->toPayload()',
+                    ],
+                ],
+            ];
+        }
+
         if ($this->target !== DataTarget::Staff) {
-            throw new \Exception('describe() is currently implemented for staff only. Call staff() first.');
+            throw new \Exception('describe() is currently implemented for staff and oneOffQuote only. Call staff() or oneOffQuote() first.');
         }
 
         return [
@@ -1146,6 +1570,31 @@ class Cord
 
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
+        if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
+            if (! isset($this->oneOffQuoteDraft['attachedDocuments']) || ! is_array($this->oneOffQuoteDraft['attachedDocuments'])) {
+                $this->oneOffQuoteDraft['attachedDocuments'] = [];
+            }
+
+            $document = [
+                'fileName' => $name,
+                'imageData' => $file_contents,
+                'typeCode' => $type,
+                'isPublished' => $isPublished,
+            ];
+
+            if ($description !== '') {
+                $document['attributes'] = [
+                    'Type' => [
+                        'Description' => $description,
+                    ],
+                ];
+            }
+
+            $this->oneOffQuoteDraft['attachedDocuments'][] = $document;
+
+            return $this;
+        }
+
         $this->requestType = RequestType::UniversalEvent;
 
         $this->addEvent(date('c'), 'DIM', 'Document imported automatically from XML');
@@ -1208,6 +1657,7 @@ class Cord
      */
     public function run(): mixed
     {
+        $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
         $this->xml = $this->buildRequest()->xml();
 
@@ -1219,6 +1669,7 @@ class Cord
      */
     public function inspect(): string
     {
+        $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
         $this->checkForErrors();
         $this->xml = $this->buildRequest()->xml();
@@ -1238,6 +1689,7 @@ class Cord
 
     protected function buildRequest(): RequestInterface
     {
+        $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
 
         return match ($this->requestType) {
@@ -1254,7 +1706,12 @@ class Cord
 
     private function checkForErrors()
     {
+        $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
+
+        if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
+            return;
+        }
 
         if (! $this->targetKey && ! in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval])) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
@@ -1655,6 +2112,417 @@ class Cord
         return array_replace_recursive($payload, $staffDetails['attributes'] ?? []);
     }
 
+    private function setOneOffQuoteTypedAddress(string $type, Closure $builder): self
+    {
+        $this->assertOneOffQuoteBuilderContext($type.'Address');
+
+        $addressBuilder = new OneOffQuoteAddressBuilder;
+        $builder($addressBuilder);
+
+        if (! isset($this->oneOffQuoteDraft['addresses']) || ! is_array($this->oneOffQuoteDraft['addresses'])) {
+            $this->oneOffQuoteDraft['addresses'] = [];
+        }
+
+        $this->oneOffQuoteDraft['addresses'][$type] = $addressBuilder->toArray();
+
+        return $this;
+    }
+
+    private function syncFluentOneOffQuotePayload(): void
+    {
+        if ($this->target !== DataTarget::OneOffQuote || ! $this->oneOffQuoteIntent) {
+            return;
+        }
+
+        if ($this->oneOffQuoteIntent !== 'create') {
+            return;
+        }
+
+        $this->validateFluentOneOffQuoteCreatePayload($this->oneOffQuoteDraft);
+
+        $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->target = DataTarget::OneOffQuote;
+        $this->targetKey = $this->targetKey ?? '';
+        $this->oneOffQuote = $this->buildOneOffQuotePayload($this->oneOffQuoteDraft);
+    }
+
+    private function validateFluentOneOffQuoteCreatePayload(array $payload): void
+    {
+        $errors = [];
+
+        if (! is_string($this->company) || trim($this->company) === '') {
+            $errors['company'] = ['The company field is required.'];
+        }
+
+        foreach (['branch', 'department'] as $requiredField) {
+            $value = $payload[$requiredField] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                $errors[$requiredField] = ['The '.$requiredField.' field is required.'];
+            }
+        }
+
+        foreach (['transportMode', 'portOfOrigin', 'portOfDestination'] as $requiredField) {
+            $value = $payload[$requiredField]['code'] ?? null;
+
+            if (! is_string($value) || trim($value) === '') {
+                $errors[$requiredField] = ['The '.$requiredField.' field is required.'];
+            }
+        }
+
+        $addressLabels = [
+            'client' => 'addresses.client',
+            'pickup' => 'addresses.pickup',
+            'delivery' => 'addresses.delivery',
+        ];
+
+        foreach ($addressLabels as $addressKey => $errorPrefix) {
+            if (! isset($payload['addresses'][$addressKey]) || ! is_array($payload['addresses'][$addressKey])) {
+                continue;
+            }
+
+            $address = $payload['addresses'][$addressKey];
+            foreach (['address1', 'city', 'countryCode'] as $requiredField) {
+                $value = $address[$requiredField] ?? null;
+                if (! is_string($value) || trim($value) === '') {
+                    $errors[$errorPrefix.'.'.$requiredField] = ['The '.$requiredField.' field is required.'];
+                }
+            }
+        }
+
+        if (isset($payload['chargeLines']) && is_array($payload['chargeLines'])) {
+            foreach ($payload['chargeLines'] as $index => $chargeLine) {
+                foreach (['chargeCode', 'description'] as $requiredField) {
+                    $value = $chargeLine[$requiredField] ?? null;
+                    if (! is_string($value) || trim($value) === '') {
+                        $errors['chargeLines.'.$index.'.'.$requiredField] = ['The '.$requiredField.' field is required.'];
+                    }
+                }
+            }
+        }
+
+        if (isset($payload['attachedDocuments']) && is_array($payload['attachedDocuments'])) {
+            foreach ($payload['attachedDocuments'] as $index => $document) {
+                foreach (['fileName', 'imageData', 'typeCode'] as $requiredField) {
+                    $value = $document[$requiredField] ?? null;
+                    if (! is_string($value) || trim($value) === '') {
+                        $errors['attachedDocuments.'.$index.'.'.$requiredField] = ['The '.$requiredField.' field is required.'];
+                    }
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function buildOneOffQuotePayload(array $quoteDetails): array
+    {
+        $payload = [];
+
+        if (isset($quoteDetails['transportMode'])) {
+            $payload['TransportMode'] = [
+                'Code' => $quoteDetails['transportMode']['code'],
+            ];
+        }
+
+        if (isset($quoteDetails['portOfOrigin'])) {
+            $payload['PortOfOrigin'] = [
+                'Code' => $quoteDetails['portOfOrigin']['code'],
+            ];
+        }
+
+        if (isset($quoteDetails['portOfDestination'])) {
+            $payload['PortOfDestination'] = [
+                'Code' => $quoteDetails['portOfDestination']['code'],
+            ];
+        }
+
+        if (isset($quoteDetails['serviceLevel'])) {
+            $payload['ServiceLevel'] = [
+                'Code' => $quoteDetails['serviceLevel']['code'],
+            ];
+        }
+
+        if (isset($quoteDetails['incoterm'])) {
+            $payload['ShipmentIncoTerm'] = [
+                'Code' => $quoteDetails['incoterm']['code'],
+            ];
+        }
+
+        if (isset($quoteDetails['totalWeight'])) {
+            $payload['TotalWeight'] = (string) $quoteDetails['totalWeight']['value'];
+            $payload['TotalWeightUnit'] = [
+                'Code' => $quoteDetails['totalWeight']['unitCode'],
+            ];
+        }
+
+        if (isset($quoteDetails['totalVolume'])) {
+            $payload['TotalVolume'] = (string) $quoteDetails['totalVolume']['value'];
+            $payload['TotalVolumeUnit'] = [
+                'Code' => $quoteDetails['totalVolume']['unitCode'],
+            ];
+        }
+
+        if (isset($quoteDetails['goodsValue'])) {
+            $payload['GoodsValue'] = (string) $quoteDetails['goodsValue']['amount'];
+            $payload['GoodsValueCurrency'] = [
+                'Code' => $quoteDetails['goodsValue']['currencyCode'],
+            ];
+        }
+
+        if (array_key_exists('additionalTerms', $quoteDetails)) {
+            $payload['AdditionalTerms'] = $quoteDetails['additionalTerms'];
+        }
+
+        if (array_key_exists('isDomesticFreight', $quoteDetails)) {
+            $payload['IsDomesticFreight'] = $this->normalizeBoolean((bool) $quoteDetails['isDomesticFreight']);
+        }
+
+        if (isset($quoteDetails['branch'])) {
+            $payload['JobCosting']['Branch'] = [
+                'Code' => $quoteDetails['branch'],
+            ];
+        }
+
+        if (isset($quoteDetails['department'])) {
+            $payload['JobCosting']['Department'] = [
+                'Code' => $quoteDetails['department'],
+            ];
+        }
+
+        if (isset($quoteDetails['chargeLines']) && is_array($quoteDetails['chargeLines']) && $quoteDetails['chargeLines'] !== []) {
+            $lineDefaults = [
+                'branch' => $quoteDetails['branch'] ?? null,
+                'department' => $quoteDetails['department'] ?? null,
+                'currencyCode' => $quoteDetails['goodsValue']['currencyCode'] ?? null,
+            ];
+
+            $chargeLines = array_map(
+                fn (array $line) => $this->buildOneOffQuoteChargeLinePayload($line, $lineDefaults),
+                $quoteDetails['chargeLines']
+            );
+
+            $payload['JobCosting']['ChargeLineCollection'] = [
+                'ChargeLine' => count($chargeLines) === 1 ? $chargeLines[0] : $chargeLines,
+            ];
+        }
+
+        if (isset($quoteDetails['attachedDocuments']) && is_array($quoteDetails['attachedDocuments']) && $quoteDetails['attachedDocuments'] !== []) {
+            $documents = array_map(
+                fn (array $document) => $this->buildOneOffQuoteAttachedDocumentPayload($document),
+                $quoteDetails['attachedDocuments']
+            );
+
+            $payload['AttachedDocumentCollection'] = [
+                'AttachedDocument' => count($documents) === 1 ? $documents[0] : $documents,
+            ];
+        }
+
+        $addressTypeMap = [
+            'client' => 'QuotationClientAddress',
+            'pickup' => 'OneOffQuotePickupAddress',
+            'delivery' => 'OneOffQuoteDeliveryAddress',
+        ];
+
+        $addresses = [];
+        foreach ($addressTypeMap as $addressKey => $addressType) {
+            if (! isset($quoteDetails['addresses'][$addressKey]) || ! is_array($quoteDetails['addresses'][$addressKey])) {
+                continue;
+            }
+
+            $addresses[] = $this->buildOneOffQuoteAddressPayload($addressType, $quoteDetails['addresses'][$addressKey]);
+        }
+
+        if ($addresses !== []) {
+            $payload['OrganizationAddressCollection'] = [
+                'OrganizationAddress' => count($addresses) === 1 ? $addresses[0] : $addresses,
+            ];
+        }
+
+        return array_replace_recursive($payload, $quoteDetails['attributes'] ?? []);
+    }
+
+    private function buildOneOffQuoteAddressPayload(string $addressType, array $address): array
+    {
+        $payload = [
+            'AddressType' => $addressType,
+            'Address1' => $address['address1'],
+            'City' => $address['city'],
+            'Country' => [
+                'Code' => $address['countryCode'],
+            ],
+            'AddressOverride' => $this->normalizeBoolean((bool) ($address['addressOverride'] ?? false)),
+        ];
+
+        foreach ([
+            'address2' => 'Address2',
+            'addressShortCode' => 'AddressShortCode',
+            'companyName' => 'CompanyName',
+            'email' => 'Email',
+            'fax' => 'Fax',
+            'govRegNum' => 'GovRegNum',
+            'organizationCode' => 'OrganizationCode',
+            'phone' => 'Phone',
+            'postcode' => 'Postcode',
+        ] as $source => $target) {
+            if (isset($address[$source])) {
+                $payload[$target] = $address[$source];
+            }
+        }
+
+        if (is_string($address['govRegNumTypeCode'] ?? null) && $address['govRegNumTypeCode'] !== '') {
+            $payload['GovRegNumType'] = [
+                'Code' => $address['govRegNumTypeCode'],
+            ];
+
+            if (is_string($address['govRegNumTypeDescription'] ?? null) && $address['govRegNumTypeDescription'] !== '') {
+                $payload['GovRegNumType']['Description'] = $address['govRegNumTypeDescription'];
+            }
+        }
+
+        if (is_string($address['portCode'] ?? null) && $address['portCode'] !== '') {
+            $payload['Port'] = [
+                'Code' => $address['portCode'],
+            ];
+
+            if (is_string($address['portName'] ?? null) && $address['portName'] !== '') {
+                $payload['Port']['Name'] = $address['portName'];
+            }
+        }
+
+        if (is_string($address['screeningStatusCode'] ?? null) && $address['screeningStatusCode'] !== '') {
+            $payload['ScreeningStatus'] = [
+                'Code' => $address['screeningStatusCode'],
+            ];
+
+            if (is_string($address['screeningStatusDescription'] ?? null) && $address['screeningStatusDescription'] !== '') {
+                $payload['ScreeningStatus']['Description'] = $address['screeningStatusDescription'];
+            }
+        }
+
+        if (is_string($address['stateCode'] ?? null) && $address['stateCode'] !== '') {
+            if (is_string($address['stateDescription'] ?? null) && $address['stateDescription'] !== '') {
+                $payload['State'] = [
+                    '_attributes' => ['Description' => $address['stateDescription']],
+                    '_value' => $address['stateCode'],
+                ];
+            } else {
+                $payload['State'] = $address['stateCode'];
+            }
+        }
+
+        return array_replace_recursive($payload, $address['attributes'] ?? []);
+    }
+
+    private function buildOneOffQuoteAttachedDocumentPayload(array $document): array
+    {
+        $payload = [
+            'FileName' => $document['fileName'],
+            'ImageData' => $document['imageData'],
+            'Type' => [
+                'Code' => $document['typeCode'],
+            ],
+            'IsPublished' => $this->normalizeBoolean((bool) ($document['isPublished'] ?? false)),
+        ];
+
+        return array_replace_recursive($payload, $document['attributes'] ?? []);
+    }
+
+    private function buildOneOffQuoteChargeLinePayload(array $chargeLine, array $lineDefaults): array
+    {
+        $costLocalAmount = (string) ($chargeLine['costAmount']['value'] ?? '0.0000');
+        $sellLocalAmount = (string) ($chargeLine['sellAmount']['value'] ?? '0.0000');
+
+        $payload = [
+            'APCashAdvanceRequired' => 'false',
+            'ARCashAdvanceRequired' => 'false',
+            'CostExchangeRate' => '1.000000000',
+            'CostIsPosted' => 'false',
+            'CostLocalAmount' => $costLocalAmount,
+            'CostOSAmount' => $costLocalAmount,
+            'CostOSGSTVATAmount' => '0',
+            'CostRatingBehaviour' => [
+                'Code' => 'NEW',
+                'Description' => 'Create new Charge during AutoRating',
+            ],
+            'Description' => $chargeLine['description'],
+            'SellExchangeRate' => '1.000000000',
+            'SellInvoiceType' => 'FIN',
+            'SellIsPosted' => 'false',
+            'SellLocalAmount' => $sellLocalAmount,
+            'SellOSAmount' => $sellLocalAmount,
+            'SellOSGSTVATAmount' => '0',
+            'SellRatingBehaviour' => [
+                'Code' => 'NEW',
+                'Description' => 'Create new Charge during AutoRating',
+            ],
+            'ChargeCode' => [
+                'Code' => $chargeLine['chargeCode'],
+            ],
+        ];
+
+        if (is_string($chargeLine['chargeCodeGroup'] ?? null) && $chargeLine['chargeCodeGroup'] !== '') {
+            $payload['ChargeCodeGroup'] = [
+                'Code' => $chargeLine['chargeCodeGroup'],
+            ];
+
+            if (is_string($chargeLine['chargeCodeGroupDescription'] ?? null) && $chargeLine['chargeCodeGroupDescription'] !== '') {
+                $payload['ChargeCodeGroup']['Description'] = $chargeLine['chargeCodeGroupDescription'];
+            }
+        }
+
+        $branchCode = $chargeLine['branchCode'] ?? $lineDefaults['branch'] ?? null;
+        if (is_string($branchCode) && $branchCode !== '') {
+            $payload['Branch'] = [
+                'Code' => $branchCode,
+            ];
+
+            if (is_string($chargeLine['branchName'] ?? null) && $chargeLine['branchName'] !== '') {
+                $payload['Branch']['Name'] = $chargeLine['branchName'];
+            }
+        }
+
+        $departmentCode = $chargeLine['departmentCode'] ?? $lineDefaults['department'] ?? null;
+        if (is_string($departmentCode) && $departmentCode !== '') {
+            $payload['Department'] = [
+                'Code' => $departmentCode,
+            ];
+
+            if (is_string($chargeLine['departmentName'] ?? null) && $chargeLine['departmentName'] !== '') {
+                $payload['Department']['Name'] = $chargeLine['departmentName'];
+            }
+        }
+
+        if (is_string($chargeLine['debtorKey'] ?? null) && $chargeLine['debtorKey'] !== '') {
+            $payload['Debtor'] = [
+                'Type' => $chargeLine['debtorType'] ?? 'Organization',
+                'Key' => $chargeLine['debtorKey'],
+            ];
+        }
+
+        if (array_key_exists('displaySequence', $chargeLine)) {
+            $payload['DisplaySequence'] = (string) $chargeLine['displaySequence'];
+        }
+
+        $costCurrencyCode = $chargeLine['costAmount']['currencyCode'] ?? $lineDefaults['currencyCode'] ?? null;
+        if (is_string($costCurrencyCode) && $costCurrencyCode !== '') {
+            $payload['CostOSCurrency'] = [
+                'Code' => $costCurrencyCode,
+            ];
+        }
+
+        $sellCurrencyCode = $chargeLine['sellAmount']['currencyCode'] ?? $costCurrencyCode ?? null;
+        if (is_string($sellCurrencyCode) && $sellCurrencyCode !== '') {
+            $payload['SellOSCurrency'] = [
+                'Code' => $sellCurrencyCode,
+            ];
+        }
+
+        return array_replace_recursive($payload, $chargeLine['attributes'] ?? []);
+    }
+
     private function syncFluentStaffPayload(): void
     {
         if ($this->target !== DataTarget::Staff || ! $this->staffIntent) {
@@ -1763,6 +2631,21 @@ class Cord
         if ($isCode) {
             $this->targetKey = is_string($value) ? $value : null;
         }
+
+        return $this;
+    }
+
+    private function assertOneOffQuoteBuilderContext(string $method): void
+    {
+        if ($this->target !== DataTarget::OneOffQuote || $this->oneOffQuoteIntent !== 'create') {
+            throw new \Exception("{$method}() requires oneOffQuote()->create() context.");
+        }
+    }
+
+    private function setOneOffQuoteDraftValue(string $field, mixed $value): self
+    {
+        $this->assertOneOffQuoteBuilderContext($field);
+        $this->oneOffQuoteDraft[$field] = $value;
 
         return $this;
     }

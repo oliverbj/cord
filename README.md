@@ -15,6 +15,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Usage](#usage)
 - [Documents / eDocs](#documents--edocs)
 - [Native](#native)
+- [One Off Quotes](#one-off-quotes)
 - [Multiple Connections](#multiple-connections)
 - [Debugging](#debugging)
 - [Testing](#testing)
@@ -74,6 +75,7 @@ Cord currently supports these main targets:
 
 - Bookings via `booking()`
 - Shipments via `shipment()`
+- One-off quotes via `oneOffQuote()`
 - Customs declarations via `custom()`
 - Organizations via `organization()`
 - Companies via `company()`
@@ -83,6 +85,16 @@ Cord currently supports these main targets:
 use Oliverbj\Cord\Facades\Cord;
 
 Cord::shipment('SMIA12345678')->run();
+
+Cord::withCompany('CPH')
+    ->oneOffQuote()
+    ->create()
+    ->branch('A01')
+    ->department('FES')
+    ->transportMode('SEA')
+    ->portOfOrigin('AUSYD')
+    ->portOfDestination('NZAKL')
+    ->run();
 
 Cord::custom('BATL12345678')->run();
 
@@ -298,6 +310,82 @@ Cord::withCompany('CPH')
     ->organization('TARGET')
     ->transferContact($source['OrgContactCollection']['OrgContact'][0])
     ->run();
+```
+
+## One Off Quotes
+
+### Create One-Off Quote
+
+One-off quote creation is sent as a universal shipment request with `DataTarget Type="OneOffQuote"`.
+
+```php
+Cord::withCompany('CPH')
+    ->oneOffQuote()
+    ->create()
+    ->branch('A01')
+    ->department('FES')
+    ->transportMode('SEA')
+    ->portOfOrigin('AUSYD')
+    ->portOfDestination('NZAKL')
+    ->serviceLevel('STD')
+    ->incoterm('DAP')
+    ->totalWeight(5000, 'KG')
+    ->totalVolume(19.2, 'M3')
+    ->goodsValue(15000, 'AUD')
+    ->additionalTerms('Export Only')
+    ->isDomesticFreight(false)
+    ->clientAddress(fn ($a) => $a
+        ->addressLine1('3 TENTH AVENUE')
+        ->city('OYSTER BAY')
+        ->country('AU')
+    )
+    ->pickupAddress(fn ($a) => $a
+        ->addressLine1('3 TENTH AVENUE')
+        ->city('OYSTER BAY')
+        ->country('AU')
+    )
+    ->deliveryAddress(fn ($a) => $a
+        ->addressLine1('10 TEST ROAD')
+        ->city('AUCKLAND')
+        ->country('NZ')
+    )
+    ->addChargeLine(fn ($c) => $c
+        ->chargeCode('FRT')
+        ->description('International Freight')
+        ->costAmount('500.0000', 'AUD')
+        ->sellAmount('1500.0000', 'AUD')
+    )
+    ->addAttachedDocument(fn ($d) => $d
+        ->fileName('Quote.pdf')
+        ->imageData(base64_encode(file_get_contents('Quote.pdf')))
+        ->type('QTE')
+        ->isPublished(true)
+    )
+    ->withPayload([
+        'CustomizedFieldCollection' => [
+            'CustomizedField' => [
+                'DataType' => 'String',
+                'Key' => 'Test User',
+                'Value' => 'Janice Testing',
+            ],
+        ],
+    ])
+    ->run();
+```
+
+One-off quote create requirements:
+
+- `withCompany(...)`
+- `branch(...)`
+- `department(...)`
+- `transportMode(...)`
+- `portOfOrigin(...)`
+- `portOfDestination(...)`
+
+One-off quote introspection:
+
+```php
+$schema = Cord::oneOffQuote()->describe();
 ```
 
 ### Add Staff

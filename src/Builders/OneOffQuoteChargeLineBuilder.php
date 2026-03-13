@@ -2,10 +2,13 @@
 
 namespace Oliverbj\Cord\Builders;
 
+use Oliverbj\Cord\Attributes\StructuredField;
+
 class OneOffQuoteChargeLineBuilder
 {
     protected array $payload = [];
 
+    #[StructuredField(name: 'charge_code', required: true)]
     public function chargeCode(string $code): self
     {
         $this->payload['chargeCode'] = $code;
@@ -13,6 +16,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField(name: 'charge_code_group')]
     public function chargeCodeGroup(string $code, ?string $description = null): self
     {
         $this->payload['chargeCodeGroup'] = $code;
@@ -21,6 +25,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField(required: true)]
     public function description(string $value): self
     {
         $this->payload['description'] = $value;
@@ -28,6 +33,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField(name: 'cost_amount')]
     public function costAmount(float|int|string $value, string $currencyCode): self
     {
         $this->payload['costAmount'] = [
@@ -38,6 +44,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField(name: 'sell_amount')]
     public function sellAmount(float|int|string $value, string $currencyCode): self
     {
         $this->payload['sellAmount'] = [
@@ -48,6 +55,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField]
     public function debtor(string $type, string $key): self
     {
         $this->payload['debtorType'] = $type;
@@ -56,6 +64,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField(name: 'display_sequence')]
     public function displaySequence(int $value): self
     {
         $this->payload['displaySequence'] = $value;
@@ -63,6 +72,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField]
     public function branch(string $code, ?string $name = null): self
     {
         $this->payload['branchCode'] = $code;
@@ -71,6 +81,7 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField]
     public function department(string $code, ?string $name = null): self
     {
         $this->payload['departmentCode'] = $code;

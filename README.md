@@ -13,12 +13,29 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
+  - [Operation Schemas](#operation-schemas)
+  - [Targets](#targets)
+  - [Request context](#request-context)
 - [Documents / eDocs](#documents--edocs)
+  - [Upload documents](#upload-documents)
+  - [Add events](#add-events)
 - [Native](#native)
+  - [Query Organization](#query-organization)
+  - [Update Organization](#update-organization)
+    - [Add an address](#add-an-address)
+    - [Add a contact](#add-a-contact)
+    - [Add EDI communication details](#add-edi-communication-details)
+    - [Transfer existing organization data](#transfer-existing-organization-data)
+  - [Query Company](#query-company)
+  - [Create Staff](#create-staff)
+  - [Update Staff](#update-staff)
 - [One Off Quotes](#one-off-quotes)
+  - [Create One-Off Quote](#create-one-off-quote)
 - [Multiple Connections](#multiple-connections)
+- [Response as XML](#response-as-xml)
 - [Debugging](#debugging)
 - [Testing](#testing)
+  - [Manual staff test](#manual-staff-test)
 
 ## Support
 
@@ -68,6 +85,31 @@ CORD_PASSWORD=
 ## Usage
 
 Start with a target, then call `run()` to execute the request. By default Cord returns the decoded eAdapter payload as an array.
+
+### Operation Schemas
+
+Cord now exposes AI-facing operation contracts and structured execution helpers.
+
+```php
+use Oliverbj\Cord\Facades\Cord;
+
+$schema = Cord::schema('one_off_quote.create');
+
+$response = Cord::fromStructured('one_off_quote.create', [
+    'company' => 'CPH',
+    'branch' => 'A01',
+    'department' => 'FES',
+    'transport_mode' => 'SEA',
+    'port_of_origin' => 'AUSYD',
+    'port_of_destination' => 'NZAKL',
+])->run();
+```
+
+`describe()` is registry-backed:
+
+- `Cord::describe()` lists all published resources and operation ids.
+- `Cord::staff()->describe()` lists the operations for the selected resource.
+- `Cord::staff()->create()->describe()` returns the active JSON-Schema-style contract for that fully scoped builder.
 
 ### Targets
 
@@ -385,10 +427,11 @@ One-off quote create requirements:
 One-off quote introspection:
 
 ```php
-$schema = Cord::oneOffQuote()->describe();
+$schema = Cord::schema('one_off_quote.create');
+$active = Cord::oneOffQuote()->create()->describe();
 ```
 
-### Add Staff
+### Create Staff
 
 Staff creation is sent as a native `Native` request. Company context is required. `EnterpriseID` and `ServerID` are derived from the configured `url`, and `CodesMappedToTarget` defaults to `true`. You can override the native context with `withEnterprise()`, `withServer()`, or `withCodeMapping(false)`.
 
@@ -432,18 +475,13 @@ Common fluent setters:
 Method introspection:
 
 ```php
-$schema = Cord::staff()->describe();
+$schema = Cord::schema('staff.create');
+$operations = Cord::staff()->describe();
 ```
 
-`describe()` returns structured metadata about the staff API surface:
+`schema()` returns a JSON-Schema-style contract with `properties`, `required`, nested `items`, enums, and `x-cord` metadata for the operation id, resource, and action.
 
-- resource name
-- supported actions
-- available fluent methods with parameter types
-- required intent context (`required_for`)
-- method descriptions and examples
-
-### Edit Staff
+### Update Staff
 
 Staff updates are sent as native `Native` requests with `Action="UPDATE"`.
 

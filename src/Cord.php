@@ -6,14 +6,17 @@ use Closure;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request as RequestFacade;
 use Illuminate\Validation\ValidationException;
+use Oliverbj\Cord\Attributes\OperationField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
 use Oliverbj\Cord\Enums\DataTarget;
+use Oliverbj\Cord\Enums\OperationId;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Interfaces\RequestInterface;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
@@ -24,6 +27,9 @@ use Oliverbj\Cord\Requests\NativeStaffUpdate;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
+use Oliverbj\Cord\Schema\OperationDefinition;
+use Oliverbj\Cord\Schema\OperationRegistry;
+use Oliverbj\Cord\Schema\SchemaValidator;
 
 class Cord
 {
@@ -67,6 +73,10 @@ class Cord
 
     public array $oneOffQuote = [];
 
+    public ?OperationId $currentOperation = null;
+
+    public string $configName = 'base';
+
     protected ?string $staffIntent = null;
 
     protected array $staffDraft = [];
@@ -80,6 +90,8 @@ class Cord
     public bool $asXml = false;
 
     protected ?PendingRequest $client = null;
+
+    protected array $structuredOverrides = [];
 
     public function __construct()
     {
@@ -100,6 +112,7 @@ class Cord
     public function withCompany(string $company): self
     {
         $this->company = $company;
+        $this->markStructuredField('company');
 
         return $this;
     }
@@ -107,6 +120,7 @@ class Cord
     public function withServer(string $server): self
     {
         $this->server = $server;
+        $this->markStructuredField('server');
 
         return $this;
     }
@@ -114,13 +128,16 @@ class Cord
     public function withEnterprise(string $enterprise): self
     {
         $this->enterprise = $enterprise;
+        $this->markStructuredField('enterprise');
 
         return $this;
     }
 
     public function withConfig(string $configName): self
     {
+        $this->configName = $configName;
         $this->setConnectionConfig(config('cord.'.$configName.'.eadapter_connection'));
+        $this->markStructuredField('config');
 
         return $this;
     }
@@ -136,6 +153,7 @@ class Cord
     public function withSenderId(string $senderId): self
     {
         $this->senderId = $senderId;
+        $this->markStructuredField('sender_id');
 
         return $this;
     }
@@ -143,6 +161,7 @@ class Cord
     public function withRecipientId(string $recipientId): self
     {
         $this->recipientId = $recipientId;
+        $this->markStructuredField('recipient_id');
 
         return $this;
     }
@@ -155,6 +174,7 @@ class Cord
     public function withCodeMapping(bool $enabled): self
     {
         $this->enableCodeMapping = $enabled;
+        $this->markStructuredField('code_mapping');
 
         return $this;
     }
@@ -167,6 +187,8 @@ class Cord
         $this->targetKey = $booking;
         $this->target = DataTarget::Booking;
         $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->currentOperation = OperationId::BookingGet;
+        $this->markStructuredField('key');
 
         return $this;
     }
@@ -180,6 +202,8 @@ class Cord
     {
         $this->targetKey = 'AR INV '.$receiveable;
         $this->target = DataTarget::Receiveable;
+        $this->currentOperation = null;
+        $this->markStructuredField('key');
 
         return $this;
     }
@@ -200,6 +224,8 @@ class Cord
         $this->targetKey = $shipment;
         $this->target = DataTarget::Shipment;
         $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->currentOperation = OperationId::ShipmentGet;
+        $this->markStructuredField('key');
 
         return $this;
     }
@@ -221,6 +247,11 @@ class Cord
         $this->oneOffQuoteIntent = null;
         $this->oneOffQuoteDraft = [];
         $this->oneOffQuote = [];
+        $this->currentOperation = null;
+
+        if ($key !== null) {
+            $this->markStructuredField('key');
+        }
 
         return $this;
     }
@@ -236,9 +267,11 @@ class Cord
 
         $this->requestType = RequestType::NativeOrganizationRetrieval;
         $this->target = DataTarget::Organization;
+        $this->currentOperation = OperationId::OrganizationQuery;
 
         if ($code) {
             $this->targetKey = $code;
+            $this->markStructuredField('code');
             $this->criteriaGroup([
                 [
                     'Entity' => 'OrgHeader',
@@ -267,6 +300,11 @@ class Cord
         $this->staffIntent = null;
         $this->staffDraft = [];
         $this->staff = [];
+        $this->currentOperation = null;
+
+        if ($code !== null) {
+            $this->markStructuredField('code');
+        }
 
         return $this;
     }
@@ -305,6 +343,7 @@ class Cord
         if ($this->target === DataTarget::Staff) {
             $this->staffIntent = 'create';
             $this->requestType = RequestType::NativeStaffCreation;
+            $this->currentOperation = OperationId::StaffCreate;
 
             return $this;
         }
@@ -313,6 +352,7 @@ class Cord
             $this->oneOffQuoteIntent = 'create';
             $this->requestType = RequestType::UniversalShipmentRequest;
             $this->targetKey = $this->targetKey ?? '';
+            $this->currentOperation = OperationId::OneOffQuoteCreate;
 
             return $this;
         }
@@ -333,6 +373,7 @@ class Cord
         if ($this->target === DataTarget::Staff) {
             $this->staffIntent = 'update';
             $this->requestType = RequestType::NativeStaffUpdate;
+            $this->currentOperation = OperationId::StaffUpdate;
 
             if ($this->targetKey) {
                 $this->staffDraft['code'] = $this->targetKey;
@@ -398,6 +439,8 @@ class Cord
      * Example:
      * `->code('OJ0')`
      */
+    #[OperationField(OperationId::StaffCreate, required: true)]
+    #[OperationField(OperationId::StaffUpdate, required: true)]
     public function code(string $code): self
     {
         return $this->setStaffDraftValue('code', $code, true);
@@ -411,6 +454,8 @@ class Cord
      * Example:
      * `->loginName('oliver.busk')`
      */
+    #[OperationField(OperationId::StaffCreate, name: 'login_name', required: true)]
+    #[OperationField(OperationId::StaffUpdate, name: 'login_name')]
     public function loginName(string $loginName): self
     {
         return $this->setStaffDraftValue('loginName', $loginName);
@@ -424,6 +469,8 @@ class Cord
      * Example:
      * `->password('secret')`
      */
+    #[OperationField(OperationId::StaffCreate, required: true)]
+    #[OperationField(OperationId::StaffUpdate)]
     public function password(string $password): self
     {
         $this->setStaffDraftValue('password', $password);
@@ -440,6 +487,8 @@ class Cord
      * Example:
      * `->fullName('Oliver Busk')`
      */
+    #[OperationField(OperationId::StaffCreate, name: 'full_name', required: true)]
+    #[OperationField(OperationId::StaffUpdate, name: 'full_name')]
     public function fullName(string $fullName): self
     {
         return $this->setStaffDraftValue('fullName', $fullName);
@@ -451,6 +500,8 @@ class Cord
      * Example:
      * `->email('oliver@example.com')`
      */
+    #[OperationField(OperationId::StaffCreate)]
+    #[OperationField(OperationId::StaffUpdate)]
     public function email(string $email): self
     {
         return $this->setStaffDraftValue('email', $email);
@@ -462,6 +513,8 @@ class Cord
      * Example:
      * `->isActive(true)`
      */
+    #[OperationField(OperationId::StaffCreate, name: 'is_active')]
+    #[OperationField(OperationId::StaffUpdate, name: 'is_active')]
     public function isActive(bool $isActive): self
     {
         return $this->setStaffDraftValue('active', $isActive);
@@ -475,6 +528,9 @@ class Cord
      * Example:
      * `->branch('CPH')`
      */
+    #[OperationField(OperationId::StaffCreate, required: true)]
+    #[OperationField(OperationId::StaffUpdate)]
+    #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
     public function branch(string $branch): self
     {
         if ($this->target === DataTarget::OneOffQuote) {
@@ -492,6 +548,9 @@ class Cord
      * Example:
      * `->department('OPS')`
      */
+    #[OperationField(OperationId::StaffCreate, required: true)]
+    #[OperationField(OperationId::StaffUpdate)]
+    #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
     public function department(string $department): self
     {
         if ($this->target === DataTarget::OneOffQuote) {
@@ -509,6 +568,8 @@ class Cord
      * Example:
      * `->phone('+4511223344')`
      */
+    #[OperationField(OperationId::StaffCreate)]
+    #[OperationField(OperationId::StaffUpdate)]
     public function phone(string $phone): self
     {
         return $this->setStaffDraftValue('workPhone', $phone);
@@ -522,6 +583,8 @@ class Cord
      * Example:
      * `->country('DK')`
      */
+    #[OperationField(OperationId::StaffCreate, required: true)]
+    #[OperationField(OperationId::StaffUpdate)]
     public function country(string $country): self
     {
         return $this->setStaffDraftValue('country', $country);
@@ -533,6 +596,8 @@ class Cord
      * Example:
      * `->addressLine1('Main Street 1')`
      */
+    #[OperationField(OperationId::StaffCreate, name: 'address_line_1')]
+    #[OperationField(OperationId::StaffUpdate, name: 'address_line_1')]
     public function addressLine1(string $addressLine1): self
     {
         return $this->setStaffDraftValue('addressOne', $addressLine1);
@@ -541,6 +606,7 @@ class Cord
     /**
      * Set one-off quote transport mode.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'transport_mode', required: true, enum: ['SEA', 'AIR', 'ROA'])]
     public function transportMode(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('transportMode');
@@ -548,6 +614,7 @@ class Cord
         $this->oneOffQuoteDraft['transportMode'] = [
             'code' => $code,
         ];
+        $this->markStructuredField('transport_mode');
 
         return $this;
     }
@@ -555,6 +622,7 @@ class Cord
     /**
      * Set one-off quote origin port.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_origin', required: true)]
     public function portOfOrigin(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('portOfOrigin');
@@ -562,6 +630,7 @@ class Cord
         $this->oneOffQuoteDraft['portOfOrigin'] = [
             'code' => $code,
         ];
+        $this->markStructuredField('port_of_origin');
 
         return $this;
     }
@@ -569,6 +638,7 @@ class Cord
     /**
      * Set one-off quote destination port.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_destination', required: true)]
     public function portOfDestination(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('portOfDestination');
@@ -576,6 +646,7 @@ class Cord
         $this->oneOffQuoteDraft['portOfDestination'] = [
             'code' => $code,
         ];
+        $this->markStructuredField('port_of_destination');
 
         return $this;
     }
@@ -583,6 +654,7 @@ class Cord
     /**
      * Set one-off quote service level.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'service_level')]
     public function serviceLevel(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('serviceLevel');
@@ -590,6 +662,7 @@ class Cord
         $this->oneOffQuoteDraft['serviceLevel'] = [
             'code' => $code,
         ];
+        $this->markStructuredField('service_level');
 
         return $this;
     }
@@ -597,6 +670,7 @@ class Cord
     /**
      * Set one-off quote incoterm.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate)]
     public function incoterm(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('incoterm');
@@ -604,6 +678,7 @@ class Cord
         $this->oneOffQuoteDraft['incoterm'] = [
             'code' => $code,
         ];
+        $this->markStructuredField('incoterm');
 
         return $this;
     }
@@ -611,6 +686,7 @@ class Cord
     /**
      * Set one-off quote total weight.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'total_weight')]
     public function totalWeight(float|int|string $value, string $unitCode): self
     {
         $this->assertOneOffQuoteBuilderContext('totalWeight');
@@ -619,6 +695,7 @@ class Cord
             'value' => $value,
             'unitCode' => $unitCode,
         ];
+        $this->markStructuredField('total_weight');
 
         return $this;
     }
@@ -626,6 +703,7 @@ class Cord
     /**
      * Set one-off quote total volume.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'total_volume')]
     public function totalVolume(float|int|string $value, string $unitCode): self
     {
         $this->assertOneOffQuoteBuilderContext('totalVolume');
@@ -634,6 +712,7 @@ class Cord
             'value' => $value,
             'unitCode' => $unitCode,
         ];
+        $this->markStructuredField('total_volume');
 
         return $this;
     }
@@ -641,6 +720,7 @@ class Cord
     /**
      * Set one-off quote goods value.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'goods_value')]
     public function goodsValue(float|int|string $amount, string $currencyCode): self
     {
         $this->assertOneOffQuoteBuilderContext('goodsValue');
@@ -649,6 +729,7 @@ class Cord
             'amount' => $amount,
             'currencyCode' => $currencyCode,
         ];
+        $this->markStructuredField('goods_value');
 
         return $this;
     }
@@ -656,6 +737,7 @@ class Cord
     /**
      * Set one-off quote additional terms.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'additional_terms')]
     public function additionalTerms(string $value): self
     {
         return $this->setOneOffQuoteDraftValue('additionalTerms', $value);
@@ -664,6 +746,7 @@ class Cord
     /**
      * Set one-off quote domestic freight flag.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'is_domestic_freight')]
     public function isDomesticFreight(bool $value): self
     {
         return $this->setOneOffQuoteDraftValue('isDomesticFreight', $value);
@@ -672,6 +755,7 @@ class Cord
     /**
      * Set one-off quote client address.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'client_address', builder: OneOffQuoteAddressBuilder::class)]
     public function clientAddress(Closure $builder): self
     {
         return $this->setOneOffQuoteTypedAddress('client', $builder);
@@ -680,6 +764,7 @@ class Cord
     /**
      * Set one-off quote pickup address.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'pickup_address', builder: OneOffQuoteAddressBuilder::class)]
     public function pickupAddress(Closure $builder): self
     {
         return $this->setOneOffQuoteTypedAddress('pickup', $builder);
@@ -688,6 +773,7 @@ class Cord
     /**
      * Set one-off quote delivery address.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'delivery_address', builder: OneOffQuoteAddressBuilder::class)]
     public function deliveryAddress(Closure $builder): self
     {
         return $this->setOneOffQuoteTypedAddress('delivery', $builder);
@@ -696,6 +782,7 @@ class Cord
     /**
      * Add a single charge line to the one-off quote.
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'charge_lines', repeatable: true, builder: OneOffQuoteChargeLineBuilder::class)]
     public function addChargeLine(Closure $builder): self
     {
         $this->assertOneOffQuoteBuilderContext('addChargeLine');
@@ -708,6 +795,7 @@ class Cord
         }
 
         $this->oneOffQuoteDraft['chargeLines'][] = $chargeLineBuilder->toArray();
+        $this->markStructuredField('charge_lines');
 
         return $this;
     }
@@ -718,6 +806,7 @@ class Cord
      * Example:
      * `->addAttachedDocument(fn ($d) => $d->fileName('quote.pdf')->imageData($base64)->type('QUO'))`
      */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'attached_documents', repeatable: true, builder: OneOffQuoteAttachedDocumentBuilder::class)]
     public function addAttachedDocument(Closure $builder): self
     {
         $this->assertOneOffQuoteBuilderContext('addAttachedDocument');
@@ -730,6 +819,7 @@ class Cord
         }
 
         $this->oneOffQuoteDraft['attachedDocuments'][] = $documentBuilder->toArray();
+        $this->markStructuredField('attached_documents');
 
         return $this;
     }
@@ -742,6 +832,8 @@ class Cord
      * Example:
      * `->addGroup('OPS')`
      */
+    #[OperationField(OperationId::StaffCreate, name: 'groups_to_add', repeatable: true)]
+    #[OperationField(OperationId::StaffUpdate, name: 'groups_to_add', repeatable: true)]
     public function addGroup(string $code): self
     {
         $this->assertStaffBuilderContext('addGroup');
@@ -751,6 +843,7 @@ class Cord
         }
 
         $this->staffDraft['groups'][] = $code;
+        $this->markStructuredField('groups_to_add');
 
         return $this;
     }
@@ -765,6 +858,8 @@ class Cord
      *
      * @param  array<int, string>  $codes
      */
+    #[OperationField(OperationId::StaffCreate, name: 'groups', schema: ['type' => 'array', 'items' => ['type' => 'string']])]
+    #[OperationField(OperationId::StaffUpdate, name: 'groups', schema: ['type' => 'array', 'items' => ['type' => 'string']])]
     public function replaceGroups(array $codes): self
     {
         $this->assertStaffBuilderContext('replaceGroups');
@@ -778,6 +873,7 @@ class Cord
         }
 
         $this->staffDraft['groups'] = array_values($codes);
+        $this->markStructuredField('groups');
 
         return $this;
     }
@@ -790,6 +886,7 @@ class Cord
      * Example:
      * `->removeGroup('OPS')`
      */
+    #[OperationField(OperationId::StaffUpdate, name: 'groups_to_remove', repeatable: true)]
     public function removeGroup(string $code): self
     {
         $this->assertStaffBuilderContext('removeGroup');
@@ -803,6 +900,7 @@ class Cord
         }
 
         $this->staffDraft['groupsToRemove'][] = $code;
+        $this->markStructuredField('groups_to_remove');
 
         return $this;
     }
@@ -859,293 +957,91 @@ class Cord
         return $this->staff;
     }
 
-    /**
-     * Describe the currently selected resource surface as structured metadata.
-     *
-     * This is intended for AI and tooling introspection so consumers can
-     * discover supported actions and fluent methods programmatically.
-     *
-     * Example:
-     * `$schema = Cord::staff()->describe();`
-     */
+    public function schema(string|OperationId|null $operation = null): array
+    {
+        $resolvedOperation = $operation instanceof OperationId
+            ? $operation
+            : ($operation !== null ? OperationId::from($operation) : $this->operationRegistry()->detectCurrentOperation($this));
+
+        if ($resolvedOperation === null) {
+            throw new \Exception('schema() requires an operation id or a fully scoped builder context.');
+        }
+
+        return $this->operationRegistry()->schema($resolvedOperation);
+    }
+
+    public function fromStructured(string|OperationId $operation, array $payload): self
+    {
+        $definition = $this->operationRegistry()->definition($operation);
+        $payload = $this->filterIgnoredStructuredFields($payload);
+
+        $this->schemaValidator()->validate(
+            $this->operationRegistry()->schema($definition->id),
+            $payload,
+            array_keys($this->structuredOverrides)
+        );
+
+        $this->bootstrapStructuredOperation($definition, $payload);
+
+        foreach ($this->operationRegistry()->operationFields($definition->id) as $field) {
+            if (! array_key_exists($field['name'], $payload)) {
+                continue;
+            }
+
+            $this->applyStructuredField($field, $payload[$field['name']]);
+        }
+
+        return $this;
+    }
+
     public function describe(): array
     {
-        if ($this->target === DataTarget::OneOffQuote) {
+        $operation = $this->operationRegistry()->detectCurrentOperation($this);
+        if ($operation !== null) {
+            return $this->schema($operation);
+        }
+
+        $resource = $this->describeResource();
+        if ($resource !== null) {
             return [
-                'resource' => 'oneOffQuote',
-                'actions' => ['create'],
-                'methods' => [
-                    [
-                        'name' => 'create',
-                        'parameters' => [],
-                        'required_for' => [],
-                        'description' => 'Set create intent for one-off quote.',
-                        'example' => '->create()',
-                    ],
-                    [
-                        'name' => 'branch',
-                        'parameters' => ['branch' => 'string'],
-                        'required_for' => ['create'],
-                        'description' => 'Set quote branch code.',
-                        'example' => "->branch('A01')",
-                    ],
-                    [
-                        'name' => 'department',
-                        'parameters' => ['department' => 'string'],
-                        'required_for' => ['create'],
-                        'description' => 'Set quote department code.',
-                        'example' => "->department('FES')",
-                    ],
-                    [
-                        'name' => 'transportMode',
-                        'parameters' => ['code' => 'string'],
-                        'required_for' => ['create'],
-                        'description' => 'Set quote transport mode.',
-                        'example' => "->transportMode('SEA')",
-                    ],
-                    [
-                        'name' => 'portOfOrigin',
-                        'parameters' => ['code' => 'string'],
-                        'required_for' => ['create'],
-                        'description' => 'Set origin port.',
-                        'example' => "->portOfOrigin('AUSYD')",
-                    ],
-                    [
-                        'name' => 'portOfDestination',
-                        'parameters' => ['code' => 'string'],
-                        'required_for' => ['create'],
-                        'description' => 'Set destination port.',
-                        'example' => "->portOfDestination('NZAKL')",
-                    ],
-                    [
-                        'name' => 'serviceLevel',
-                        'parameters' => ['code' => 'string'],
-                        'required_for' => [],
-                        'description' => 'Set service level.',
-                        'example' => "->serviceLevel('STD')",
-                    ],
-                    [
-                        'name' => 'incoterm',
-                        'parameters' => ['code' => 'string'],
-                        'required_for' => [],
-                        'description' => 'Set shipment incoterm.',
-                        'example' => "->incoterm('DAP')",
-                    ],
-                    [
-                        'name' => 'totalWeight',
-                        'parameters' => ['value' => 'float|int|string', 'unitCode' => 'string'],
-                        'required_for' => [],
-                        'description' => 'Set total weight and unit.',
-                        'example' => "->totalWeight(5000, 'KG')",
-                    ],
-                    [
-                        'name' => 'totalVolume',
-                        'parameters' => ['value' => 'float|int|string', 'unitCode' => 'string'],
-                        'required_for' => [],
-                        'description' => 'Set total volume and unit.',
-                        'example' => "->totalVolume(19.2, 'M3')",
-                    ],
-                    [
-                        'name' => 'goodsValue',
-                        'parameters' => ['amount' => 'float|int|string', 'currencyCode' => 'string'],
-                        'required_for' => [],
-                        'description' => 'Set goods value and currency.',
-                        'example' => "->goodsValue(15000, 'AUD')",
-                    ],
-                    [
-                        'name' => 'additionalTerms',
-                        'parameters' => ['value' => 'string'],
-                        'required_for' => [],
-                        'description' => 'Set additional quote terms.',
-                        'example' => "->additionalTerms('Export Only')",
-                    ],
-                    [
-                        'name' => 'isDomesticFreight',
-                        'parameters' => ['value' => 'bool'],
-                        'required_for' => [],
-                        'description' => 'Set domestic freight flag.',
-                        'example' => '->isDomesticFreight(false)',
-                    ],
-                    [
-                        'name' => 'clientAddress',
-                        'parameters' => ['builder' => 'Closure'],
-                        'required_for' => [],
-                        'description' => 'Set client address.',
-                        'example' => '->clientAddress(fn ($a) => $a->addressLine1(...))',
-                    ],
-                    [
-                        'name' => 'pickupAddress',
-                        'parameters' => ['builder' => 'Closure'],
-                        'required_for' => [],
-                        'description' => 'Set pickup address.',
-                        'example' => '->pickupAddress(fn ($a) => $a->addressLine1(...))',
-                    ],
-                    [
-                        'name' => 'deliveryAddress',
-                        'parameters' => ['builder' => 'Closure'],
-                        'required_for' => [],
-                        'description' => 'Set delivery address.',
-                        'example' => '->deliveryAddress(fn ($a) => $a->addressLine1(...))',
-                    ],
-                    [
-                        'name' => 'addChargeLine',
-                        'parameters' => ['builder' => 'Closure'],
-                        'required_for' => [],
-                        'description' => 'Append a quote charge line.',
-                        'example' => '->addChargeLine(fn ($c) => $c->chargeCode(...)->description(...))',
-                    ],
-                    [
-                        'name' => 'addAttachedDocument',
-                        'parameters' => ['builder' => 'Closure'],
-                        'required_for' => [],
-                        'description' => 'Append a quote attached document.',
-                        'example' => '->addAttachedDocument(fn ($d) => $d->fileName(...)->imageData(...)->type(...))',
-                    ],
-                    [
-                        'name' => 'withPayload',
-                        'parameters' => ['payload' => 'array'],
-                        'required_for' => [],
-                        'description' => 'Merge raw one-off quote payload fields.',
-                        'example' => "->withPayload(['CustomFieldX' => 'foo'])",
-                    ],
-                    [
-                        'name' => 'toPayload',
-                        'parameters' => [],
-                        'required_for' => [],
-                        'description' => 'Compile and return payload without sending.',
-                        'example' => '->toPayload()',
-                    ],
-                ],
+                'resource' => $resource,
+                'operations' => $this->operationRegistry()->operationsForResource($resource),
             ];
         }
 
-        if ($this->target !== DataTarget::Staff) {
-            throw new \Exception('describe() is currently implemented for staff and oneOffQuote only. Call staff() or oneOffQuote() first.');
-        }
-
         return [
-            'resource' => 'staff',
-            'actions' => ['create', 'update', 'upsert'],
-            'methods' => [
-                [
-                    'name' => 'code',
-                    'parameters' => ['code' => 'string'],
-                    'required_for' => ['create', 'update'],
-                    'description' => 'Set the unique CargoWise staff code.',
-                    'example' => "->code('OJ0')",
-                ],
-                [
-                    'name' => 'loginName',
-                    'parameters' => ['loginName' => 'string'],
-                    'required_for' => ['create'],
-                    'description' => 'Set the CargoWise login name.',
-                    'example' => "->loginName('oliver.busk')",
-                ],
-                [
-                    'name' => 'password',
-                    'parameters' => ['password' => 'string'],
-                    'required_for' => ['create'],
-                    'description' => 'Set the staff password.',
-                    'example' => "->password('secret')",
-                ],
-                [
-                    'name' => 'fullName',
-                    'parameters' => ['fullName' => 'string'],
-                    'required_for' => ['create'],
-                    'description' => 'Set the full display name of the staff member.',
-                    'example' => "->fullName('Oliver Busk')",
-                ],
-                [
-                    'name' => 'email',
-                    'parameters' => ['email' => 'string'],
-                    'required_for' => [],
-                    'description' => 'Set the staff email address.',
-                    'example' => "->email('oliver@example.com')",
-                ],
-                [
-                    'name' => 'isActive',
-                    'parameters' => ['isActive' => 'bool'],
-                    'required_for' => [],
-                    'description' => 'Set whether the staff member is active.',
-                    'example' => '->isActive(true)',
-                ],
-                [
-                    'name' => 'branch',
-                    'parameters' => ['branch' => 'string'],
-                    'required_for' => ['create'],
-                    'description' => 'Set the home branch code.',
-                    'example' => "->branch('CPH')",
-                ],
-                [
-                    'name' => 'department',
-                    'parameters' => ['department' => 'string'],
-                    'required_for' => ['create'],
-                    'description' => 'Set the home department code.',
-                    'example' => "->department('OPS')",
-                ],
-                [
-                    'name' => 'country',
-                    'parameters' => ['country' => 'string'],
-                    'required_for' => ['create'],
-                    'description' => 'Set the staff country code.',
-                    'example' => "->country('DK')",
-                ],
-                [
-                    'name' => 'phone',
-                    'parameters' => ['phone' => 'string'],
-                    'required_for' => [],
-                    'description' => 'Set the staff work phone number.',
-                    'example' => "->phone('+4511223344')",
-                ],
-                [
-                    'name' => 'addressLine1',
-                    'parameters' => ['addressLine1' => 'string'],
-                    'required_for' => [],
-                    'description' => 'Set the first staff address line.',
-                    'example' => "->addressLine1('Main Street 1')",
-                ],
-                [
-                    'name' => 'addGroup',
-                    'parameters' => ['code' => 'string'],
-                    'required_for' => [],
-                    'description' => 'Add one group membership to the payload.',
-                    'example' => "->addGroup('OPS')",
-                ],
-                [
-                    'name' => 'replaceGroups',
-                    'parameters' => ['groups' => 'string[]'],
-                    'required_for' => [],
-                    'description' => 'Replace all group memberships.',
-                    'example' => "->replaceGroups(['ADM', 'OPS'])",
-                ],
-                [
-                    'name' => 'removeGroup',
-                    'parameters' => ['code' => 'string'],
-                    'required_for' => ['update'],
-                    'description' => 'Remove one group membership using Action=DELETE.',
-                    'example' => "->removeGroup('OPS')",
-                ],
-                [
-                    'name' => 'withPayload',
-                    'parameters' => ['payload' => 'array'],
-                    'required_for' => [],
-                    'description' => 'Merge raw CargoWise payload fields.',
-                    'example' => "->withPayload(['CustomFieldX' => 'foo'])",
-                ],
-                [
-                    'name' => 'toPayload',
-                    'parameters' => [],
-                    'required_for' => [],
-                    'description' => 'Compile and return payload without sending.',
-                    'example' => '->toPayload()',
-                ],
-            ],
+            'resources' => $this->operationRegistry()->groupedOperationList(),
         ];
     }
 
+    #[OperationField(
+        OperationId::OrganizationEdiCommunicationAdd,
+        name: 'edi_communication',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'module' => ['type' => 'string'],
+                'purpose' => ['type' => 'string'],
+                'direction' => ['type' => 'string'],
+                'transport' => ['type' => 'string'],
+                'destination' => ['type' => 'string'],
+                'format' => ['type' => 'string'],
+                'subject' => ['type' => 'string'],
+                'publish_milestones' => ['type' => ['boolean', 'string']],
+                'sender_van' => ['type' => 'string'],
+                'receiver_van' => ['type' => 'string'],
+                'filename' => ['type' => 'string'],
+            ],
+            'required' => ['module', 'purpose', 'direction', 'transport', 'destination', 'format'],
+        ]
+    )]
     public function addEDICommunication(array $ediCommunicationDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationEdiCommunicationAdd;
+        $this->markStructuredField('edi_communication');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding an EDI communication mode. Use organization() method before calling this method.');
@@ -1178,9 +1074,63 @@ class Cord
 
     }
 
+    #[OperationField(
+        OperationId::OrganizationContactAdd,
+        name: 'contact',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'name' => ['type' => 'string'],
+                'email' => ['type' => 'string'],
+                'active' => ['type' => ['boolean', 'string']],
+                'notify_mode' => ['type' => 'string'],
+                'title' => ['type' => 'string'],
+                'gender' => ['type' => 'string'],
+                'language' => ['type' => 'string'],
+                'phone' => ['type' => 'string'],
+                'mobile_phone' => ['type' => 'string'],
+                'home_phone' => ['type' => 'string'],
+                'attachment_type' => ['type' => 'string'],
+                'documents_to_deliver' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'document_group' => ['type' => 'string'],
+                            'default_contact' => ['type' => ['boolean', 'string']],
+                            'attachment_type' => ['type' => 'string'],
+                            'deliver_by' => ['type' => 'string'],
+                            'menu_item' => [
+                                'type' => 'object',
+                                'additionalProperties' => false,
+                                'properties' => [
+                                    'menu_name' => ['type' => 'string'],
+                                    'business_context' => ['type' => 'string'],
+                                    'menu_path' => ['type' => 'string'],
+                                    'is_client_specific' => ['type' => ['boolean', 'string']],
+                                    'is_system_defined' => ['type' => ['boolean', 'string']],
+                                    'filter_list' => ['type' => 'string'],
+                                ],
+                                'required' => ['business_context'],
+                            ],
+                            'filter_shipment_mode' => ['type' => 'string'],
+                            'filter_direction' => ['type' => 'string'],
+                            'email_subject_macro' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
+            ],
+            'required' => ['name', 'email'],
+        ]
+    )]
     public function addContact(array $contactDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationContactAdd;
+        $this->markStructuredField('contact');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding a contact person. Use organization() method before calling this method.');
@@ -1253,9 +1203,24 @@ class Cord
     /**
      * A method to transfer EDI communication from one organization to another.
      */
+    #[OperationField(
+        OperationId::OrganizationEdiCommunicationTransfer,
+        name: 'source_edi_communication',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'properties' => [
+                'PK' => ['type' => ['integer', 'string']],
+            ],
+            'required' => ['PK'],
+            'additionalProperties' => true,
+        ]
+    )]
     public function transferEDICommunication(array $ediCommunication): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationEdiCommunicationTransfer;
+        $this->markStructuredField('source_edi_communication');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before transferring an EDI communication. Use organization() method before calling this method.');
@@ -1288,9 +1253,24 @@ class Cord
     /**
      * A method to transfer a contact from one organization to another.
      */
+    #[OperationField(
+        OperationId::OrganizationDocumentTrackingTransfer,
+        name: 'source_document_tracking',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'properties' => [
+                'PK' => ['type' => ['integer', 'string']],
+            ],
+            'required' => ['PK'],
+            'additionalProperties' => true,
+        ]
+    )]
     public function transferDocumentTracking(array $jobRequiredDocument): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationDocumentTrackingTransfer;
+        $this->markStructuredField('source_document_tracking');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before transferring a document tracking. Use organization() method before calling this method.');
@@ -1327,9 +1307,24 @@ class Cord
     /**
      * A method to transfer a contact from one organization to another.
      */
+    #[OperationField(
+        OperationId::OrganizationContactTransfer,
+        name: 'source_contact',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'properties' => [
+                'PK' => ['type' => ['integer', 'string']],
+            ],
+            'required' => ['PK'],
+            'additionalProperties' => true,
+        ]
+    )]
     public function transferContact(array $contact): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationContactTransfer;
+        $this->markStructuredField('source_contact');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before transferring a contact. Use organization() method before calling this method.');
@@ -1391,9 +1386,24 @@ class Cord
     /**
      * A method to transfer an address from one organization to another.
      */
+    #[OperationField(
+        OperationId::OrganizationAddressTransfer,
+        name: 'source_address',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'properties' => [
+                'PK' => ['type' => ['integer', 'string']],
+            ],
+            'required' => ['PK'],
+            'additionalProperties' => true,
+        ]
+    )]
     public function transferAddress(array $address): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationAddressTransfer;
+        $this->markStructuredField('source_address');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before transferring an address. Use organization() method before calling this method.');
@@ -1426,9 +1436,51 @@ class Cord
     /**
      * Todo: WIP - not stable!
      */
+    #[OperationField(
+        OperationId::OrganizationAddressAdd,
+        name: 'address',
+        required: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'code' => ['type' => 'string'],
+                'address_one' => ['type' => 'string'],
+                'address_two' => ['type' => 'string'],
+                'country' => ['type' => 'string'],
+                'city' => ['type' => 'string'],
+                'state' => ['type' => 'string'],
+                'postcode' => ['type' => 'string'],
+                'related_port' => ['type' => 'string'],
+                'phone' => ['type' => 'string'],
+                'fax' => ['type' => 'string'],
+                'mobile' => ['type' => 'string'],
+                'email' => ['type' => 'string'],
+                'drop_mode_fcl' => ['type' => 'string'],
+                'drop_mode_lcl' => ['type' => 'string'],
+                'drop_mode_air' => ['type' => 'string'],
+                'active' => ['type' => ['boolean', 'string']],
+                'capabilities' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'address_type' => ['type' => 'string'],
+                            'is_main_address' => ['type' => ['boolean', 'string']],
+                        ],
+                        'required' => ['address_type'],
+                    ],
+                ],
+            ],
+            'required' => ['code', 'address_one', 'country', 'city'],
+        ]
+    )]
     public function addAddress(array $addressDetails): self
     {
         $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->currentOperation = OperationId::OrganizationAddressAdd;
+        $this->markStructuredField('address');
 
         if ($this->target !== DataTarget::Organization) {
             throw new \Exception('You must call an organization before adding an address. Use organization() method before calling this method.');
@@ -1499,9 +1551,11 @@ class Cord
         $this->targetKey = null;
         $this->requestType = RequestType::NativeCompanyRetrieval;
         $this->target = DataTarget::Organization;
+        $this->currentOperation = OperationId::CompanyQuery;
 
         if ($code) {
             $this->targetKey = $code;
+            $this->markStructuredField('code');
             $this->criteriaGroup([
                 [
                     'Entity' => 'GlbCompany',
@@ -1517,6 +1571,58 @@ class Cord
     /**
      * Add criteriaGroup to the native query methods.
      */
+    #[OperationField(
+        OperationId::OrganizationQuery,
+        name: 'criteria_groups',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'criteria' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'entity' => ['type' => 'string'],
+                            'field_name' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['entity', 'field_name', 'value'],
+                    ],
+                ],
+                'type' => ['type' => 'string', 'enum' => ['Key', 'Partial']],
+            ],
+            'required' => ['criteria'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::CompanyQuery,
+        name: 'criteria_groups',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'criteria' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'entity' => ['type' => 'string'],
+                            'field_name' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['entity', 'field_name', 'value'],
+                    ],
+                ],
+                'type' => ['type' => 'string', 'enum' => ['Key', 'Partial']],
+            ],
+            'required' => ['criteria'],
+        ]
+    )]
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
 
@@ -1542,6 +1648,7 @@ class Cord
         }
 
         array_push($this->criteriaGroups, $criteriaGroup);
+        $this->markStructuredField('criteria_groups');
 
         return $this;
     }
@@ -1554,6 +1661,8 @@ class Cord
         $this->targetKey = $custom;
         $this->target = DataTarget::Custom;
         $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->currentOperation = OperationId::CustomGet;
+        $this->markStructuredField('key');
 
         return $this;
     }
@@ -1564,10 +1673,20 @@ class Cord
     public function withDocuments(): self
     {
         $this->requestType = RequestType::UniversalDocumentRequest;
+        $this->currentOperation = match ($this->target) {
+            DataTarget::Shipment => OperationId::ShipmentDocumentsGet,
+            DataTarget::Booking => OperationId::BookingDocumentsGet,
+            DataTarget::Custom => OperationId::CustomDocumentsGet,
+            DataTarget::Receiveable => OperationId::ReceivableDocumentsGet,
+            default => $this->currentOperation,
+        };
 
         return $this;
     }
 
+    #[OperationField(OperationId::ShipmentDocumentAdd, name: 'document', required: true)]
+    #[OperationField(OperationId::BookingDocumentAdd, name: 'document', required: true)]
+    #[OperationField(OperationId::CustomDocumentAdd, name: 'document', required: true)]
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
         if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
@@ -1591,6 +1710,7 @@ class Cord
             }
 
             $this->oneOffQuoteDraft['attachedDocuments'][] = $document;
+            $this->markStructuredField('attached_documents');
 
             return $this;
         }
@@ -1612,6 +1732,13 @@ class Cord
                 ],
             ],
         ];
+        $this->currentOperation = match ($this->target) {
+            DataTarget::Shipment => OperationId::ShipmentDocumentAdd,
+            DataTarget::Booking => OperationId::BookingDocumentAdd,
+            DataTarget::Custom => OperationId::CustomDocumentAdd,
+            default => $this->currentOperation,
+        };
+        $this->markStructuredField('document');
 
         return $this;
     }
@@ -1619,6 +1746,9 @@ class Cord
     /**
      * Add an event to the request.
      */
+    #[OperationField(OperationId::ShipmentEventAdd, name: 'event', required: true)]
+    #[OperationField(OperationId::BookingEventAdd, name: 'event', required: true)]
+    #[OperationField(OperationId::CustomEventAdd, name: 'event', required: true)]
     public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
     {
         $this->requestType = RequestType::UniversalEvent;
@@ -1634,6 +1764,13 @@ class Cord
             'EventReference' => $reference,
             'IsEstimate' => var_export($isEstimate, true), // cast to string
         ];
+        $this->currentOperation = match ($this->target) {
+            DataTarget::Shipment => OperationId::ShipmentEventAdd,
+            DataTarget::Booking => OperationId::BookingEventAdd,
+            DataTarget::Custom => OperationId::CustomEventAdd,
+            default => $this->currentOperation,
+        };
+        $this->markStructuredField('event');
 
         return $this;
     }
@@ -1641,6 +1778,62 @@ class Cord
     /**
      * Add filter(s) to the request.
      */
+    #[OperationField(
+        OperationId::ShipmentDocumentsGet,
+        name: 'filters',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::BookingDocumentsGet,
+        name: 'filters',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::CustomDocumentsGet,
+        name: 'filters',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::ReceivableDocumentsGet,
+        name: 'filters',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
     public function filter(string $type, mixed $value): self
     {
         // Every time this method is called, it will add a new filter to the filters array.
@@ -1648,6 +1841,7 @@ class Cord
             'Type' => $type,
             'Value' => $value,
         ];
+        $this->markStructuredField('filters');
 
         return $this;
     }
@@ -2124,6 +2318,12 @@ class Cord
         }
 
         $this->oneOffQuoteDraft['addresses'][$type] = $addressBuilder->toArray();
+        $this->markStructuredField(match ($type) {
+            'client' => 'client_address',
+            'pickup' => 'pickup_address',
+            'delivery' => 'delivery_address',
+            default => $type.'_address',
+        });
 
         return $this;
     }
@@ -2627,6 +2827,16 @@ class Cord
         $this->assertStaffBuilderContext($field);
 
         $this->staffDraft[$field] = $value;
+        $this->markStructuredField(match ($field) {
+            'loginName' => 'login_name',
+            'fullName' => 'full_name',
+            'active' => 'is_active',
+            'homeBranch' => 'branch',
+            'homeDepartment' => 'department',
+            'workPhone' => 'phone',
+            'addressOne' => 'address_line_1',
+            default => Str::snake($field),
+        });
 
         if ($isCode) {
             $this->targetKey = is_string($value) ? $value : null;
@@ -2646,6 +2856,11 @@ class Cord
     {
         $this->assertOneOffQuoteBuilderContext($field);
         $this->oneOffQuoteDraft[$field] = $value;
+        $this->markStructuredField(match ($field) {
+            'additionalTerms' => 'additional_terms',
+            'isDomesticFreight' => 'is_domestic_freight',
+            default => Str::snake($field),
+        });
 
         return $this;
     }
@@ -2737,6 +2952,339 @@ class Cord
             '_attributes' => ['TableName' => $value['tableName'] ?? $tableName],
             'Code' => $value['code'] ?? $value['Code'] ?? '',
         ];
+    }
+
+    public function activeStaffIntent(): ?string
+    {
+        return $this->staffIntent;
+    }
+
+    public function activeOneOffQuoteIntent(): ?string
+    {
+        return $this->oneOffQuoteIntent;
+    }
+
+    private function operationRegistry(): OperationRegistry
+    {
+        static $registry;
+
+        return $registry ??= new OperationRegistry;
+    }
+
+    private function schemaValidator(): SchemaValidator
+    {
+        static $validator;
+
+        return $validator ??= new SchemaValidator;
+    }
+
+    private function describeResource(): ?string
+    {
+        return match (true) {
+            $this->requestType === RequestType::NativeCompanyRetrieval => 'company',
+            $this->target === DataTarget::Organization => 'organization',
+            $this->target === DataTarget::Staff => 'staff',
+            $this->target === DataTarget::OneOffQuote => 'one_off_quote',
+            $this->target === DataTarget::Receiveable => 'receivable',
+            default => null,
+        };
+    }
+
+    private function filterIgnoredStructuredFields(array $payload): array
+    {
+        foreach (array_keys($this->structuredOverrides) as $field) {
+            unset($payload[$field]);
+        }
+
+        return $payload;
+    }
+
+    private function bootstrapStructuredOperation(OperationDefinition $definition, array $payload): void
+    {
+        foreach ($definition->contextFields as $field) {
+            if (! array_key_exists($field, $payload)) {
+                continue;
+            }
+
+            $this->applyStructuredContext($field, $payload[$field]);
+        }
+
+        $selector = $definition->selector;
+        if ($selector !== null) {
+            $field = $selector['field'];
+            $method = $selector['method'];
+
+            if (array_key_exists($field, $payload)) {
+                $this->{$method}($payload[$field]);
+            } elseif (! $this->resourceMatches($definition->resource) && (($selector['required'] ?? false) === false)) {
+                $this->{$method}();
+            }
+        } else {
+            $resourceMethod = match ($definition->resource) {
+                'staff' => 'staff',
+                'one_off_quote' => 'oneOffQuote',
+                default => null,
+            };
+
+            if ($resourceMethod !== null && ! $this->resourceMatches($definition->resource)) {
+                $this->{$resourceMethod}();
+            }
+        }
+
+        foreach ($definition->bootstrapMethods as $method) {
+            $this->{$method}();
+        }
+
+        $this->currentOperation = $definition->id;
+    }
+
+    private function applyStructuredContext(string $field, mixed $value): void
+    {
+        match ($field) {
+            'config' => $this->withConfig((string) $value),
+            'company' => $this->withCompany((string) $value),
+            'enterprise' => $this->withEnterprise((string) $value),
+            'server' => $this->withServer((string) $value),
+            'sender_id' => $this->withSenderId((string) $value),
+            'recipient_id' => $this->withRecipientId((string) $value),
+            'code_mapping' => $this->withCodeMapping((bool) $value),
+            default => null,
+        };
+    }
+
+    private function applyStructuredField(array $field, mixed $value): void
+    {
+        if ($field['repeatable']) {
+            foreach (array_values((array) $value) as $item) {
+                $this->invokeStructuredMethod($field['method'], $item, $field['builder']);
+            }
+
+            return;
+        }
+
+        $this->invokeStructuredMethod($field['method'], $value, $field['builder']);
+    }
+
+    private function invokeStructuredMethod(string $method, mixed $value, ?string $builderClass = null): void
+    {
+        $arguments = $this->buildStructuredMethodArguments($method, $value, $builderClass);
+
+        $this->{$method}(...$arguments);
+    }
+
+    private function buildStructuredMethodArguments(string $method, mixed $value, ?string $builderClass = null): array
+    {
+        $reflection = new \ReflectionMethod($this, $method);
+        $value = $this->transformStructuredValueForMethod($method, $value);
+
+        if ($builderClass !== null) {
+            return [$this->buildStructuredClosure($builderClass, is_array($value) ? $value : [])];
+        }
+
+        if (count($reflection->getParameters()) === 1) {
+            return [$value];
+        }
+
+        $value = is_array($value) ? $value : [];
+        $arguments = [];
+
+        foreach ($reflection->getParameters() as $parameter) {
+            $key = Str::snake($parameter->getName());
+
+            if (array_key_exists($key, $value)) {
+                $arguments[] = $value[$key];
+
+                continue;
+            }
+
+            $arguments[] = $parameter->isDefaultValueAvailable()
+                ? $parameter->getDefaultValue()
+                : null;
+        }
+
+        return $arguments;
+    }
+
+    private function buildStructuredClosure(string $builderClass, array $payload): Closure
+    {
+        return function ($builder) use ($builderClass, $payload) {
+            foreach ($this->operationRegistry()->builderFields($builderClass) as $field) {
+                if (! array_key_exists($field['name'], $payload)) {
+                    continue;
+                }
+
+                $value = $this->transformBuilderStructuredValue($builderClass, $field['method'], $payload[$field['name']]);
+                $reflection = new \ReflectionMethod($builderClass, $field['method']);
+
+                if (count($reflection->getParameters()) === 1) {
+                    $builder->{$field['method']}($value);
+
+                    continue;
+                }
+
+                $arguments = [];
+                $value = is_array($value) ? $value : [];
+
+                foreach ($reflection->getParameters() as $parameter) {
+                    $key = Str::snake($parameter->getName());
+
+                    if (array_key_exists($key, $value)) {
+                        $arguments[] = $value[$key];
+
+                        continue;
+                    }
+
+                    $arguments[] = $parameter->isDefaultValueAvailable()
+                        ? $parameter->getDefaultValue()
+                        : null;
+                }
+
+                $builder->{$field['method']}(...$arguments);
+            }
+        };
+    }
+
+    private function transformStructuredValueForMethod(string $method, mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        return match ($method) {
+            'criteriaGroup' => [
+                'criteria' => array_map(fn (array $item) => [
+                    'Entity' => $item['entity'] ?? '',
+                    'FieldName' => $item['field_name'] ?? '',
+                    'Value' => $item['value'] ?? null,
+                ], $value['criteria'] ?? []),
+                'type' => $value['type'] ?? 'Key',
+            ],
+            'addAddress' => array_filter([
+                'code' => $value['code'] ?? null,
+                'addressOne' => $value['address_one'] ?? null,
+                'addressTwo' => $value['address_two'] ?? null,
+                'country' => $value['country'] ?? null,
+                'city' => $value['city'] ?? null,
+                'state' => $value['state'] ?? null,
+                'postcode' => $value['postcode'] ?? null,
+                'relatedPort' => $value['related_port'] ?? null,
+                'phone' => $value['phone'] ?? null,
+                'fax' => $value['fax'] ?? null,
+                'mobile' => $value['mobile'] ?? null,
+                'email' => $value['email'] ?? null,
+                'dropModeFCL' => $value['drop_mode_fcl'] ?? null,
+                'dropModeLCL' => $value['drop_mode_lcl'] ?? null,
+                'dropModeAIR' => $value['drop_mode_air'] ?? null,
+                'active' => array_key_exists('active', $value) ? $this->normalizeBoolean($value['active']) : null,
+                'capabilities' => isset($value['capabilities']) && is_array($value['capabilities'])
+                    ? array_map(fn (array $capability) => array_filter([
+                        'AddressType' => $capability['address_type'] ?? null,
+                        'IsMainAddress' => array_key_exists('is_main_address', $capability)
+                            ? $this->normalizeStructuredBooleanString($capability['is_main_address'])
+                            : null,
+                    ], static fn ($item) => $item !== null), $value['capabilities'])
+                    : null,
+            ], static fn ($item) => $item !== null),
+            'addContact' => array_filter([
+                'name' => $value['name'] ?? null,
+                'email' => $value['email'] ?? null,
+                'active' => array_key_exists('active', $value) ? $this->normalizeStructuredBooleanString($value['active']) : null,
+                'notifyMode' => $value['notify_mode'] ?? null,
+                'title' => $value['title'] ?? null,
+                'gender' => $value['gender'] ?? null,
+                'language' => $value['language'] ?? null,
+                'phone' => $value['phone'] ?? null,
+                'mobilePhone' => $value['mobile_phone'] ?? null,
+                'homePhone' => $value['home_phone'] ?? null,
+                'attachmentType' => $value['attachment_type'] ?? null,
+                'documentsToDeliver' => isset($value['documents_to_deliver']) && is_array($value['documents_to_deliver'])
+                    ? [
+                        'OrgDocument' => array_map(function (array $document) {
+                            $menuItem = $document['menu_item'] ?? null;
+
+                            return array_filter([
+                                'DocumentGroup' => $document['document_group'] ?? null,
+                                'DefaultContact' => array_key_exists('default_contact', $document)
+                                    ? $this->normalizeStructuredBooleanString($document['default_contact'])
+                                    : null,
+                                'AttachmentType' => $document['attachment_type'] ?? null,
+                                'DeliverBy' => $document['deliver_by'] ?? null,
+                                'MenuItem' => is_array($menuItem) ? array_filter([
+                                    'MenuName' => $menuItem['menu_name'] ?? null,
+                                    'BusinessContext' => $menuItem['business_context'] ?? null,
+                                    'MenuPath' => $menuItem['menu_path'] ?? null,
+                                    'IsClientSpecific' => array_key_exists('is_client_specific', $menuItem)
+                                        ? $this->normalizeStructuredBooleanString($menuItem['is_client_specific'])
+                                        : null,
+                                    'IsSystemDefined' => array_key_exists('is_system_defined', $menuItem)
+                                        ? $this->normalizeStructuredBooleanString($menuItem['is_system_defined'])
+                                        : null,
+                                    'FilterList' => $menuItem['filter_list'] ?? null,
+                                ], static fn ($item) => $item !== null) : null,
+                                'FilterShipmentMode' => $document['filter_shipment_mode'] ?? null,
+                                'FilterDirection' => $document['filter_direction'] ?? null,
+                                'EmailSubjectMacro' => $document['email_subject_macro'] ?? null,
+                            ], static fn ($item) => $item !== null);
+                        }, $value['documents_to_deliver']),
+                    ]
+                    : null,
+            ], static fn ($item) => $item !== null),
+            'addEDICommunication' => array_filter([
+                'module' => $value['module'] ?? null,
+                'purpose' => $value['purpose'] ?? null,
+                'direction' => $value['direction'] ?? null,
+                'transport' => $value['transport'] ?? null,
+                'destination' => $value['destination'] ?? null,
+                'format' => $value['format'] ?? null,
+                'subject' => $value['subject'] ?? null,
+                'publishMilestones' => array_key_exists('publish_milestones', $value)
+                    ? $this->normalizeStructuredBooleanString($value['publish_milestones'])
+                    : null,
+                'senderVAN' => $value['sender_van'] ?? null,
+                'receiverVAN' => $value['receiver_van'] ?? null,
+                'filename' => $value['filename'] ?? null,
+            ], static fn ($item) => $item !== null),
+            default => $value,
+        };
+    }
+
+    private function transformBuilderStructuredValue(string $builderClass, string $method, mixed $value): mixed
+    {
+        return match ($builderClass) {
+            OneOffQuoteAddressBuilder::class,
+            OneOffQuoteChargeLineBuilder::class,
+            OneOffQuoteAttachedDocumentBuilder::class => $value,
+            default => $value,
+        };
+    }
+
+    private function normalizeStructuredBooleanString(mixed $value): mixed
+    {
+        if (is_bool($value) || is_string($value)) {
+            return $this->normalizeBoolean($value);
+        }
+
+        return $value;
+    }
+
+    private function resourceMatches(string $resource): bool
+    {
+        return match ($resource) {
+            'shipment' => $this->target === DataTarget::Shipment,
+            'booking' => $this->target === DataTarget::Booking,
+            'custom' => $this->target === DataTarget::Custom,
+            'receivable' => $this->target === DataTarget::Receiveable,
+            'one_off_quote' => $this->target === DataTarget::OneOffQuote,
+            'staff' => $this->target === DataTarget::Staff,
+            'organization' => $this->target === DataTarget::Organization && $this->requestType !== RequestType::NativeCompanyRetrieval,
+            'company' => $this->requestType === RequestType::NativeCompanyRetrieval,
+            default => false,
+        };
+    }
+
+    private function markStructuredField(string $field): void
+    {
+        $this->structuredOverrides[$field] = true;
     }
 
     private function normalizeBoolean(bool|string $value): string

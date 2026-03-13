@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Oliverbj\Cord\Attributes\OperationField;
+use Oliverbj\Cord\Attributes\StructuredField;
 use Oliverbj\Cord\Facades\Cord;
 
 it('builds request xml without sending a network request when inspecting', function () {
@@ -311,37 +313,544 @@ it('returns deterministic validation errors for invalid group codes', function (
     ]);
 });
 
-it('exposes structured staff method metadata via describe', function () {
+it('describes staff operations from the registry', function () {
     $description = Cord::staff()->describe();
 
     expect($description['resource'])->toBe('staff')
-        ->and($description['actions'])->toBe(['create', 'update', 'upsert'])
-        ->and($description['methods'])->toBeArray()
-        ->and(collect($description['methods'])->firstWhere('name', 'code'))->toMatchArray([
-            'name' => 'code',
-            'parameters' => ['code' => 'string'],
-            'required_for' => ['create', 'update'],
-        ])
-        ->and(collect($description['methods'])->firstWhere('name', 'branch'))->toMatchArray([
-            'name' => 'branch',
-            'parameters' => ['branch' => 'string'],
-            'required_for' => ['create'],
-        ])
-        ->and(collect($description['methods'])->firstWhere('name', 'phone'))->toMatchArray([
-            'name' => 'phone',
-            'parameters' => ['phone' => 'string'],
-            'required_for' => [],
-        ])
-        ->and(collect($description['methods'])->firstWhere('name', 'replaceGroups'))->toMatchArray([
-            'name' => 'replaceGroups',
-            'parameters' => ['groups' => 'string[]'],
-            'required_for' => [],
-        ])
-        ->and(collect($description['methods'])->firstWhere('name', 'removeGroup'))->toMatchArray([
-            'name' => 'removeGroup',
-            'parameters' => ['code' => 'string'],
-            'required_for' => ['update'],
+        ->and($description['operations'])->toBe([
+            ['id' => 'staff.create', 'action' => 'create'],
+            ['id' => 'staff.update', 'action' => 'update'],
         ]);
+});
+
+it('publishes representative operation schemas', function () {
+    $oneOffQuote = Cord::schema('one_off_quote.create');
+    $staffCreate = Cord::schema('staff.create');
+    $staffUpdate = Cord::schema('staff.update');
+    $organizationQuery = Cord::schema('organization.query');
+    $shipmentGet = Cord::schema('shipment.get');
+
+    expect($oneOffQuote)->toMatchArray([
+        'type' => 'object',
+        'required' => ['company', 'branch', 'department', 'transport_mode', 'port_of_origin', 'port_of_destination'],
+        'x-cord' => [
+            'operation_id' => 'one_off_quote.create',
+            'resource' => 'one_off_quote',
+            'action' => 'create',
+        ],
+    ])->and($oneOffQuote['properties']['transport_mode'])->toMatchArray([
+        'type' => 'string',
+        'enum' => ['SEA', 'AIR', 'ROA'],
+    ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
+        ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
+        ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
+        ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
+        ->and($staffUpdate['required'])->toBe(['company', 'code'])
+        ->and($organizationQuery['properties']['criteria_groups']['type'])->toBe('array')
+        ->and($shipmentGet['required'])->toBe(['key']);
+});
+
+it('describes published resources from an unscoped builder', function () {
+    $description = Cord::describe();
+
+    expect($description['resources'])->toHaveKeys([
+        'booking',
+        'company',
+        'custom',
+        'one_off_quote',
+        'organization',
+        'receivable',
+        'shipment',
+        'staff',
+    ]);
+});
+
+it('returns the active schema when a builder is fully scoped', function () {
+    $description = Cord::oneOffQuote()->create()->describe();
+
+    expect($description)->toBe(Cord::schema('one_off_quote.create'));
+});
+
+it('builds the same one-off quote xml from structured input', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->serviceLevel('STD')
+        ->incoterm('DAP')
+        ->additionalTerms('Export Only')
+        ->isDomesticFreight(false)
+        ->totalWeight(5000, 'KG')
+        ->totalVolume(19.2, 'M3')
+        ->goodsValue(15000, 'AUD')
+        ->clientAddress(fn ($a) => $a
+            ->addressLine1('3 TENTH AVENUE')
+            ->city('OYSTER BAY')
+            ->country('AU')
+            ->organizationCode('AU10IMSYD')
+            ->phone('+61288361212'))
+        ->pickupAddress(fn ($a) => $a
+            ->addressLine1('3 TENTH AVENUE')
+            ->city('OYSTER BAY')
+            ->country('AU'))
+        ->deliveryAddress(fn ($a) => $a
+            ->addressLine1('10 TEST ROAD')
+            ->city('AUCKLAND')
+            ->country('NZ'))
+        ->addChargeLine(fn ($c) => $c
+            ->chargeCode('FRT')
+            ->description('International Freight')
+            ->costAmount('500.0000', 'AUD')
+            ->sellAmount('1500.0000', 'AUD'))
+        ->addAttachedDocument(fn ($d) => $d
+            ->fileName('quote.pdf')
+            ->imageData(base64_encode('quote-data'))
+            ->type('QUO')
+            ->isPublished(true))
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'service_level' => 'STD',
+        'incoterm' => 'DAP',
+        'additional_terms' => 'Export Only',
+        'is_domestic_freight' => false,
+        'total_weight' => ['value' => 5000, 'unit_code' => 'KG'],
+        'total_volume' => ['value' => 19.2, 'unit_code' => 'M3'],
+        'goods_value' => ['amount' => 15000, 'currency_code' => 'AUD'],
+        'client_address' => [
+            'address_line_1' => '3 TENTH AVENUE',
+            'city' => 'OYSTER BAY',
+            'country' => 'AU',
+            'organization_code' => 'AU10IMSYD',
+            'phone' => '+61288361212',
+        ],
+        'pickup_address' => [
+            'address_line_1' => '3 TENTH AVENUE',
+            'city' => 'OYSTER BAY',
+            'country' => 'AU',
+        ],
+        'delivery_address' => [
+            'address_line_1' => '10 TEST ROAD',
+            'city' => 'AUCKLAND',
+            'country' => 'NZ',
+        ],
+        'charge_lines' => [
+            [
+                'charge_code' => 'FRT',
+                'description' => 'International Freight',
+                'cost_amount' => ['value' => '500.0000', 'currency_code' => 'AUD'],
+                'sell_amount' => ['value' => '1500.0000', 'currency_code' => 'AUD'],
+            ],
+        ],
+        'attached_documents' => [
+            [
+                'file_name' => 'quote.pdf',
+                'image_data' => base64_encode('quote-data'),
+                'type' => 'QUO',
+                'is_published' => true,
+            ],
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('builds the same staff xml from structured create and update input', function () {
+    $createXml = Cord::fromStructured('staff.create', [
+        'company' => 'CPH',
+        'code' => 'BVO',
+        'login_name' => 'user.test',
+        'password' => '1234',
+        'full_name' => 'User Test',
+        'email' => 'user.test@test.com',
+        'branch' => 'TLS',
+        'department' => 'FES',
+        'phone' => '+111',
+        'is_active' => true,
+        'country' => 'FR',
+        'groups' => ['ORGALL', 'OPSALL'],
+    ])->inspect();
+
+    expect($createXml)->toBe(
+        Cord::withCompany('CPH')
+            ->staff()
+            ->create()
+            ->code('BVO')
+            ->loginName('user.test')
+            ->password('1234')
+            ->fullName('User Test')
+            ->email('user.test@test.com')
+            ->branch('TLS')
+            ->department('FES')
+            ->phone('+111')
+            ->isActive(true)
+            ->country('FR')
+            ->replaceGroups(['ORGALL', 'OPSALL'])
+            ->inspect()
+    );
+
+    $updateXml = Cord::fromStructured('staff.update', [
+        'company' => 'CPH',
+        'code' => 'BVO',
+        'full_name' => 'Updated User',
+        'email' => 'updated@example.com',
+        'branch' => 'CPH',
+        'department' => 'OPS',
+        'country' => 'DK',
+        'groups_to_add' => ['NEWOPS'],
+        'groups_to_remove' => ['OLDOPS'],
+    ])->inspect();
+
+    expect($updateXml)->toBe(
+        Cord::withCompany('CPH')
+            ->staff('BVO')
+            ->update()
+            ->fullName('Updated User')
+            ->email('updated@example.com')
+            ->branch('CPH')
+            ->department('OPS')
+            ->country('DK')
+            ->addGroup('NEWOPS')
+            ->removeGroup('OLDOPS')
+            ->inspect()
+    );
+});
+
+it('builds the same organization query xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('organization.query', [
+        'criteria_groups' => [
+            [
+                'type' => 'Partial',
+                'criteria' => [
+                    [
+                        'entity' => 'OrgHeader',
+                        'field_name' => 'Code',
+                        'value' => 'US%',
+                    ],
+                ],
+            ],
+            [
+                'type' => 'Partial',
+                'criteria' => [
+                    [
+                        'entity' => 'OrgHeader',
+                        'field_name' => 'IsBroker',
+                        'value' => 'True',
+                    ],
+                ],
+            ],
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::organization()
+        ->criteriaGroup([
+            [
+                'Entity' => 'OrgHeader',
+                'FieldName' => 'Code',
+                'Value' => 'US%',
+            ],
+        ], type: 'Partial')
+        ->criteriaGroup([
+            [
+                'Entity' => 'OrgHeader',
+                'FieldName' => 'IsBroker',
+                'Value' => 'True',
+            ],
+        ], type: 'Partial')
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('builds the same organization address xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('organization.address.add', [
+        'company' => 'CPH',
+        'code' => 'SAGFURHEL',
+        'address' => [
+            'code' => 'MAIN STREET NO. 1',
+            'address_one' => 'Main Street',
+            'address_two' => 'Number One',
+            'country' => 'US',
+            'city' => 'Anytown',
+            'state' => 'NY',
+            'postcode' => '12345',
+            'related_port' => 'USNYC',
+            'capabilities' => [
+                [
+                    'address_type' => 'OFC',
+                    'is_main_address' => false,
+                ],
+            ],
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::withCompany('CPH')
+        ->organization('SAGFURHEL')
+        ->addAddress([
+            'code' => 'MAIN STREET NO. 1',
+            'addressOne' => 'Main Street',
+            'addressTwo' => 'Number One',
+            'country' => 'US',
+            'city' => 'Anytown',
+            'state' => 'NY',
+            'postcode' => '12345',
+            'relatedPort' => 'USNYC',
+            'capabilities' => [
+                'AddressType' => 'OFC',
+                'IsMainAddress' => 'false',
+            ],
+        ])
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('builds the same organization contact xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('organization.contact.add', [
+        'company' => 'CPH',
+        'code' => 'SAGFURHEL',
+        'contact' => [
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::withCompany('CPH')
+        ->organization('SAGFURHEL')
+        ->addContact([
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+        ])
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('builds the same organization edi xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('organization.edi_communication.add', [
+        'company' => 'CPH',
+        'code' => 'SAGFURHEL',
+        'edi_communication' => [
+            'module' => 'IMP',
+            'purpose' => 'CUS',
+            'direction' => 'OUT',
+            'transport' => 'EML',
+            'destination' => 'ops@example.com',
+            'format' => 'XML',
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::withCompany('CPH')
+        ->organization('SAGFURHEL')
+        ->addEDICommunication([
+            'module' => 'IMP',
+            'purpose' => 'CUS',
+            'direction' => 'OUT',
+            'transport' => 'EML',
+            'destination' => 'ops@example.com',
+            'format' => 'XML',
+        ])
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('builds the same shipment helper xml from structured input', function () {
+    $eventXml = Cord::fromStructured('shipment.event.add', [
+        'key' => 'SJFK21060014',
+        'event' => [
+            'date' => '2026-01-01T00:00:00+00:00',
+            'type' => 'DIM',
+            'reference' => 'My Reference',
+            'is_estimate' => true,
+        ],
+    ])->inspect();
+
+    expect($eventXml)->toBe(
+        Cord::shipment('SJFK21060014')
+            ->addEvent(
+                date: '2026-01-01T00:00:00+00:00',
+                type: 'DIM',
+                reference: 'My Reference',
+                isEstimate: true,
+            )
+            ->inspect()
+    );
+
+    $structuredDocumentXml = Cord::fromStructured('shipment.document.add', [
+        'key' => 'SJFK21060014',
+        'document' => [
+            'file_contents' => base64_encode('doc'),
+            'name' => 'myfile.pdf',
+            'type' => 'MSC',
+            'description' => 'Optional description',
+            'is_published' => true,
+        ],
+    ])->inspect();
+
+    $fluentDocumentXml = Cord::shipment('SJFK21060014')
+        ->addDocument(
+            file_contents: base64_encode('doc'),
+            name: 'myfile.pdf',
+            type: 'MSC',
+            description: 'Optional description',
+            isPublished: true,
+        )
+        ->inspect();
+
+    $normalizeEventTime = fn (string $xml) => preg_replace('/<EventTime>.*?<\/EventTime>/', '<EventTime>normalized</EventTime>', $xml);
+
+    expect($normalizeEventTime($structuredDocumentXml))->toBe($normalizeEventTime($fluentDocumentXml));
+});
+
+it('validates structured payload enums, unknown fields, and nested dotted paths', function () {
+    expect(fn () => Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'TRUCK',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+    ]))->toThrow(ValidationException::class);
+
+    expect(function () {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'unknown_field' => 'x',
+        ]);
+    })->toThrow(ValidationException::class);
+
+    try {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'client_address' => [
+                'address_line_1' => '3 TENTH AVENUE',
+                'country' => 'AU',
+            ],
+            'charge_lines' => [
+                [
+                    'charge_code' => 'FRT',
+                ],
+            ],
+        ]);
+
+        $errors = [];
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'client_address.city' => ['The field is required.'],
+        'charge_lines.0.description' => ['The field is required.'],
+    ]);
+});
+
+it('lets preconfigured builder state win over duplicate structured fields', function () {
+    $xml = Cord::shipment('SMIA12345678')
+        ->fromStructured('shipment.documents.get', [
+            'key' => 'SHOULD-NOT-WIN',
+            'filters' => [
+                ['type' => 'DocumentType', 'value' => 'ARN'],
+            ],
+        ])
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<Key>SMIA12345678</Key>')
+        ->not->toContain('SHOULD-NOT-WIN')
+        ->toContain('<Type>DocumentType</Type>');
+});
+
+it('keeps structured metadata coverage in sync with published fluent methods', function () {
+    $cordReflection = new ReflectionClass(\Oliverbj\Cord\Cord::class);
+    $ignoredCordMethods = [
+        '__construct',
+        'withCompany',
+        'withServer',
+        'withEnterprise',
+        'withConfig',
+        'withOwnerCode',
+        'withSenderId',
+        'withRecipientId',
+        'withRecepientId',
+        'withCodeMapping',
+        'booking',
+        'receiveable',
+        'receivable',
+        'shipment',
+        'oneOffQuote',
+        'organization',
+        'staff',
+        'get',
+        'create',
+        'update',
+        'delete',
+        'upsert',
+        'withPayload',
+        'toPayload',
+        'schema',
+        'fromStructured',
+        'describe',
+        'run',
+        'inspect',
+        'toXml',
+        'resolveSenderId',
+        'resolveRecipientId',
+        'resolveEnterpriseId',
+        'resolveServerId',
+        'nativeHeader',
+        'company',
+        'custom',
+        'withDocuments',
+        'activeStaffIntent',
+        'activeOneOffQuoteIntent',
+    ];
+
+    foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+        if ($method->class !== \Oliverbj\Cord\Cord::class || in_array($method->getName(), $ignoredCordMethods, true)) {
+            continue;
+        }
+
+        expect($method->getAttributes(OperationField::class))
+            ->not->toBeEmpty('Missing OperationField coverage for '.$method->getName());
+    }
+
+    foreach ([
+        \Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder::class,
+        \Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder::class,
+        \Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder::class,
+    ] as $builderClass) {
+        $reflection = new ReflectionClass($builderClass);
+
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if ($method->class !== $builderClass || in_array($method->getName(), ['withPayload', 'toArray'], true)) {
+                continue;
+            }
+
+            expect($method->getAttributes(StructuredField::class))
+                ->not->toBeEmpty('Missing StructuredField coverage for '.$builderClass.'::'.$method->getName());
+        }
+    }
 });
 
 it('builds a one-off quote create payload with empty key', function () {
@@ -488,22 +997,12 @@ it('supports one-off quote raw payload merge without clobbering fluent fields', 
         ->toContain('<Value>Janice Testing</Value>');
 });
 
-it('exposes structured one-off quote method metadata via describe', function () {
+it('describes one-off quote operations from the registry', function () {
     $description = Cord::oneOffQuote()->describe();
 
-    expect($description['resource'])->toBe('oneOffQuote')
-        ->and($description['actions'])->toBe(['create'])
-        ->and(collect($description['methods'])->firstWhere('name', 'transportMode'))->toMatchArray([
-            'name' => 'transportMode',
-            'required_for' => ['create'],
-        ])
-        ->and(collect($description['methods'])->firstWhere('name', 'addChargeLine'))->toMatchArray([
-            'name' => 'addChargeLine',
-            'required_for' => [],
-        ])
-        ->and(collect($description['methods'])->firstWhere('name', 'addAttachedDocument'))->toMatchArray([
-            'name' => 'addAttachedDocument',
-            'required_for' => [],
+    expect($description['resource'])->toBe('one_off_quote')
+        ->and($description['operations'])->toBe([
+            ['id' => 'one_off_quote.create', 'action' => 'create'],
         ]);
 });
 

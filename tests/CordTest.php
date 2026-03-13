@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Oliverbj\Cord\Attributes\OperationField;
 use Oliverbj\Cord\Attributes\StructuredField;
+use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
 use Oliverbj\Cord\Facades\Cord;
 
 it('builds request xml without sending a network request when inspecting', function () {
@@ -782,7 +785,7 @@ it('lets preconfigured builder state win over duplicate structured fields', func
 });
 
 it('keeps structured metadata coverage in sync with published fluent methods', function () {
-    $cordReflection = new ReflectionClass(\Oliverbj\Cord\Cord::class);
+    $cordReflection = new ReflectionClass(Oliverbj\Cord\Cord::class);
     $ignoredCordMethods = [
         '__construct',
         'withCompany',
@@ -827,7 +830,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
     ];
 
     foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-        if ($method->class !== \Oliverbj\Cord\Cord::class || in_array($method->getName(), $ignoredCordMethods, true)) {
+        if ($method->class !== Oliverbj\Cord\Cord::class || in_array($method->getName(), $ignoredCordMethods, true)) {
             continue;
         }
 
@@ -836,9 +839,9 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
     }
 
     foreach ([
-        \Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder::class,
-        \Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder::class,
-        \Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder::class,
+        OneOffQuoteAddressBuilder::class,
+        OneOffQuoteChargeLineBuilder::class,
+        OneOffQuoteAttachedDocumentBuilder::class,
     ] as $builderClass) {
         $reflection = new ReflectionClass($builderClass);
 

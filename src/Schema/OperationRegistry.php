@@ -9,6 +9,9 @@ use Oliverbj\Cord\Attributes\StructuredField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
+use Oliverbj\Cord\Builders\OrganizationContactBuilder;
+use Oliverbj\Cord\Builders\OrganizationEDICommunicationBuilder;
 use Oliverbj\Cord\Cord;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\OperationId;
@@ -168,6 +171,7 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
             ),
             OperationId::OrganizationContactAdd->value => new OperationDefinition(
                 id: OperationId::OrganizationContactAdd,
@@ -176,6 +180,7 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
             ),
             OperationId::OrganizationEdiCommunicationAdd->value => new OperationDefinition(
                 id: OperationId::OrganizationEdiCommunicationAdd,
@@ -184,6 +189,7 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
             ),
             OperationId::OrganizationAddressTransfer->value => new OperationDefinition(
                 id: OperationId::OrganizationAddressTransfer,
@@ -192,6 +198,7 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
             ),
             OperationId::OrganizationContactTransfer->value => new OperationDefinition(
                 id: OperationId::OrganizationContactTransfer,
@@ -200,6 +207,7 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
             ),
             OperationId::OrganizationEdiCommunicationTransfer->value => new OperationDefinition(
                 id: OperationId::OrganizationEdiCommunicationTransfer,
@@ -208,6 +216,7 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
             ),
             OperationId::OrganizationDocumentTrackingTransfer->value => new OperationDefinition(
                 id: OperationId::OrganizationDocumentTrackingTransfer,
@@ -216,6 +225,16 @@ class OperationRegistry
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
+            ),
+            OperationId::OrganizationCreate->value => new OperationDefinition(
+                id: OperationId::OrganizationCreate,
+                resource: 'organization',
+                action: 'create',
+                contextFields: $nativeWriteContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['create'],
             ),
             OperationId::StaffCreate->value => new OperationDefinition(
                 id: OperationId::StaffCreate,
@@ -608,6 +627,9 @@ class OperationRegistry
             'clientAddress', 'pickupAddress', 'deliveryAddress' => OneOffQuoteAddressBuilder::class,
             'addChargeLine' => OneOffQuoteChargeLineBuilder::class,
             'addAttachedDocument' => OneOffQuoteAttachedDocumentBuilder::class,
+            'addAddress' => OrganizationAddressBuilder::class,
+            'addContact' => OrganizationContactBuilder::class,
+            'addEDICommunication' => OrganizationEDICommunicationBuilder::class,
             default => throw new \InvalidArgumentException('No builder class mapping exists for '.$method->getName().'.'),
         };
     }

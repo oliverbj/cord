@@ -19,14 +19,17 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Documents / eDocs](#documents--edocs)
   - [Upload documents](#upload-documents)
   - [Add events](#add-events)
-- [Native](#native)
+- [Organizations](#organizations)
   - [Query Organization](#query-organization)
+  - [Create Organization](#create-organization)
   - [Update Organization](#update-organization)
     - [Add an address](#add-an-address)
     - [Add a contact](#add-a-contact)
     - [Add EDI communication details](#add-edi-communication-details)
     - [Transfer existing organization data](#transfer-existing-organization-data)
+- [Company](#company)
   - [Query Company](#query-company)
+- [Staff](#staff)
   - [Create Staff](#create-staff)
   - [Update Staff](#update-staff)
 - [One Off Quotes](#one-off-quotes)
@@ -216,9 +219,9 @@ Cord::shipment('SJFK21060014')
     ->run();
 ```
 
-## Native
+## Organizations
 
-Cord groups native functionality into query and update flows.
+Cord maps beautifully into the organization module of CargoWise.
 
 ### Query Organization
 
@@ -243,6 +246,15 @@ Cord::organization()
 
 The `type` argument can be either `Key` or `Partial`. `Key` is the default.
 
+#### Partial Match Retrieval
+You can retrieve entities by providing field names along with either complete values or partial 
+values using wildcards to filter by. Multiple criteria items can be provided and multiple groups of 
+criteria can be provided.
+
+All items within a criteria group assume an ‘And’ operation, whilst an ‘Or’ operation is performed 
+between each criteria group.
+
+
 You can define multiple criteria groups. Multiple groups behave like an `OR` statement:
 
 ```php
@@ -265,45 +277,185 @@ Cord::organization()
 ```
 
 
+#### Unique Key Based Retrieval
+
+This is the retrieval of data by providing a candidate key (unique reference). This message requires that the Code property on the table OrgHeader is a candidate key to work.
+
+If you specify a FieldName that is not a candidate key, a Rejection status will be returned with an 
+appropriate error message.
+
+When using unique key based retrieval, only a single key can be specified. There will only be one
+Criteria element, as multiple criteria with different unique keys would never return a result. This is 
+because you could never find an Organization with a code of ABC and XYZ
+
+
+You can define multiple criteria groups. Multiple groups behave like an `OR` statement:
+
+```php
+Cord::organization()
+    ->criteriaGroup([
+        [
+            'Entity' => 'OrgHeader',
+            'FieldName' => 'Code',
+            'Value' => 'ABCDEF',
+        ],
+    ], type: 'Key')
+    ->run();
+```
+
+
+
+### Create Organization
+
+New organizations are created with `organization('CODE')->create()`. Supply at least `fullName()` — all other setters are optional. Multiple addresses and contacts can be chained.
+
+```php
+Cord::withCompany('CPH')
+    ->organization('NEWORG')
+    ->create()
+    ->fullName('New Organization Ltd')
+    ->isActive(true)
+    ->isForwarder(true)
+    ->isConsignee(true)
+    ->isConsignor(false)
+    ->isAirLine(false)
+    ->closestPort('AUSYD')
+    ->addAddress(fn ($a) => $a
+        ->code('MAIN ST')
+        ->addressOne('1 Main Street')
+        ->country('AU')
+        ->city('Sydney')
+        ->capability('OFC', isMainAddress: true)
+    )
+    ->addContact(fn ($c) => $c
+        ->name('Operations')
+        ->email('ops@example.com')
+    )
+    ->run();
+```
+
+| Method | Required | Description |
+|---|---|---|
+| `fullName(string)` | ✅ | Organisation display name |
+| `isActive(bool)` | | Defaults to `true` |
+| `isConsignee(bool)` | | Organisation role flag |
+| `isConsignor(bool)` | | Organisation role flag |
+| `isForwarder(bool)` | | Organisation role flag |
+| `isAirLine(bool)` | | Organisation role flag |
+| `closestPort(string)` | | UNLOCO code for closest port |
+| `addAddress(Closure)` | | Repeatable; see address builder below |
+| `addContact(Closure)` | | Repeatable; see contact builder below |
+
+> **Note:** `addAddress()` and `addContact()` use the same builders as the update path. See [Add an address](#add-an-address) and [Add a contact](#add-a-contact).
+
 ### Update Organization
 
-Native organization updates are anchored on `organization('CODE')`. 
+Native organization updates are anchored on `organization('CODE')->update()`. Call `update()` before any write setter — this mirrors the `staff()->update()` pattern.
 
 #### Add an address
 
 ```php
-Cord::organization('SAGFURHEL')
-    ->addAddress([
-        'code' => 'MAIN STREET NO. 1',
-        'addressOne' => 'Main Street',
-        'addressTwo' => 'Number One',
-        'country' => 'US',
-        'city' => 'Anytown',
-        'state' => 'NY',
-        'postcode' => '12345',
-        'relatedPort' => 'USNYC',
-        'capabilities' => [
-            'AddressType' => 'OFC',
-            'IsMainAddress' => 'false',
-        ],
-    ])
+Cord::withCompany('CPH')
+    ->organization('SAGFURHEL')
+    ->update()
+    ->addAddress(fn ($a) => $a
+        ->code('MAIN STREET NO. 1')
+        ->addressOne('Main Street')
+        ->addressTwo('Number One')
+        ->country('US')
+        ->city('Anytown')
+        ->state('NY')
+        ->postcode('12345')
+        ->relatedPort('USNYC')
+        ->capability('OFC', isMainAddress: false)
+    )
     ->run();
 ```
+
+Required: `code`, `addressOne`, `country`, `city`.  
+Use `->capability($addressType, $isMainAddress)` to append an address type. Call it multiple times for multiple capabilities.
+
+Available setters: `code`, `addressOne`, `addressTwo`, `country`, `city`, `state`, `postcode`, `relatedPort`, `phone`, `fax`, `mobile`, `email`, `dropModeFCL`, `dropModeLCL`, `dropModeAIR`, `active`, `capability`.
 
 #### Add a contact
 
 ```php
-Cord::organization('SAGFURHEL')
-    ->addContact([
-        'name' => 'Jane Doe',
-        'email' => 'jane@example.com',
-        'phone' => '+1 555 123 4567',
-        'language' => 'EN',
-    ])
+Cord::withCompany('CPH')
+    ->organization('SAGFURHEL')
+    ->update()
+    ->addContact(fn ($c) => $c
+        ->name('Jane Doe')
+        ->email('jane@example.com')
+        ->phone('+1 555 123 4567')
+        ->language('EN')
+    )
     ->run();
 ```
 
-You can also include optional `documentsToDeliver` data when creating the contact.
+Required: `name`, `email`.  
+Available setters: `name`, `email`, `active`, `notifyMode`, `title`, `gender`, `language`, `phone`, `mobilePhone`, `homePhone`, `attachmentType`.
+
+#### Add EDI communication details
+
+```php
+Cord::withCompany('CPH')
+    ->organization('SAGFURHEL')
+    ->update()
+    ->addEDICommunication(fn ($e) => $e
+        ->module('IMP')
+        ->purpose('CUS')
+        ->direction('OUT')
+        ->transport('EML')
+        ->destination('ops@example.com')
+        ->format('XML')
+    )
+    ->run();
+```
+
+Required: `module`, `purpose`, `direction`, `transport`, `destination`, `format`.  
+Optional setters: `subject`, `publishMilestones`, `senderVAN`, `receiverVAN`, `filename`.
+
+#### Transfer existing organization data
+
+The transfer helpers copy an existing entity from a source organization payload to a target organization. They still accept a raw array sourced directly from a CargoWise payload:
+
+- `transferAddress()`
+- `transferContact()`
+- `transferEDICommunication()`
+- `transferDocumentTracking()`
+
+```php
+$source = Cord::organization('SOURCE')->run();
+
+Cord::withCompany('CPH')
+    ->organization('TARGET')
+    ->update()
+    ->transferContact($source['OrgContactCollection']['OrgContact'][0])
+    ->run();
+```
+
+
+#### Schema and structured execution
+
+All organization write operations are registered in the operation registry, so `fromStructured()` and `schema()` work the same way as for One-Off Quotes and Staff:
+
+```php
+// Introspect a specific operation
+$schema = Cord::schema('organization.address.add');
+
+// Execute via structured payload
+$response = Cord::fromStructured('organization.contact.add', [
+    'company' => 'CPH',
+    'code' => 'SAGFURHEL',
+    'contact' => [
+        'name' => 'Jane Doe',
+        'email' => 'jane@example.com',
+    ],
+])->run();
+```
+
+## Company
+You are able to use Cord to interact with companies in CargoWise.
 
 ### Query Company
 
@@ -320,116 +472,8 @@ Cord::company()
     ])
     ->run();
 ```
-
-#### Add EDI communication details
-
-```php
-Cord::organization('SAGFURHEL')
-    ->addEDICommunication([
-        'module' => 'IMP',
-        'purpose' => 'CUS',
-        'direction' => 'OUT',
-        'transport' => 'EML',
-        'destination' => 'ops@example.com',
-        'format' => 'XML',
-    ])
-    ->run();
-```
-
-#### Transfer existing organization data
-
-The transfer helpers are useful when you already have data from an organization payload and want to copy it to another organization:
-
-- `transferAddress()`
-- `transferContact()`
-- `transferEDICommunication()`
-- `transferDocumentTracking()`
-
-```php
-$source = Cord::organization('SOURCE')->run();
-
-Cord::withCompany('CPH')
-    ->organization('TARGET')
-    ->transferContact($source['OrgContactCollection']['OrgContact'][0])
-    ->run();
-```
-
-## One Off Quotes
-
-### Create One-Off Quote
-
-One-off quote creation is sent as a universal shipment request with `DataTarget Type="OneOffQuote"`.
-
-```php
-Cord::withCompany('CPH')
-    ->oneOffQuote()
-    ->create()
-    ->branch('A01')
-    ->department('FES')
-    ->transportMode('SEA')
-    ->portOfOrigin('AUSYD')
-    ->portOfDestination('NZAKL')
-    ->serviceLevel('STD')
-    ->incoterm('DAP')
-    ->totalWeight(5000, 'KG')
-    ->totalVolume(19.2, 'M3')
-    ->goodsValue(15000, 'AUD')
-    ->additionalTerms('Export Only')
-    ->isDomesticFreight(false)
-    ->clientAddress(fn ($a) => $a
-        ->addressLine1('3 TENTH AVENUE')
-        ->city('OYSTER BAY')
-        ->country('AU')
-    )
-    ->pickupAddress(fn ($a) => $a
-        ->addressLine1('3 TENTH AVENUE')
-        ->city('OYSTER BAY')
-        ->country('AU')
-    )
-    ->deliveryAddress(fn ($a) => $a
-        ->addressLine1('10 TEST ROAD')
-        ->city('AUCKLAND')
-        ->country('NZ')
-    )
-    ->addChargeLine(fn ($c) => $c
-        ->chargeCode('FRT')
-        ->description('International Freight')
-        ->costAmount('500.0000', 'AUD')
-        ->sellAmount('1500.0000', 'AUD')
-    )
-    ->addAttachedDocument(fn ($d) => $d
-        ->fileName('Quote.pdf')
-        ->imageData(base64_encode(file_get_contents('Quote.pdf')))
-        ->type('QTE')
-        ->isPublished(true)
-    )
-    ->withPayload([
-        'CustomizedFieldCollection' => [
-            'CustomizedField' => [
-                'DataType' => 'String',
-                'Key' => 'Test User',
-                'Value' => 'Janice Testing',
-            ],
-        ],
-    ])
-    ->run();
-```
-
-One-off quote create requirements:
-
-- `withCompany(...)`
-- `branch(...)`
-- `department(...)`
-- `transportMode(...)`
-- `portOfOrigin(...)`
-- `portOfDestination(...)`
-
-One-off quote introspection:
-
-```php
-$schema = Cord::schema('one_off_quote.create');
-$active = Cord::oneOffQuote()->create()->describe();
-```
+## Staff
+You can also use Cord to manage Staff records in CargoWise.
 
 ### Create Staff
 
@@ -506,6 +550,85 @@ Cord::withCompany('CPH')
         ],
     ])
     ->run();
+```
+
+## One Off Quotes
+
+Use Cord to interact with the One-Off Quote module in CargoWise.
+
+### Create One-Off Quote
+
+One-off quote creation is sent as a universal shipment request with `DataTarget Type="OneOffQuote"`.
+
+```php
+Cord::withCompany('CPH')
+    ->oneOffQuote()
+    ->create()
+    ->branch('A01')
+    ->department('FES')
+    ->transportMode('SEA')
+    ->portOfOrigin('AUSYD')
+    ->portOfDestination('NZAKL')
+    ->serviceLevel('STD')
+    ->incoterm('DAP')
+    ->totalWeight(5000, 'KG')
+    ->totalVolume(19.2, 'M3')
+    ->goodsValue(15000, 'AUD')
+    ->additionalTerms('Export Only')
+    ->isDomesticFreight(false)
+    ->clientAddress(fn ($a) => $a
+        ->addressLine1('3 TENTH AVENUE')
+        ->city('OYSTER BAY')
+        ->country('AU')
+    )
+    ->pickupAddress(fn ($a) => $a
+        ->addressLine1('3 TENTH AVENUE')
+        ->city('OYSTER BAY')
+        ->country('AU')
+    )
+    ->deliveryAddress(fn ($a) => $a
+        ->addressLine1('10 TEST ROAD')
+        ->city('AUCKLAND')
+        ->country('NZ')
+    )
+    ->addChargeLine(fn ($c) => $c
+        ->chargeCode('FRT')
+        ->description('International Freight')
+        ->costAmount('500.0000', 'AUD')
+        ->sellAmount('1500.0000', 'AUD')
+    )
+    ->addAttachedDocument(fn ($d) => $d
+        ->fileName('Quote.pdf')
+        ->imageData(base64_encode(file_get_contents('Quote.pdf')))
+        ->type('QTE')
+        ->isPublished(true)
+    )
+    ->withPayload([
+        'CustomizedFieldCollection' => [
+            'CustomizedField' => [
+                'DataType' => 'String',
+                'Key' => 'Test User',
+                'Value' => 'Janice Testing',
+            ],
+        ],
+    ])
+    ->run();
+```
+
+One-off quote create requirements:
+
+- `withCompany(...)`
+- `branch(...)`
+- `department(...)`
+- `transportMode(...)`
+- `portOfOrigin(...)`
+- `portOfDestination(...)`
+
+One-off quote introspection:
+
+```php
+$schema = Cord::schema('one_off_quote.create');
+$active = Cord::oneOffQuote()->create()->describe();
 ```
 
 ## Multiple Connections

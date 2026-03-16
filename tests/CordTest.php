@@ -46,20 +46,18 @@ it('includes all native criteria groups in generated xml', function () {
 it('accepts the documented flat address capability payload', function () {
     $xml = Cord::withCompany('CPH')
         ->organization('SAGFURHEL')
-        ->addAddress([
-            'code' => 'MAIN STREET NO. 1',
-            'addressOne' => 'Main Street',
-            'addressTwo' => 'Number One',
-            'country' => 'US',
-            'city' => 'Anytown',
-            'state' => 'NY',
-            'postcode' => '12345',
-            'relatedPort' => 'USNYC',
-            'capabilities' => [
-                'AddressType' => 'OFC',
-                'IsMainAddress' => 'false',
-            ],
-        ])
+        ->update()
+        ->addAddress(fn ($a) => $a
+            ->code('MAIN STREET NO. 1')
+            ->addressOne('Main Street')
+            ->addressTwo('Number One')
+            ->country('US')
+            ->city('Anytown')
+            ->state('NY')
+            ->postcode('12345')
+            ->relatedPort('USNYC')
+            ->capability('OFC', isMainAddress: false)
+        )
         ->inspect();
 
     expect($xml)
@@ -71,10 +69,11 @@ it('accepts the documented flat address capability payload', function () {
 it('allows adding a contact without documents to deliver', function () {
     $xml = Cord::withCompany('CPH')
         ->organization('SAGFURHEL')
-        ->addContact([
-            'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
-        ])
+        ->update()
+        ->addContact(fn ($c) => $c
+            ->name('Jane Doe')
+            ->email('jane@example.com')
+        )
         ->inspect();
 
     expect($xml)
@@ -599,20 +598,18 @@ it('builds the same organization address xml from structured input', function ()
 
     $fluentXml = Cord::withCompany('CPH')
         ->organization('SAGFURHEL')
-        ->addAddress([
-            'code' => 'MAIN STREET NO. 1',
-            'addressOne' => 'Main Street',
-            'addressTwo' => 'Number One',
-            'country' => 'US',
-            'city' => 'Anytown',
-            'state' => 'NY',
-            'postcode' => '12345',
-            'relatedPort' => 'USNYC',
-            'capabilities' => [
-                'AddressType' => 'OFC',
-                'IsMainAddress' => 'false',
-            ],
-        ])
+        ->update()
+        ->addAddress(fn ($a) => $a
+            ->code('MAIN STREET NO. 1')
+            ->addressOne('Main Street')
+            ->addressTwo('Number One')
+            ->country('US')
+            ->city('Anytown')
+            ->state('NY')
+            ->postcode('12345')
+            ->relatedPort('USNYC')
+            ->capability('OFC', isMainAddress: false)
+        )
         ->inspect();
 
     expect($structuredXml)->toBe($fluentXml);
@@ -630,10 +627,11 @@ it('builds the same organization contact xml from structured input', function ()
 
     $fluentXml = Cord::withCompany('CPH')
         ->organization('SAGFURHEL')
-        ->addContact([
-            'name' => 'Jane Doe',
-            'email' => 'jane@example.com',
-        ])
+        ->update()
+        ->addContact(fn ($c) => $c
+            ->name('Jane Doe')
+            ->email('jane@example.com')
+        )
         ->inspect();
 
     expect($structuredXml)->toBe($fluentXml);
@@ -655,14 +653,15 @@ it('builds the same organization edi xml from structured input', function () {
 
     $fluentXml = Cord::withCompany('CPH')
         ->organization('SAGFURHEL')
-        ->addEDICommunication([
-            'module' => 'IMP',
-            'purpose' => 'CUS',
-            'direction' => 'OUT',
-            'transport' => 'EML',
-            'destination' => 'ops@example.com',
-            'format' => 'XML',
-        ])
+        ->update()
+        ->addEDICommunication(fn ($e) => $e
+            ->module('IMP')
+            ->purpose('CUS')
+            ->direction('OUT')
+            ->transport('EML')
+            ->destination('ops@example.com')
+            ->format('XML')
+        )
         ->inspect();
 
     expect($structuredXml)->toBe($fluentXml);
@@ -827,6 +826,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'withDocuments',
         'activeStaffIntent',
         'activeOneOffQuoteIntent',
+        'activeOrganizationIntent',
     ];
 
     foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
@@ -1107,4 +1107,116 @@ it('requires company context for one-off quote create', function () {
 it('does not support one-off quote update in v1', function () {
     expect(fn () => Cord::oneOffQuote('00001063')->update())
         ->toThrow(Exception::class, 'OneOffQuote update() is not implemented yet.');
+});
+
+it('builds an organization create payload with INSERT action', function () {
+    $xml = Cord::withCompany('CPH')
+        ->organization('NEWORG')
+        ->create()
+        ->fullName('New Organization Ltd')
+        ->isForwarder(true)
+        ->isConsignee(true)
+        ->isConsignor(false)
+        ->isAirLine(false)
+        ->closestPort('AUSYD')
+        ->addAddress(fn ($a) => $a
+            ->code('MAIN ST')
+            ->addressOne('1 Main Street')
+            ->country('AU')
+            ->city('Sydney')
+            ->capability('OFC', isMainAddress: true)
+        )
+        ->addContact(fn ($c) => $c
+            ->name('Operations')
+            ->email('ops@example.com')
+        )
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<OrgHeader Action="INSERT">')
+        ->toContain('<Code>NEWORG</Code>')
+        ->toContain('<FullName>New Organization Ltd</FullName>')
+        ->toContain('<IsForwarder>true</IsForwarder>')
+        ->toContain('<IsConsignee>true</IsConsignee>')
+        ->toContain('<IsConsignor>false</IsConsignor>')
+        ->toContain('<IsAirLine>false</IsAirLine>')
+        ->toContain('<OrgAddressCollection>')
+        ->toContain('<OrgAddress Action="INSERT">')
+        ->toContain('<OrgContactCollection>')
+        ->toContain('<OrgContact Action="INSERT">')
+        ->toContain('<ContactName>Operations</ContactName>')
+        ->toContain('<ClosestPort TableName="RefUNLOCO">')
+        ->toContain('<Code>AUSYD</Code>');
+});
+
+it('builds the same organization create xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('organization.create', [
+        'company' => 'CPH',
+        'code' => 'NEWORG',
+        'full_name' => 'New Organization Ltd',
+        'is_forwarder' => true,
+        'is_consignee' => true,
+        'closest_port' => 'AUSYD',
+        'addresses' => [
+            [
+                'code' => 'MAIN ST',
+                'address_one' => '1 Main Street',
+                'country' => 'AU',
+                'city' => 'Sydney',
+                'capabilities' => [
+                    ['address_type' => 'OFC', 'is_main_address' => true],
+                ],
+            ],
+        ],
+        'contacts' => [
+            [
+                'name' => 'Operations',
+                'email' => 'ops@example.com',
+            ],
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::withCompany('CPH')
+        ->organization('NEWORG')
+        ->create()
+        ->fullName('New Organization Ltd')
+        ->isForwarder(true)
+        ->isConsignee(true)
+        ->closestPort('AUSYD')
+        ->addAddress(fn ($a) => $a
+            ->code('MAIN ST')
+            ->addressOne('1 Main Street')
+            ->country('AU')
+            ->city('Sydney')
+            ->capability('OFC', isMainAddress: true)
+        )
+        ->addContact(fn ($c) => $c
+            ->name('Operations')
+            ->email('ops@example.com')
+        )
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('validates fullName is required for organization create', function () {
+    $errors = null;
+
+    try {
+        Cord::withCompany('CPH')
+            ->organization('NEWORG')
+            ->create()
+            ->inspect();
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'full_name' => ['The full_name field is required.'],
+    ]);
+});
+
+it('requires a code when calling organization create', function () {
+    expect(fn () => Cord::organization()->create())
+        ->toThrow(Exception::class, 'organization() requires a code for create().');
 });

@@ -9,6 +9,7 @@ enum RequestType: string
     case UniversalEvent = 'UniversalEvent';
     case NativeOrganizationRetrieval = 'NativeOrganizationRetrieval';
     case NativeOrganizationUpdate = 'NativeOrganizationUpdate';
+    case NativeOrganizationCreation = 'NativeOrganizationCreation';
     case NativeCompanyRetrieval = 'NativeCompanyRetrieval';
     case NativeStaffCreation = 'NativeStaffCreation';
     case NativeStaffUpdate = 'NativeStaffUpdate';

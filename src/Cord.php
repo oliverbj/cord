@@ -15,11 +15,15 @@ use Oliverbj\Cord\Attributes\OperationField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
+use Oliverbj\Cord\Builders\OrganizationContactBuilder;
+use Oliverbj\Cord\Builders\OrganizationEDICommunicationBuilder;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\OperationId;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Interfaces\RequestInterface;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
+use Oliverbj\Cord\Requests\NativeOrganizationCreation;
 use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
 use Oliverbj\Cord\Requests\NativeStaffCreation;
@@ -84,6 +88,10 @@ class Cord
     protected ?string $oneOffQuoteIntent = null;
 
     protected array $oneOffQuoteDraft = [];
+
+    protected ?string $organizationIntent = null;
+
+    public array $organizationDraft = [];
 
     protected ?string $xml = null;
 
@@ -264,6 +272,8 @@ class Cord
         // Reset the criteria group.
         $this->criteriaGroups = [];
         $this->targetKey = null;
+        $this->organizationIntent = null;
+        $this->organizationDraft = [];
 
         $this->requestType = RequestType::NativeOrganizationRetrieval;
         $this->target = DataTarget::Organization;
@@ -357,7 +367,18 @@ class Cord
             return $this;
         }
 
-        throw new \Exception('create() is currently implemented for staff and oneOffQuote only.');
+        if ($this->target === DataTarget::Organization) {
+            if (! $this->targetKey) {
+                throw new \Exception('organization() requires a code for create(). Use organization(\'CODE\')->create().');
+            }
+            $this->organizationIntent = 'create';
+            $this->requestType = RequestType::NativeOrganizationCreation;
+            $this->currentOperation = OperationId::OrganizationCreate;
+
+            return $this;
+        }
+
+        throw new \Exception('create() is currently implemented for staff, oneOffQuote and organization only.');
     }
 
     /**
@@ -382,11 +403,22 @@ class Cord
             return $this;
         }
 
+        if ($this->target === DataTarget::Organization) {
+            if (! $this->targetKey) {
+                throw new \Exception('organization() requires a code for update(). Use organization(\'CODE\')->update().');
+            }
+
+            $this->organizationIntent = 'update';
+            $this->requestType = RequestType::NativeOrganizationUpdate;
+
+            return $this;
+        }
+
         if ($this->target === DataTarget::OneOffQuote) {
             throw new \Exception('OneOffQuote update() is not implemented yet.');
         }
 
-        throw new \Exception('update() is currently implemented for staff only.');
+        throw new \Exception('update() is currently implemented for staff and organization only.');
     }
 
     /**
@@ -489,8 +521,13 @@ class Cord
      */
     #[OperationField(OperationId::StaffCreate, name: 'full_name', required: true)]
     #[OperationField(OperationId::StaffUpdate, name: 'full_name')]
+    #[OperationField(OperationId::OrganizationCreate, name: 'full_name', required: true)]
     public function fullName(string $fullName): self
     {
+        if ($this->target === DataTarget::Organization) {
+            return $this->setOrganizationDraftValue('fullName', $fullName);
+        }
+
         return $this->setStaffDraftValue('fullName', $fullName);
     }
 
@@ -515,9 +552,74 @@ class Cord
      */
     #[OperationField(OperationId::StaffCreate, name: 'is_active')]
     #[OperationField(OperationId::StaffUpdate, name: 'is_active')]
+    #[OperationField(OperationId::OrganizationCreate, name: 'is_active')]
     public function isActive(bool $isActive): self
     {
+        if ($this->target === DataTarget::Organization) {
+            return $this->setOrganizationDraftValue('isActive', $isActive);
+        }
+
         return $this->setStaffDraftValue('active', $isActive);
+    }
+
+    /**
+     * Mark the organization as a consignee.
+     *
+     * Example:
+     * `->isConsignee(true)`
+     */
+    #[OperationField(OperationId::OrganizationCreate, name: 'is_consignee')]
+    public function isConsignee(bool $value): self
+    {
+        return $this->setOrganizationDraftValue('isConsignee', $value);
+    }
+
+    /**
+     * Mark the organization as a consignor.
+     *
+     * Example:
+     * `->isConsignor(true)`
+     */
+    #[OperationField(OperationId::OrganizationCreate, name: 'is_consignor')]
+    public function isConsignor(bool $value): self
+    {
+        return $this->setOrganizationDraftValue('isConsignor', $value);
+    }
+
+    /**
+     * Mark the organization as a freight forwarder.
+     *
+     * Example:
+     * `->isForwarder(true)`
+     */
+    #[OperationField(OperationId::OrganizationCreate, name: 'is_forwarder')]
+    public function isForwarder(bool $value): self
+    {
+        return $this->setOrganizationDraftValue('isForwarder', $value);
+    }
+
+    /**
+     * Mark the organization as an airline.
+     *
+     * Example:
+     * `->isAirLine(true)`
+     */
+    #[OperationField(OperationId::OrganizationCreate, name: 'is_air_line')]
+    public function isAirLine(bool $value): self
+    {
+        return $this->setOrganizationDraftValue('isAirLine', $value);
+    }
+
+    /**
+     * Set the closest UNLOCO port code for the organization.
+     *
+     * Example:
+     * `->closestPort('AUSYD')`
+     */
+    #[OperationField(OperationId::OrganizationCreate, name: 'closest_port')]
+    public function closestPort(string $code): self
+    {
+        return $this->setOrganizationDraftValue('closestPort', $code);
     }
 
     /**
@@ -1014,187 +1116,88 @@ class Cord
         ];
     }
 
-    #[OperationField(
-        OperationId::OrganizationEdiCommunicationAdd,
-        name: 'edi_communication',
-        required: true,
-        schema: [
-            'type' => 'object',
-            'additionalProperties' => false,
-            'properties' => [
-                'module' => ['type' => 'string'],
-                'purpose' => ['type' => 'string'],
-                'direction' => ['type' => 'string'],
-                'transport' => ['type' => 'string'],
-                'destination' => ['type' => 'string'],
-                'format' => ['type' => 'string'],
-                'subject' => ['type' => 'string'],
-                'publish_milestones' => ['type' => ['boolean', 'string']],
-                'sender_van' => ['type' => 'string'],
-                'receiver_van' => ['type' => 'string'],
-                'filename' => ['type' => 'string'],
-            ],
-            'required' => ['module', 'purpose', 'direction', 'transport', 'destination', 'format'],
-        ]
-    )]
-    public function addEDICommunication(array $ediCommunicationDetails): self
+    #[OperationField(OperationId::OrganizationEdiCommunicationAdd, name: 'edi_communication', required: true, builder: OrganizationEDICommunicationBuilder::class)]
+    public function addEDICommunication(Closure $builder): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->assertOrganizationUpdateContext('addEDICommunication');
+
+        $ediBuilder = new OrganizationEDICommunicationBuilder;
+        $builder($ediBuilder);
+        $details = $ediBuilder->toArray();
+
+        $requiredFields = ['module', 'purpose', 'direction', 'format', 'destination', 'transport'];
+        $errors = [];
+        foreach ($requiredFields as $field) {
+            if (! isset($details[$field]) || trim((string) $details[$field]) === '') {
+                $errors[$field] = ['The '.$field.' field is required.'];
+            }
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
         $this->currentOperation = OperationId::OrganizationEdiCommunicationAdd;
         $this->markStructuredField('edi_communication');
 
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before adding an EDI communication mode. Use organization() method before calling this method.');
-        }
-
-        // Validate required fields in $addressDetails array
-        $requiredFields = ['module', 'purpose', 'direction', 'format', 'destination', 'transport'];
-        foreach ($requiredFields as $field) {
-            if (! isset($ediCommunicationDetails[$field])) {
-                throw new \Exception("Missing required field '{$field}' in contact details.");
-            }
-        }
-
         $this->ediCommunication = [
             '_attributes' => ['Action' => 'INSERT'],
-            'Module' => $ediCommunicationDetails['module'],
-            'MessagePurpose' => $ediCommunicationDetails['purpose'],
-            'CommsDirection' => $ediCommunicationDetails['direction'],
-            'CommunicationsTransport' => $ediCommunicationDetails['transport'],
-            'Destination' => $ediCommunicationDetails['destination'],
-            'FileFormat' => $ediCommunicationDetails['format'],
-            'ServerAddressSubject' => $ediCommunicationDetails['subject'] ?? '',
-            'PublishInternalMilestones' => $ediCommunicationDetails['publishMilestones'] ?? 'false',
-            'LocalPartyVanID' => $ediCommunicationDetails['senderVAN'] ?? '',
-            'RelatedPartyVanID' => $ediCommunicationDetails['receiverVAN'] ?? '',
-            'Filename' => $ediCommunicationDetails['filename'] ?? '',
+            'Module' => $details['module'],
+            'MessagePurpose' => $details['purpose'],
+            'CommsDirection' => $details['direction'],
+            'CommunicationsTransport' => $details['transport'],
+            'Destination' => $details['destination'],
+            'FileFormat' => $details['format'],
+            'ServerAddressSubject' => $details['subject'] ?? '',
+            'PublishInternalMilestones' => $details['publishMilestones'] ?? 'false',
+            'LocalPartyVanID' => $details['senderVAN'] ?? '',
+            'RelatedPartyVanID' => $details['receiverVAN'] ?? '',
+            'Filename' => $details['filename'] ?? '',
         ];
 
         return $this;
-
     }
 
-    #[OperationField(
-        OperationId::OrganizationContactAdd,
-        name: 'contact',
-        required: true,
-        schema: [
-            'type' => 'object',
-            'additionalProperties' => false,
-            'properties' => [
-                'name' => ['type' => 'string'],
-                'email' => ['type' => 'string'],
-                'active' => ['type' => ['boolean', 'string']],
-                'notify_mode' => ['type' => 'string'],
-                'title' => ['type' => 'string'],
-                'gender' => ['type' => 'string'],
-                'language' => ['type' => 'string'],
-                'phone' => ['type' => 'string'],
-                'mobile_phone' => ['type' => 'string'],
-                'home_phone' => ['type' => 'string'],
-                'attachment_type' => ['type' => 'string'],
-                'documents_to_deliver' => [
-                    'type' => 'array',
-                    'items' => [
-                        'type' => 'object',
-                        'additionalProperties' => false,
-                        'properties' => [
-                            'document_group' => ['type' => 'string'],
-                            'default_contact' => ['type' => ['boolean', 'string']],
-                            'attachment_type' => ['type' => 'string'],
-                            'deliver_by' => ['type' => 'string'],
-                            'menu_item' => [
-                                'type' => 'object',
-                                'additionalProperties' => false,
-                                'properties' => [
-                                    'menu_name' => ['type' => 'string'],
-                                    'business_context' => ['type' => 'string'],
-                                    'menu_path' => ['type' => 'string'],
-                                    'is_client_specific' => ['type' => ['boolean', 'string']],
-                                    'is_system_defined' => ['type' => ['boolean', 'string']],
-                                    'filter_list' => ['type' => 'string'],
-                                ],
-                                'required' => ['business_context'],
-                            ],
-                            'filter_shipment_mode' => ['type' => 'string'],
-                            'filter_direction' => ['type' => 'string'],
-                            'email_subject_macro' => ['type' => 'string'],
-                        ],
-                    ],
-                ],
-            ],
-            'required' => ['name', 'email'],
-        ]
-    )]
-    public function addContact(array $contactDetails): self
+    #[OperationField(OperationId::OrganizationContactAdd, name: 'contact', required: true, builder: OrganizationContactBuilder::class)]
+    #[OperationField(OperationId::OrganizationCreate, name: 'contacts', repeatable: true, builder: OrganizationContactBuilder::class)]
+    public function addContact(Closure $builder): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
-        $this->currentOperation = OperationId::OrganizationContactAdd;
-        $this->markStructuredField('contact');
+        $this->assertOrganizationWriteContext('addContact');
 
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before adding a contact person. Use organization() method before calling this method.');
-        }
+        $contactBuilder = new OrganizationContactBuilder;
+        $builder($contactBuilder);
+        $details = $contactBuilder->toArray();
 
-        // Validate required fields in $addressDetails array
-        $requiredFields = ['name', 'email'];
-        foreach ($requiredFields as $field) {
-            if (! isset($contactDetails[$field])) {
-                throw new \Exception("Missing required field '{$field}' in contact details.");
+        $errors = [];
+        foreach (['name', 'email'] as $field) {
+            if (! isset($details[$field]) || trim((string) $details[$field]) === '') {
+                $errors[$field] = ['The '.$field.' field is required.'];
             }
         }
-
-        $docsToDeliver = $contactDetails['documentsToDeliver']['OrgDocument'] ?? [];
-
-        // Check if $ediCommunications is an associative array or an array of key-value pairs
-        if (! empty($docsToDeliver) && is_array($docsToDeliver) && array_keys($docsToDeliver) !== range(0, count($docsToDeliver) - 1)) {
-            $docsToDeliver = [$docsToDeliver]; // Convert to an array of one element
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
 
-        $documents = [];
-        foreach ($docsToDeliver as $document) {
-
-            $documents[] = [
-                '_attributes' => [
-                    'Action' => 'INSERT',
-                ],
-                'DocumentGroup' => $document['DocumentGroup'] ?? '',
-                'DefaultContact' => $document['DefaultContact'] ?? 'false',
-                'AttachmentType' => $document['AttachmentType'] ?? null,
-                'DeliverBy' => $document['DeliverBy'] ?? '',
-                'MenuItem' => isset($document['MenuItem']['BusinessContext']) ? [
-                    'MenuName' => $document['MenuItem']['MenuName'] ?? '',
-                    'BusinessContext' => $document['MenuItem']['BusinessContext'] ?? '',
-                    'MenuPath' => $document['MenuItem']['MenuPath'] ?? '',
-                    'IsClientSpecific' => $document['MenuItem']['IsClientSpecific'] ?? 'false',
-                    'IsSystemDefined' => $document['MenuItem']['IsSystemDefined'] ?? 'false',
-                    'FilterList' => $document['MenuItem']['FilterList'] ?? '',
-                ] : null,
-                'FilterShipmentMode' => $document['FilterShipmentMode'] ?? 'ALL',
-                'FilterDirection' => $document['FilterDirection'] ?? 'ALL',
-                'EmailSubjectMacro' => $document['EmailSubjectMacro'] ?? '',
-            ];
-        }
-
-        $this->contact = [
+        $built = [
             '_attributes' => ['Action' => 'INSERT'],
-            'IsActive' => $contactDetails['active'] ?? 'true',
-            'ContactName' => $contactDetails['name'],
-            'NotifyMode' => $contactDetails['notifyMode'] ?? 'EML',
-            'Title' => $contactDetails['title'] ?? '',
-            'Gender' => $contactDetails['gender'] ?? 'N',
-            'Email' => $contactDetails['email'],
-            'Language' => $contactDetails['language'] ?? 'EN',
-            'Phone' => $contactDetails['phone'] ?? '',
-            'Mobile' => $contactDetails['mobilePhone'] ?? '',
-            'HomeWork' => $contactDetails['homePhone'] ?? '',
-            'AttachmentType' => $contactDetails['attachmentType'] ?? 'PDF',
+            'IsActive' => $details['active'] ?? 'true',
+            'ContactName' => $details['name'],
+            'NotifyMode' => $details['notifyMode'] ?? 'EML',
+            'Title' => $details['title'] ?? '',
+            'Gender' => $details['gender'] ?? 'N',
+            'Email' => $details['email'],
+            'Language' => $details['language'] ?? 'EN',
+            'Phone' => $details['phone'] ?? '',
+            'Mobile' => $details['mobilePhone'] ?? '',
+            'HomeWork' => $details['homePhone'] ?? '',
+            'AttachmentType' => $details['attachmentType'] ?? 'PDF',
         ];
 
-        if (! empty($documents)) {
-            $this->contact['OrgDocumentCollection'] = [
-                'OrgDocument' => count($documents) === 1 ? $documents[0] : $documents,
-            ];
+        if ($this->organizationIntent === 'create') {
+            $this->organizationDraft['contacts'][] = $built;
+        } else {
+            $this->contact = $built;
+            $this->currentOperation = OperationId::OrganizationContactAdd;
+            $this->markStructuredField('contact');
         }
 
         return $this;
@@ -1218,13 +1221,9 @@ class Cord
     )]
     public function transferEDICommunication(array $ediCommunication): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->assertOrganizationUpdateContext('transferEDICommunication');
         $this->currentOperation = OperationId::OrganizationEdiCommunicationTransfer;
         $this->markStructuredField('source_edi_communication');
-
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before transferring an EDI communication. Use organization() method before calling this method.');
-        }
 
         // PK is already present in an EDICommunication collection. If it is not, it means that we have received something else...
         if (! isset($ediCommunication['PK'])) {
@@ -1268,13 +1267,9 @@ class Cord
     )]
     public function transferDocumentTracking(array $jobRequiredDocument): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->assertOrganizationUpdateContext('transferDocumentTracking');
         $this->currentOperation = OperationId::OrganizationDocumentTrackingTransfer;
         $this->markStructuredField('source_document_tracking');
-
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before transferring a document tracking. Use organization() method before calling this method.');
-        }
 
         // PK is already present in an JobRequiredDocument collection. If it is not, it means that we have received something else...
         if (! isset($jobRequiredDocument['PK'])) {
@@ -1322,13 +1317,9 @@ class Cord
     )]
     public function transferContact(array $contact): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->assertOrganizationUpdateContext('transferContact');
         $this->currentOperation = OperationId::OrganizationContactTransfer;
         $this->markStructuredField('source_contact');
-
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before transferring a contact. Use organization() method before calling this method.');
-        }
 
         // PK is already present in an OrgContact collection. If it is not, it means that we have received something else...
         if (! isset($contact['PK'])) {
@@ -1401,13 +1392,9 @@ class Cord
     )]
     public function transferAddress(array $address): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
+        $this->assertOrganizationUpdateContext('transferAddress');
         $this->currentOperation = OperationId::OrganizationAddressTransfer;
         $this->markStructuredField('source_address');
-
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before transferring an address. Use organization() method before calling this method.');
-        }
 
         // PK is already present in an OrgAddress collection. If it is not, it means that we have received something else...
         if (! isset($address['PK'])) {
@@ -1433,75 +1420,27 @@ class Cord
 
     }
 
-    /**
-     * Todo: WIP - not stable!
-     */
-    #[OperationField(
-        OperationId::OrganizationAddressAdd,
-        name: 'address',
-        required: true,
-        schema: [
-            'type' => 'object',
-            'additionalProperties' => false,
-            'properties' => [
-                'code' => ['type' => 'string'],
-                'address_one' => ['type' => 'string'],
-                'address_two' => ['type' => 'string'],
-                'country' => ['type' => 'string'],
-                'city' => ['type' => 'string'],
-                'state' => ['type' => 'string'],
-                'postcode' => ['type' => 'string'],
-                'related_port' => ['type' => 'string'],
-                'phone' => ['type' => 'string'],
-                'fax' => ['type' => 'string'],
-                'mobile' => ['type' => 'string'],
-                'email' => ['type' => 'string'],
-                'drop_mode_fcl' => ['type' => 'string'],
-                'drop_mode_lcl' => ['type' => 'string'],
-                'drop_mode_air' => ['type' => 'string'],
-                'active' => ['type' => ['boolean', 'string']],
-                'capabilities' => [
-                    'type' => 'array',
-                    'items' => [
-                        'type' => 'object',
-                        'additionalProperties' => false,
-                        'properties' => [
-                            'address_type' => ['type' => 'string'],
-                            'is_main_address' => ['type' => ['boolean', 'string']],
-                        ],
-                        'required' => ['address_type'],
-                    ],
-                ],
-            ],
-            'required' => ['code', 'address_one', 'country', 'city'],
-        ]
-    )]
-    public function addAddress(array $addressDetails): self
+    #[OperationField(OperationId::OrganizationAddressAdd, name: 'address', required: true, builder: OrganizationAddressBuilder::class)]
+    #[OperationField(OperationId::OrganizationCreate, name: 'addresses', repeatable: true, builder: OrganizationAddressBuilder::class)]
+    public function addAddress(Closure $builder): self
     {
-        $this->requestType = RequestType::NativeOrganizationUpdate;
-        $this->currentOperation = OperationId::OrganizationAddressAdd;
-        $this->markStructuredField('address');
+        $this->assertOrganizationWriteContext('addAddress');
 
-        if ($this->target !== DataTarget::Organization) {
-            throw new \Exception('You must call an organization before adding an address. Use organization() method before calling this method.');
-        }
+        $addressBuilder = new OrganizationAddressBuilder;
+        $builder($addressBuilder);
+        $details = $addressBuilder->toArray();
 
-        // Validate required fields in $addressDetails array
-        $requiredFields = ['code', 'addressOne', 'country', 'city'];
-        foreach ($requiredFields as $field) {
-            if (! isset($addressDetails[$field])) {
-                throw new \Exception("Missing required field '{$field}' in address details.");
+        $errors = [];
+        foreach (['code', 'addressOne', 'country', 'city'] as $field) {
+            if (! isset($details[$field]) || trim((string) $details[$field]) === '') {
+                $errors[$field] = ['The '.$field.' field is required.'];
             }
         }
-
-        $capabilities = $addressDetails['capabilities']['OrgAddressCapability']
-            ?? $addressDetails['capabilities']
-            ?? [];
-
-        // Check if $capabilities is an associative array or an array of key-value pairs
-        if (! empty($capabilities) && is_array($capabilities) && array_keys($capabilities) !== range(0, count($capabilities) - 1)) {
-            $capabilities = [$capabilities]; // Convert to an array of one element
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
+
+        $capabilities = $details['capabilities'] ?? [];
 
         foreach ($capabilities as $key => $capability) {
             $capabilities[$key] = [
@@ -1511,33 +1450,41 @@ class Cord
             ];
         }
 
-        $this->address = [
+        $built = [
             '_attributes' => ['Action' => 'INSERT'],
-            'IsActive' => $addressDetails['active'] ?? 'true',
-            'Code' => $addressDetails['code'],
-            'Address1' => $addressDetails['addressOne'],
-            'Address2' => $addressDetails['addressTwo'] ?? '',
+            'IsActive' => $details['active'] ?? 'true',
+            'Code' => $details['code'],
+            'Address1' => $details['addressOne'],
+            'Address2' => $details['addressTwo'] ?? '',
             'CountryCode' => [
-                'Code' => $addressDetails['country'],
+                'Code' => $details['country'],
             ],
-            'City' => $addressDetails['city'],
-            'State' => $addressDetails['state'] ?? null,
-            'PostCode' => $addressDetails['postcode'] ?? null,
+            'City' => $details['city'],
+            'State' => $details['state'] ?? null,
+            'PostCode' => $details['postcode'] ?? null,
             'RelatedPortCode' => [
-                'Code' => $addressDetails['relatedPort'] ?? null,
+                'Code' => $details['relatedPort'] ?? null,
             ],
-            'Phone' => $addressDetails['phone'] ?? null,
-            'Fax' => $addressDetails['fax'] ?? null,
-            'Mobile' => $addressDetails['mobile'] ?? null,
-            'Email' => $addressDetails['email'] ?? null,
-            'FCLEquipmentNeeded' => $addressDetails['dropModeFCL'] ?? 'ASK',
-            'LCLEquipmentNeeded' => $addressDetails['dropModeLCL'] ?? 'ASK',
-            'AIREquipmentNeeded' => $addressDetails['dropModeAIR'] ?? 'ASK',
+            'Phone' => $details['phone'] ?? null,
+            'Fax' => $details['fax'] ?? null,
+            'Mobile' => $details['mobile'] ?? null,
+            'Email' => $details['email'] ?? null,
+            'FCLEquipmentNeeded' => $details['dropModeFCL'] ?? 'ASK',
+            'LCLEquipmentNeeded' => $details['dropModeLCL'] ?? 'ASK',
+            'AIREquipmentNeeded' => $details['dropModeAIR'] ?? 'ASK',
             'SuppressAddressValidationError' => 'true',
             'OrgAddressCapabilityCollection' => [
                 'OrgAddressCapability' => count($capabilities) === 1 ? $capabilities[0] : $capabilities,
             ],
         ];
+
+        if ($this->organizationIntent === 'create') {
+            $this->organizationDraft['addresses'][] = $built;
+        } else {
+            $this->address = $built;
+            $this->currentOperation = OperationId::OrganizationAddressAdd;
+            $this->markStructuredField('address');
+        }
 
         return $this;
     }
@@ -1892,6 +1839,7 @@ class Cord
             RequestType::UniversalEvent => new UniversalEvent($this),
             RequestType::NativeOrganizationRetrieval => new NativeOrganizationRetrieval($this),
             RequestType::NativeOrganizationUpdate => new NativeOrganizationUpdate($this),
+            RequestType::NativeOrganizationCreation => new NativeOrganizationCreation($this),
             RequestType::NativeCompanyRetrieval => new NativeCompanyRetrieval($this),
             RequestType::NativeStaffCreation => new NativeStaffCreation($this),
             RequestType::NativeStaffUpdate => new NativeStaffUpdate($this),
@@ -1907,8 +1855,31 @@ class Cord
             return;
         }
 
+        if ($this->target === DataTarget::Organization && $this->organizationIntent === 'create') {
+            $this->validateOrganizationCreateDraft();
+
+            return;
+        }
+
         if (! $this->targetKey && ! in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval])) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
+        }
+    }
+
+    private function validateOrganizationCreateDraft(): void
+    {
+        $errors = [];
+
+        if (! $this->targetKey || trim($this->targetKey) === '') {
+            $errors['code'] = ['The code field is required.'];
+        }
+
+        if (! isset($this->organizationDraft['fullName']) || trim($this->organizationDraft['fullName']) === '') {
+            $errors['full_name'] = ['The full_name field is required.'];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
     }
 
@@ -2852,6 +2823,36 @@ class Cord
         }
     }
 
+    private function assertOrganizationUpdateContext(string $method): void
+    {
+        if ($this->target !== DataTarget::Organization || $this->organizationIntent !== 'update') {
+            throw new \Exception("{$method}() requires organization('CODE')->update() context.");
+        }
+    }
+
+    private function assertOrganizationCreateContext(string $method): void
+    {
+        if ($this->target !== DataTarget::Organization || $this->organizationIntent !== 'create') {
+            throw new \Exception("{$method}() requires organization('CODE')->create() context.");
+        }
+    }
+
+    private function assertOrganizationWriteContext(string $method): void
+    {
+        if ($this->target !== DataTarget::Organization || ! in_array($this->organizationIntent, ['create', 'update'], true)) {
+            throw new \Exception("{$method}() requires organization('CODE')->create() or ->update() context.");
+        }
+    }
+
+    private function setOrganizationDraftValue(string $field, mixed $value): self
+    {
+        $this->assertOrganizationCreateContext($field);
+        $this->organizationDraft[$field] = $value;
+        $this->markStructuredField(Str::snake($field));
+
+        return $this;
+    }
+
     private function setOneOffQuoteDraftValue(string $field, mixed $value): self
     {
         $this->assertOneOffQuoteBuilderContext($field);
@@ -2964,6 +2965,11 @@ class Cord
         return $this->oneOffQuoteIntent;
     }
 
+    public function activeOrganizationIntent(): ?string
+    {
+        return $this->organizationIntent;
+    }
+
     private function operationRegistry(): OperationRegistry
     {
         static $registry;
@@ -3023,6 +3029,7 @@ class Cord
             $resourceMethod = match ($definition->resource) {
                 'staff' => 'staff',
                 'one_off_quote' => 'oneOffQuote',
+                'organization' => 'organization',
                 default => null,
             };
 
@@ -3159,91 +3166,9 @@ class Cord
                 ], $value['criteria'] ?? []),
                 'type' => $value['type'] ?? 'Key',
             ],
-            'addAddress' => array_filter([
-                'code' => $value['code'] ?? null,
-                'addressOne' => $value['address_one'] ?? null,
-                'addressTwo' => $value['address_two'] ?? null,
-                'country' => $value['country'] ?? null,
-                'city' => $value['city'] ?? null,
-                'state' => $value['state'] ?? null,
-                'postcode' => $value['postcode'] ?? null,
-                'relatedPort' => $value['related_port'] ?? null,
-                'phone' => $value['phone'] ?? null,
-                'fax' => $value['fax'] ?? null,
-                'mobile' => $value['mobile'] ?? null,
-                'email' => $value['email'] ?? null,
-                'dropModeFCL' => $value['drop_mode_fcl'] ?? null,
-                'dropModeLCL' => $value['drop_mode_lcl'] ?? null,
-                'dropModeAIR' => $value['drop_mode_air'] ?? null,
-                'active' => array_key_exists('active', $value) ? $this->normalizeBoolean($value['active']) : null,
-                'capabilities' => isset($value['capabilities']) && is_array($value['capabilities'])
-                    ? array_map(fn (array $capability) => array_filter([
-                        'AddressType' => $capability['address_type'] ?? null,
-                        'IsMainAddress' => array_key_exists('is_main_address', $capability)
-                            ? $this->normalizeStructuredBooleanString($capability['is_main_address'])
-                            : null,
-                    ], static fn ($item) => $item !== null), $value['capabilities'])
-                    : null,
-            ], static fn ($item) => $item !== null),
-            'addContact' => array_filter([
-                'name' => $value['name'] ?? null,
-                'email' => $value['email'] ?? null,
-                'active' => array_key_exists('active', $value) ? $this->normalizeStructuredBooleanString($value['active']) : null,
-                'notifyMode' => $value['notify_mode'] ?? null,
-                'title' => $value['title'] ?? null,
-                'gender' => $value['gender'] ?? null,
-                'language' => $value['language'] ?? null,
-                'phone' => $value['phone'] ?? null,
-                'mobilePhone' => $value['mobile_phone'] ?? null,
-                'homePhone' => $value['home_phone'] ?? null,
-                'attachmentType' => $value['attachment_type'] ?? null,
-                'documentsToDeliver' => isset($value['documents_to_deliver']) && is_array($value['documents_to_deliver'])
-                    ? [
-                        'OrgDocument' => array_map(function (array $document) {
-                            $menuItem = $document['menu_item'] ?? null;
-
-                            return array_filter([
-                                'DocumentGroup' => $document['document_group'] ?? null,
-                                'DefaultContact' => array_key_exists('default_contact', $document)
-                                    ? $this->normalizeStructuredBooleanString($document['default_contact'])
-                                    : null,
-                                'AttachmentType' => $document['attachment_type'] ?? null,
-                                'DeliverBy' => $document['deliver_by'] ?? null,
-                                'MenuItem' => is_array($menuItem) ? array_filter([
-                                    'MenuName' => $menuItem['menu_name'] ?? null,
-                                    'BusinessContext' => $menuItem['business_context'] ?? null,
-                                    'MenuPath' => $menuItem['menu_path'] ?? null,
-                                    'IsClientSpecific' => array_key_exists('is_client_specific', $menuItem)
-                                        ? $this->normalizeStructuredBooleanString($menuItem['is_client_specific'])
-                                        : null,
-                                    'IsSystemDefined' => array_key_exists('is_system_defined', $menuItem)
-                                        ? $this->normalizeStructuredBooleanString($menuItem['is_system_defined'])
-                                        : null,
-                                    'FilterList' => $menuItem['filter_list'] ?? null,
-                                ], static fn ($item) => $item !== null) : null,
-                                'FilterShipmentMode' => $document['filter_shipment_mode'] ?? null,
-                                'FilterDirection' => $document['filter_direction'] ?? null,
-                                'EmailSubjectMacro' => $document['email_subject_macro'] ?? null,
-                            ], static fn ($item) => $item !== null);
-                        }, $value['documents_to_deliver']),
-                    ]
-                    : null,
-            ], static fn ($item) => $item !== null),
-            'addEDICommunication' => array_filter([
-                'module' => $value['module'] ?? null,
-                'purpose' => $value['purpose'] ?? null,
-                'direction' => $value['direction'] ?? null,
-                'transport' => $value['transport'] ?? null,
-                'destination' => $value['destination'] ?? null,
-                'format' => $value['format'] ?? null,
-                'subject' => $value['subject'] ?? null,
-                'publishMilestones' => array_key_exists('publish_milestones', $value)
-                    ? $this->normalizeStructuredBooleanString($value['publish_milestones'])
-                    : null,
-                'senderVAN' => $value['sender_van'] ?? null,
-                'receiverVAN' => $value['receiver_van'] ?? null,
-                'filename' => $value['filename'] ?? null,
-            ], static fn ($item) => $item !== null),
+            'addAddress' => $value,
+            'addContact' => $value,
+            'addEDICommunication' => $value,
             default => $value,
         };
     }
@@ -3253,7 +3178,10 @@ class Cord
         return match ($builderClass) {
             OneOffQuoteAddressBuilder::class,
             OneOffQuoteChargeLineBuilder::class,
-            OneOffQuoteAttachedDocumentBuilder::class => $value,
+            OneOffQuoteAttachedDocumentBuilder::class,
+            OrganizationAddressBuilder::class,
+            OrganizationContactBuilder::class,
+            OrganizationEDICommunicationBuilder::class => $value,
             default => $value,
         };
     }

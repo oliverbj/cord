@@ -26,6 +26,7 @@ enum OperationId: string
     case OrganizationContactTransfer = 'organization.contact.transfer';
     case OrganizationEdiCommunicationTransfer = 'organization.edi_communication.transfer';
     case OrganizationDocumentTrackingTransfer = 'organization.document_tracking.transfer';
+    case OrganizationCreate = 'organization.create';
     case StaffCreate = 'staff.create';
     case StaffUpdate = 'staff.update';
     case OneOffQuoteCreate = 'one_off_quote.create';

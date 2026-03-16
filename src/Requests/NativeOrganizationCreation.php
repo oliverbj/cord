@@ -31,10 +31,10 @@ class NativeOrganizationCreation extends NativeRequest
         }
 
         foreach ([
-            'isConsignee'  => 'IsConsignee',
-            'isConsignor'  => 'IsConsignor',
-            'isForwarder'  => 'IsForwarder',
-            'isAirLine'    => 'IsAirLine',
+            'isConsignee' => 'IsConsignee',
+            'isConsignor' => 'IsConsignor',
+            'isForwarder' => 'IsForwarder',
+            'isAirLine' => 'IsAirLine',
         ] as $draftKey => $xmlTag) {
             if (array_key_exists($draftKey, $draft)) {
                 $header[$xmlTag] = $draft[$draftKey] ? 'true' : 'false';

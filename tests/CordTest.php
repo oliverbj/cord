@@ -22,6 +22,113 @@ it('builds request xml without sending a network request when inspecting', funct
         ->toContain('<Key>SMIA12345678</Key>');
 });
 
+it('inspects a raw xml payload without sending it', function () {
+    Http::fake();
+
+    $payload = <<<'XML'
+<Native xmlns="http://www.cargowise.com/Schemas/Native">
+    <Body />
+</Native>
+XML;
+
+    $xml = Cord::withConfig('archive')
+        ->rawXml($payload)
+        ->inspect();
+
+    Http::assertNothingSent();
+
+    expect($xml)->toBe($payload);
+});
+
+it('returns the full parsed eadapter envelope for raw xml requests', function () {
+    Http::fake([
+        'https://demo1prdservices.example.invalid/eadapter' => Http::response(<<<'XML'
+<Response>
+    <Status>ERR</Status>
+    <ProcessingLog>Duplicate LSC already exists</ProcessingLog>
+    <Data>
+        <Native>
+            <Body>
+                <Organization>
+                    <OrgHeader>
+                        <Code>SAGFURHEL</Code>
+                    </OrgHeader>
+                </Organization>
+            </Body>
+        </Native>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $payload = <<<'XML'
+<Native xmlns="http://www.cargowise.com/Schemas/Native">
+    <Body>
+        <Organization />
+    </Body>
+</Native>
+XML;
+
+    $response = Cord::withConfig('archive')
+        ->rawXml($payload)
+        ->run();
+
+    Http::assertSent(function ($request) use ($payload) {
+        return $request->url() === 'https://demo1prdservices.example.invalid/eadapter'
+            && $request->method() === 'POST'
+            && $request->body() === $payload
+            && $request->hasHeader('Accept', 'application/xml')
+            && $request->hasHeader('Content-Type', 'application/xml');
+    });
+
+    expect($response)->toMatchArray([
+        'Status' => 'ERR',
+        'ProcessingLog' => 'Duplicate LSC already exists',
+        'Data' => [
+            'Native' => [
+                'Body' => [
+                    'Organization' => [
+                        'OrgHeader' => [
+                            'Code' => 'SAGFURHEL',
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+});
+
+it('returns the full xml response envelope for raw xml requests when toXml is enabled', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response>
+    <Status>OK</Status>
+    <ProcessingLog>1 updates</ProcessingLog>
+    <Data>
+        <Native>
+            <Body>
+                <Organization>
+                    <OrgHeader>
+                        <Code>SAGFURHEL</Code>
+                    </OrgHeader>
+                </Organization>
+            </Body>
+        </Native>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::rawXml('<Native><Body /></Native>')
+        ->toXml()
+        ->run();
+
+    expect($response->getName())->toBe('Response')
+        ->and((string) $response->Status)->toBe('OK')
+        ->and((string) $response->ProcessingLog)->toBe('1 updates')
+        ->and((string) $response->Data->Native->Body->Organization->OrgHeader->Code)->toBe('SAGFURHEL');
+});
+
 it('includes all native criteria groups in generated xml', function () {
     $xml = Cord::organization()
         ->criteriaGroup([
@@ -796,6 +903,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'withRecipientId',
         'withRecepientId',
         'withCodeMapping',
+        'rawXml',
         'booking',
         'receiveable',
         'receivable',

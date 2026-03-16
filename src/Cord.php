@@ -28,6 +28,7 @@ use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
 use Oliverbj\Cord\Requests\NativeStaffCreation;
 use Oliverbj\Cord\Requests\NativeStaffUpdate;
+use Oliverbj\Cord\Requests\RawXmlRequest;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -94,6 +95,8 @@ class Cord
     public array $organizationDraft = [];
 
     protected ?string $xml = null;
+
+    protected ?string $rawXmlPayload = null;
 
     public bool $asXml = false;
 
@@ -183,6 +186,28 @@ class Cord
     {
         $this->enableCodeMapping = $enabled;
         $this->markStructuredField('code_mapping');
+
+        return $this;
+    }
+
+    /**
+     * Send a fully-formed XML payload directly to eAdapter.
+     *
+     * Raw XML requests bypass Cord's typed payload builders. `run()` returns
+     * the full parsed eAdapter envelope for this mode so callers can inspect
+     * `Status`, `ProcessingLog`, and `Data` directly.
+     */
+    public function rawXml(string $xml): self
+    {
+        $this->rawXmlPayload = $xml;
+        $this->requestType = RequestType::RawXml;
+        $this->currentOperation = null;
+        $this->staffIntent = null;
+        $this->staffDraft = [];
+        $this->oneOffQuoteIntent = null;
+        $this->oneOffQuoteDraft = [];
+        $this->organizationIntent = null;
+        $this->organizationDraft = [];
 
         return $this;
     }
@@ -1834,6 +1859,7 @@ class Cord
         $this->syncFluentStaffPayload();
 
         return match ($this->requestType) {
+            RequestType::RawXml => new RawXmlRequest($this->rawXmlPayload ?? ''),
             RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
             RequestType::UniversalDocumentRequest => new UniversalDocumentRequest($this),
             RequestType::UniversalEvent => new UniversalEvent($this),
@@ -1850,6 +1876,12 @@ class Cord
     {
         $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
+
+        if ($this->requestType === RequestType::RawXml) {
+            $this->validateRawXmlPayload();
+
+            return;
+        }
 
         if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
             return;
@@ -1883,6 +1915,15 @@ class Cord
         }
     }
 
+    private function validateRawXmlPayload(): void
+    {
+        if (! is_string($this->rawXmlPayload) || trim($this->rawXmlPayload) === '') {
+            throw new \InvalidArgumentException('rawXml() requires a non-empty XML payload.');
+        }
+
+        $this->parseXmlDocument($this->rawXmlPayload, 'The raw XML payload must be well-formed XML.');
+    }
+
     protected function flattenResponse(array $response, string $key)
     {
         return tap($response, function (&$items) use ($key) {
@@ -1908,13 +1949,21 @@ class Cord
             'body' => $this->xml,
         ])->throw()->body();
 
-        $xmlResponse = $response;
+        $xmlResponse = $this->parseXmlDocument($response, 'The eAdapter response was not valid XML.');
 
         // XML to JSON
-        $response = json_decode(json_encode(simplexml_load_string($response)), true);
+        $response = json_decode(json_encode($xmlResponse), true);
+
+        if ($this->requestType === RequestType::RawXml) {
+            if ($this->asXml) {
+                return $xmlResponse;
+            }
+
+            return $response;
+        }
 
         // If eAdapter response is not successful, throw exception:
-        if ($response['Status'] == 'ERR') {
+        if (($response['Status'] ?? null) == 'ERR') {
             // If client expects json, return json:
             if (RequestFacade::wantsJson()) {
                 $status = match ($response['ProcessingLog']) {
@@ -1928,8 +1977,6 @@ class Cord
         }
 
         if ($this->asXml) {
-            $xmlResponse = simplexml_load_string($xmlResponse);
-
             // We need to return the first subelement of the Data element, because the Data element is an array.
             return $xmlResponse->Data->children()[0];
         }
@@ -1956,6 +2003,25 @@ class Cord
 
             default => $response['Data'],
         };
+    }
+
+    private function parseXmlDocument(string $xml, string $errorMessage): \SimpleXMLElement
+    {
+        $previous = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+
+        try {
+            $document = simplexml_load_string($xml);
+
+            if ($document === false) {
+                throw new \InvalidArgumentException($errorMessage);
+            }
+
+            return $document;
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
     }
 
     private function addActionRecursively(&$arr, $attribute = 'INSERT')

@@ -35,6 +35,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [One Off Quotes](#one-off-quotes)
   - [Create One-Off Quote](#create-one-off-quote)
 - [Multiple Connections](#multiple-connections)
+- [Raw XML](#raw-xml)
 - [Response as XML](#response-as-xml)
 - [Debugging](#debugging)
 - [Testing](#testing)
@@ -665,12 +666,43 @@ return [
 
 The configured URL does not have to point directly at the eAdapter itself. It can point to middleware, as long as that middleware forwards the request and returns the eAdapter response. If you want enterprise and server auto-detection for native write requests, the URL should preserve the CargoWise host pattern such as `https://demo1trnservices.example.invalid/eAdaptor`.
 
+## Raw XML
+
+If you already have a complete XML payload and just want Cord to send it with the configured eAdapter credentials and headers, use `rawXml()`:
+
+```php
+$response = Cord::withConfig('NTG_TRN')
+    ->rawXml($xml)
+    ->run();
+```
+
+For raw XML requests, `run()` returns the full parsed eAdapter envelope instead of only `Data`. That means `Status`, `ProcessingLog`, and `Data` are all preserved.
+
+```php
+$status = $response['Status'];
+$message = $response['ProcessingLog'] ?? null;
+```
+
+`inspect()` still performs a dry run and returns the outbound XML unchanged:
+
+```php
+$xml = Cord::rawXml($xml)->inspect();
+```
+
 ## Response as XML
 
 If you want the original eAdapter response as XML, call `toXml()` before `run()`:
 
 ```php
 Cord::shipment('SJFK21041242')
+    ->toXml()
+    ->run();
+```
+
+For `rawXml()` requests, `toXml()` returns the full response envelope, including `Status` and `ProcessingLog`:
+
+```php
+$response = Cord::rawXml($xml)
     ->toXml()
     ->run();
 ```

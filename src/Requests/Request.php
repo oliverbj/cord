@@ -36,21 +36,48 @@ abstract class Request implements RequestInterface
         ];
     }
 
+    protected function interchangeContext(): array
+    {
+        if (! $this->shouldIncludeInterchangeContext()) {
+            return [];
+        }
+
+        return [
+            'SenderID' => $this->cord->resolveSenderId(),
+            'RecipientID' => $this->cord->resolveRecipientId(),
+        ];
+    }
+
+    protected function shouldIncludeInterchangeContext(): bool
+    {
+        $senderId = $this->cord->senderId;
+        if (is_string($senderId) && trim($senderId) !== '') {
+            return true;
+        }
+
+        $recipientId = $this->cord->recipientId;
+        if (trim($recipientId) !== '' && $recipientId !== 'Cord') {
+            return true;
+        }
+
+        return $this->cord->company !== null
+            && trim($this->cord->company) !== ''
+            && $this->cord->resolveEnterpriseId() !== null
+            && $this->cord->resolveServerId() !== null;
+    }
+
     protected function build(array $schema): array
     {
         // 1. Add the "DataContext" key to the schema.
         $context = $this->context();
 
         // Get the first key of the schema (It can be "ShipmentRequest", "DocumentRequest" etc.)
-        // If supplying "EnterpriseID", "ServerID" and "Company.Code", it should be present under the "DataContext" key,
         $key = key($context);
         $DataTargetArray = $context[$key];
 
-        // 2. Append the "EnterpriseID", "ServerID" and "Company.Code" to the "DataContext" key.
+        // 2. Append the company code to the DataContext key.
         if ($this->cord->company) {
             $DataTargetArray['DataContext'] += [
-                // 'EnterpriseID' => $this->cord->enterprise, //Todo: Evaluate if these can be removed. It is set from the URL directly?
-                // 'ServerID' => $this->cord->server, //Todo: Evaluate if these can be removed. It is set from the URL directly?
                 'Company' => [
                     'Code' => $this->cord->company,
                 ],
@@ -59,13 +86,8 @@ abstract class Request implements RequestInterface
 
         // 3. Append any filters to the "FilterCollection" key.
         if (! empty($this->cord->filters)) {
-            $filters = [];
-            foreach ($this->cord->filters as $filter) {
-                $filters[] = $filter;
-            }
-
             $DataTargetArray['FilterCollection'] = [
-                'Filter' => $filters,
+                'Filter' => $this->cord->filters,
             ];
         }
 
@@ -80,9 +102,12 @@ abstract class Request implements RequestInterface
         // 5. Add the schema defined by the XXXRequest class if any.
         $DataTargetArray += $schema;
 
-        return [
-            $key => $DataTargetArray,
-        ];
+        return array_merge(
+            $this->interchangeContext(),
+            [
+                $key => $DataTargetArray,
+            ]
+        );
     }
 
     public function xml(): string

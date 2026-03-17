@@ -53,8 +53,8 @@ class OperationRegistry
             return $this->definitions;
         }
 
-        $nativeWriteContext = ['config', 'company', 'enterprise', 'server', 'sender_id', 'recipient_id', 'code_mapping'];
-        $universalContext = ['config', 'company'];
+        $nativeWriteContext = ['config', 'company', 'enterprise', 'server', 'code_mapping'];
+        $universalContext = ['config', 'company', 'sender_id', 'recipient_id'];
 
         return $this->definitions = [
             OperationId::ShipmentGet->value => new OperationDefinition(
@@ -256,7 +256,7 @@ class OperationRegistry
                 id: OperationId::OneOffQuoteCreate,
                 resource: 'one_off_quote',
                 action: 'create',
-                contextFields: ['config', 'company'],
+                contextFields: $universalContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => false, 'type' => 'string'],
                 bootstrapMethods: ['create'],
@@ -412,12 +412,14 @@ class OperationRegistry
                 $schema['description'] = $metadata->description;
             }
 
+            $startLine = $method->getStartLine();
+
             $fields[] = [
                 'name' => $name,
                 'schema' => $schema,
                 'required' => $metadata->required,
                 'method' => $method->getName(),
-                'order' => $metadata->order === 0 ? ($method->getStartLine() ?? 0) : $metadata->order,
+                'order' => $metadata->order === 0 ? (is_int($startLine) ? $startLine : 0) : $metadata->order,
             ];
         }
 
@@ -510,6 +512,8 @@ class OperationRegistry
             ];
         }
 
+        $startLine = $method->getStartLine();
+
         return [
             'name' => $name,
             'schema' => $schema,
@@ -517,7 +521,7 @@ class OperationRegistry
             'method' => $method->getName(),
             'repeatable' => $metadata->repeatable,
             'builder' => $metadata->builder,
-            'order' => $metadata->order === 0 ? ($method->getStartLine() ?? 0) : $metadata->order,
+            'order' => $metadata->order === 0 ? (is_int($startLine) ? $startLine : 0) : $metadata->order,
         ];
     }
 

@@ -16,8 +16,6 @@ class CordCommand extends Command
         {--update : Update an existing staff row instead of creating one}
         {--send : Actually send the request to eAdapter}
         {--force : Skip the send confirmation prompt}
-        {--sender-id= : Override the derived UniversalInterchange sender ID}
-        {--recipient-id= : Override the UniversalInterchange recipient ID}
         {--disable-code-mapping : Disable native code mapping for this request}';
 
     public $description = 'Inspect or manually send a staff create/update request using a named Cord connection.';
@@ -72,14 +70,6 @@ class CordCommand extends Command
 
             if ($server = $this->option('server')) {
                 $cord->withServer((string) $server);
-            }
-
-            if ($senderId = $this->option('sender-id')) {
-                $cord->withSenderId((string) $senderId);
-            }
-
-            if ($recipientId = $this->option('recipient-id')) {
-                $cord->withRecipientId((string) $recipientId);
             }
 
             if ($this->option('disable-code-mapping')) {

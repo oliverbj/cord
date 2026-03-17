@@ -24,8 +24,6 @@ $options = getopt('', [
     'server::',
     'update',
     'send',
-    'sender-id::',
-    'recipient-id::',
     'disable-code-mapping',
     'help',
 ]);
@@ -104,14 +102,6 @@ try {
 
     if (isset($options['server'])) {
         $cord->withServer((string) $options['server']);
-    }
-
-    if (isset($options['sender-id'])) {
-        $cord->withSenderId((string) $options['sender-id']);
-    }
-
-    if (isset($options['recipient-id'])) {
-        $cord->withRecipientId((string) $options['recipient-id']);
     }
 
     if (isset($options['disable-code-mapping'])) {

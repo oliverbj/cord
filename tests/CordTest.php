@@ -22,6 +22,28 @@ it('builds request xml without sending a network request when inspecting', funct
         ->toContain('<Key>SMIA12345678</Key>');
 });
 
+it('includes derived sender and default recipient ids in universal payloads when company context is available', function () {
+    $xml = Cord::shipment('SMIA12345678')
+        ->withCompany('CPH')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<SenderID>DEMO1TRNCPH</SenderID>')
+        ->toContain('<RecipientID>Cord</RecipientID>')
+        ->toContain('<ShipmentRequest>');
+});
+
+it('includes explicit sender and recipient ids in universal payloads', function () {
+    $xml = Cord::shipment('SMIA12345678')
+        ->withSenderId('PartnerA')
+        ->withRecipientId('PartnerB')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<SenderID>PartnerA</SenderID>')
+        ->toContain('<RecipientID>PartnerB</RecipientID>');
+});
+
 it('inspects a raw xml payload without sending it', function () {
     Http::fake();
 
@@ -453,10 +475,13 @@ it('publishes representative operation schemas', function () {
     ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
+    ->and($oneOffQuote['properties'])->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
+    ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffUpdate['required'])->toBe(['company', 'code'])
         ->and($organizationQuery['properties']['criteria_groups']['type'])->toBe('array')
-        ->and($shipmentGet['required'])->toBe(['key']);
+    ->and($shipmentGet['required'])->toBe(['key'])
+    ->and($shipmentGet['properties'])->toHaveKeys(['sender_id', 'recipient_id']);
 });
 
 it('describes published resources from an unscoped builder', function () {
@@ -932,9 +957,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'company',
         'custom',
         'withDocuments',
-        'activeStaffIntent',
         'activeOneOffQuoteIntent',
-        'activeOrganizationIntent',
     ];
 
     foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {

@@ -159,6 +159,17 @@ Cord::shipment('SMIA12345678')
     ->run();
 ```
 
+For universal requests, `withCompany()` also enables Cord to derive a `SenderID` from the configured eAdapter host plus the company code, for example `DEMO1TRNCPH`. The default `RecipientID` is `Cord`.
+
+If you need to override either value, you can set them explicitly:
+
+```php
+Cord::shipment('SMIA12345678')
+    ->withSenderId('PartnerA')
+    ->withRecipientId('PartnerB')
+    ->run();
+```
+
 ## Documents / eDocs
 
 Most entities in CargoWise One expose eDocs. Use `withDocuments()` to retrieve a document collection for the selected target.

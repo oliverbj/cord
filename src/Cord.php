@@ -983,7 +983,7 @@ class Cord
      * Example:
      * `->replaceGroups(['ADM', 'OPS'])`
      *
-     * @param  array<int, string>  $codes
+        * @param  array<int, mixed>  $codes
      */
     #[OperationField(OperationId::StaffCreate, name: 'groups', schema: ['type' => 'array', 'items' => ['type' => 'string']])]
     #[OperationField(OperationId::StaffUpdate, name: 'groups', schema: ['type' => 'array', 'items' => ['type' => 'string']])]
@@ -1823,9 +1823,7 @@ class Cord
      */
     public function run(): mixed
     {
-        $this->syncFluentOneOffQuotePayload();
-        $this->syncFluentStaffPayload();
-        $this->xml = $this->buildRequest()->xml();
+        $this->prepareRequestXml();
 
         return $this->fetch();
     }
@@ -1835,10 +1833,7 @@ class Cord
      */
     public function inspect(): string
     {
-        $this->syncFluentOneOffQuotePayload();
-        $this->syncFluentStaffPayload();
-        $this->checkForErrors();
-        $this->xml = $this->buildRequest()->xml();
+        $this->prepareRequestXml();
 
         return $this->xml;
     }
@@ -1855,9 +1850,6 @@ class Cord
 
     protected function buildRequest(): RequestInterface
     {
-        $this->syncFluentOneOffQuotePayload();
-        $this->syncFluentStaffPayload();
-
         return match ($this->requestType) {
             RequestType::RawXml => new RawXmlRequest($this->rawXmlPayload ?? ''),
             RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
@@ -1874,9 +1866,6 @@ class Cord
 
     private function checkForErrors()
     {
-        $this->syncFluentOneOffQuotePayload();
-        $this->syncFluentStaffPayload();
-
         if ($this->requestType === RequestType::RawXml) {
             $this->validateRawXmlPayload();
 
@@ -1942,7 +1931,6 @@ class Cord
 
     protected function fetch(): mixed
     {
-        $this->checkForErrors();
         $this->setClient();
 
         $response = $this->client->send('POST', $this->config['url'], [
@@ -2003,6 +1991,14 @@ class Cord
 
             default => $response['Data'],
         };
+    }
+
+    private function prepareRequestXml(): void
+    {
+        $this->syncFluentOneOffQuotePayload();
+        $this->syncFluentStaffPayload();
+        $this->checkForErrors();
+        $this->xml = $this->buildRequest()->xml();
     }
 
     private function parseXmlDocument(string $xml, string $errorMessage): \SimpleXMLElement
@@ -3021,19 +3017,9 @@ class Cord
         ];
     }
 
-    public function activeStaffIntent(): ?string
-    {
-        return $this->staffIntent;
-    }
-
     public function activeOneOffQuoteIntent(): ?string
     {
         return $this->oneOffQuoteIntent;
-    }
-
-    public function activeOrganizationIntent(): ?string
-    {
-        return $this->organizationIntent;
     }
 
     private function operationRegistry(): OperationRegistry

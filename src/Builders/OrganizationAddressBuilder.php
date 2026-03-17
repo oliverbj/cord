@@ -166,7 +166,7 @@ class OrganizationAddressBuilder
      * Example:
      * `->capabilities([['address_type' => 'OFC', 'is_main_address' => false]])`
      *
-        * @param  array<int, array<string, mixed>>  $items
+     * @param  array<int, array<string, mixed>>  $items
      */
     #[StructuredField(
         schema: [

@@ -24,7 +24,6 @@ class SchemaValidator
 
     /**
      * @param  array<string, mixed>  $schema
-      * @param  mixed  $value
      * @param  array<string, array<int, string>>  $errors
      * @param  array<string, bool>  $configuredFields
      */

@@ -983,7 +983,7 @@ class Cord
      * Example:
      * `->replaceGroups(['ADM', 'OPS'])`
      *
-        * @param  array<int, mixed>  $codes
+     * @param  array<int, mixed>  $codes
      */
     #[OperationField(OperationId::StaffCreate, name: 'groups', schema: ['type' => 'array', 'items' => ['type' => 'string']])]
     #[OperationField(OperationId::StaffUpdate, name: 'groups', schema: ['type' => 'array', 'items' => ['type' => 'string']])]

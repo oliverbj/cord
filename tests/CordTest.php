@@ -475,13 +475,13 @@ it('publishes representative operation schemas', function () {
     ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
-    ->and($oneOffQuote['properties'])->toHaveKeys(['sender_id', 'recipient_id'])
+        ->and($oneOffQuote['properties'])->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
-    ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
+        ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffUpdate['required'])->toBe(['company', 'code'])
         ->and($organizationQuery['properties']['criteria_groups']['type'])->toBe('array')
-    ->and($shipmentGet['required'])->toBe(['key'])
-    ->and($shipmentGet['properties'])->toHaveKeys(['sender_id', 'recipient_id']);
+        ->and($shipmentGet['required'])->toBe(['key'])
+        ->and($shipmentGet['properties'])->toHaveKeys(['sender_id', 'recipient_id']);
 });
 
 it('describes published resources from an unscoped builder', function () {

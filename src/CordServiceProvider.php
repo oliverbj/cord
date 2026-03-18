@@ -27,10 +27,6 @@ class CordServiceProvider extends ServiceProvider
 
             $this->publishes([
                 $configPath => config_path('cord.php'),
-            ], 'config');
-
-            $this->publishes([
-                $configPath => config_path('cord.php'),
             ], 'cord-config');
         }
     }

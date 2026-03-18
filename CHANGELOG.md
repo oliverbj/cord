@@ -2,6 +2,56 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.0.3 - 2026-03-18
+
+### v3.0.3 - 2026-03-18
+
+#### Cord v3.0.3
+
+Cord `3.0.3` is a patch release that adds first-class support for querying One-Off Quotes through the Cord API.
+
+##### Added
+
+- Added One-Off Quote retrieval through `oneOffQuote('QCPH00001004')->get()`.
+- Added the structured operation `one_off_quote.get` for `schema()`, `describe()`, and `fromStructured()`.
+- Added request support for the One-Off Quote universal shipment query shape, including:
+  - `DataTarget Type="OneOffQuote"`
+  - `Company`
+  - `EnterpriseID`
+  - `ServerID`
+  - `RecipientRoleCollection` with `ORP`
+  
+
+##### Changed
+
+- One-Off Quote queries now use Cord's supported universal request flow instead of requiring a raw XML workaround.
+- Query validation now requires company context so the expected CargoWise `DataContext` can be built correctly.
+- Updated the README with One-Off Quote query examples and introspection examples.
+- Updated Laravel Boost guidance and the `cord-development` skill to document `one_off_quote.get` and the new fluent query flow.
+
+##### Tests
+
+- Added regression coverage for:
+  - fluent One-Off Quote query XML generation
+  - structured `one_off_quote.get` XML generation
+  - active schema detection for scoped One-Off Quote queries
+  - parsed response handling for universal One-Off Quote query responses
+  - missing company context validation for quote queries
+  
+- Updated Boost resource tests to verify that One-Off Quote query guidance ships with the package.
+
+##### Upgrade Notes
+
+- Use `Cord::withCompany('CPH')->oneOffQuote('QCPH00001004')->get()->run()` to query a One-Off Quote.
+- For structured integrations, use `Cord::schema('one_off_quote.get')` and `Cord::fromStructured('one_off_quote.get', [...])`.
+- If you previously relied on raw XML for One-Off Quote retrieval, you can now migrate to the built-in fluent or structured APIs.
+
+##### Summary
+
+`3.0.3` closes a notable gap in the One-Off Quote workflow by adding supported retrieval APIs, structured operation metadata, and updated documentation for both application developers and Laravel Boost users.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.2...3.0.3
+
 ## 3.0.2 - 2026-03-18
 
 ### v3.0.2 - 2026-03-18
@@ -104,6 +154,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 
 ```

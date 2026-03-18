@@ -2,6 +2,43 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.0.1 - 2026-03-18
+
+### Cord v3.0.1
+
+Cord `3.0.1` is a patch release focused on installation stability and package registration behavior after `3.0.0`.
+
+#### Fixed
+
+- Fixed a package discovery issue that could cause `composer require oliverbj/cord` to fail in some Laravel applications during `artisan package:discover`.
+- Removed early console kernel resolution from Cord's service provider, which could trigger container bootstrapping problems too early in the application lifecycle.
+- Switched command registration to Laravel's standard deferred command registration flow.
+
+#### Changed
+
+- Config publishing is now exposed only through the package-specific publish tag:
+  - `php artisan vendor:publish --tag="cord-config"`
+  
+- Cord no longer registers its config under Laravel's broad `config` publish tag.
+- Added regression test coverage for:
+  - service provider command registration
+  - package config publishing behavior
+  
+
+#### Upgrade Notes
+
+- If you ran into install or package discovery issues on `3.0.0`, upgrade to `3.0.1`.
+- No application code changes should be required for most users.
+- If you publish the package config, use:
+
+```bash
+php artisan vendor:publish --tag="cord-config"
+
+```
+#### Summary
+
+`3.0.1` is a stability patch for `3.0.0` that makes package installation and discovery safer in host Laravel applications, while keeping the new Cord 3 feature set intact.
+
 ## v3.0.0 - new major release - 2026-03-18
 
 ### Cord v3.0.0

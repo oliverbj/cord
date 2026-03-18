@@ -286,10 +286,6 @@ class Cord
 
         if ($key !== null) {
             $this->markStructuredField('key');
-
-            if (trim($key) !== '') {
-                $this->currentOperation = OperationId::OneOffQuoteGet;
-            }
         }
 
         return $this;
@@ -308,7 +304,7 @@ class Cord
 
         $this->requestType = RequestType::NativeOrganizationRetrieval;
         $this->target = DataTarget::Organization;
-        $this->currentOperation = OperationId::OrganizationQuery;
+        $this->currentOperation = null;
 
         if ($code) {
             $this->targetKey = $code;
@@ -362,6 +358,14 @@ class Cord
     {
         if ($this->target === DataTarget::Staff) {
             throw new \Exception('Staff get() is not implemented yet. Use staff() endpoints that already support retrieval.');
+        }
+
+        if ($this->target === DataTarget::Organization) {
+            $this->organizationIntent = 'get';
+            $this->requestType = RequestType::NativeOrganizationRetrieval;
+            $this->currentOperation = OperationId::OrganizationQuery;
+
+            return $this;
         }
 
         if ($this->target === DataTarget::OneOffQuote) {
@@ -1902,6 +1906,20 @@ class Cord
             return;
         }
 
+        if ($this->target === DataTarget::OneOffQuote && is_string($this->targetKey) && trim($this->targetKey) !== '') {
+            if ($this->oneOffQuoteIntent !== 'get') {
+                throw new \Exception("oneOffQuote('KEY')->get() must be called before inspect() or run().");
+            }
+        }
+
+        if ($this->target === DataTarget::Organization && $this->requestType === RequestType::NativeOrganizationRetrieval) {
+            if ($this->organizationIntent !== 'get') {
+                throw new \Exception('organization()->get() must be called before inspect() or run().');
+            }
+
+            return;
+        }
+
         if ($this->isOneOffQuoteQueryRequest()) {
             if (! is_string($this->company) || trim($this->company) === '') {
                 throw new \Exception('Company code must be provided for one-off quote query requests. Call withCompany() before sending the request.');
@@ -1950,7 +1968,7 @@ class Cord
     private function isOneOffQuoteQueryRequest(): bool
     {
         return $this->target === DataTarget::OneOffQuote
-            && $this->oneOffQuoteIntent !== 'create'
+            && $this->oneOffQuoteIntent === 'get'
             && is_string($this->targetKey)
             && trim($this->targetKey) !== '';
     }

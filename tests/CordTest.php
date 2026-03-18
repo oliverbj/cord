@@ -181,6 +181,7 @@ XML, 200, ['Content-Type' => 'application/xml']),
                 'Value' => 'SAGFURHEL',
             ],
         ], type: 'Exact')
+        ->get()
         ->toJson()
         ->run();
 
@@ -250,6 +251,7 @@ it('includes all native criteria groups in generated xml', function () {
                 'Value' => 'True',
             ],
         ], type: 'Partial')
+        ->get()
         ->inspect();
 
     expect(substr_count($xml, '<CriteriaGroup Type="Partial">'))->toBe(2);
@@ -821,9 +823,16 @@ it('builds the same organization query xml from structured input', function () {
                 'Value' => 'True',
             ],
         ], type: 'Partial')
+        ->get()
         ->inspect();
 
     expect($structuredXml)->toBe($fluentXml);
+});
+
+it('returns the active schema for a scoped organization query', function () {
+    $description = Cord::organization('SAGFURHEL')->get()->describe();
+
+    expect($description)->toBe(Cord::schema('organization.query'));
 });
 
 it('builds the same organization address xml from structured input', function () {
@@ -1351,6 +1360,26 @@ it('requires company context for one-off quote query', function () {
         ->get()
         ->inspect())
         ->toThrow(Exception::class, 'Company code must be provided for one-off quote query requests.');
+});
+
+it('requires get before organization query execution', function () {
+    expect(fn () => Cord::organization()
+        ->criteriaGroup([
+            [
+                'Entity' => 'OrgHeader',
+                'FieldName' => 'Code',
+                'Value' => 'SAGFURHEL',
+            ],
+        ], type: 'Key')
+        ->inspect())
+        ->toThrow(Exception::class, 'organization()->get() must be called before inspect() or run().');
+});
+
+it('requires get before one-off quote query execution', function () {
+    expect(fn () => Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->inspect())
+        ->toThrow(Exception::class, "oneOffQuote('KEY')->get() must be called before inspect() or run().");
 });
 
 it('returns deterministic validation errors for one-off quote create required fields', function () {

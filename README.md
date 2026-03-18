@@ -112,7 +112,7 @@ CORD_PASSWORD=
 
 ## Usage
 
-Start with a target, then call `run()` to execute the request. By default Cord returns the decoded eAdapter payload as an array. Call `toJson()` or `toXml()` before `run()` when you need serialized output.
+Start with a target, call `get()` before `run()` for organization and one-off quote retrievals, then execute the request with `run()`. By default Cord returns the decoded eAdapter payload as an array. Call `toJson()` or `toXml()` before `run()` when you need serialized output.
 
 ### Operation Schemas
 
@@ -173,7 +173,7 @@ Cord::withCompany('CPH')
 
 Cord::custom('BATL12345678')->run();
 
-Cord::organization('SAGFURHEL')->run();
+Cord::organization('SAGFURHEL')->get()->run();
 
 Cord::company('CPH')->run();
 ```
@@ -266,7 +266,7 @@ Cord maps beautifully into the organization module of CargoWise.
 
 ### Query Organization
 
-Use `organization()` with one or more `criteriaGroup()` calls for native organization queries.
+Use `organization()` with one or more `criteriaGroup()` calls for native organization queries, then call `get()` before `run()`.
 
 ```php
 Cord::organization()
@@ -282,6 +282,7 @@ Cord::organization()
             'Value' => 'True',
         ],
     ], type: 'Partial')
+    ->get()
     ->run();
 ```
 
@@ -296,6 +297,7 @@ $json = Cord::organization()
             'Value' => 'SAGFURHEL',
         ],
     ], type: 'Key')
+    ->get()
     ->toJson()
     ->run();
 ```
@@ -329,6 +331,7 @@ Cord::organization()
             'Value' => 'True',
         ],
     ], type: 'Partial')
+    ->get()
     ->run();
 ```
 
@@ -356,6 +359,7 @@ Cord::organization()
             'Value' => 'ABCDEF',
         ],
     ], type: 'Key')
+    ->get()
     ->run();
 ```
 
@@ -481,7 +485,7 @@ The transfer helpers copy an existing entity from a source organization payload 
 - `transferDocumentTracking()`
 
 ```php
-$source = Cord::organization('SOURCE')->run();
+$source = Cord::organization('SOURCE')->get()->run();
 
 Cord::withCompany('CPH')
     ->organization('TARGET')

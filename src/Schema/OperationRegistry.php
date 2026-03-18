@@ -167,6 +167,7 @@ class OperationRegistry
                 resource: 'organization',
                 action: 'query',
                 selector: ['field' => 'code', 'method' => 'organization', 'required' => false, 'type' => 'string'],
+                bootstrapMethods: ['get'],
             ),
             OperationId::CompanyQuery->value => new OperationDefinition(
                 id: OperationId::CompanyQuery,
@@ -488,13 +489,11 @@ class OperationRegistry
         }
 
         return match ($cord->requestType) {
-            RequestType::NativeOrganizationRetrieval => OperationId::OrganizationQuery,
             RequestType::NativeCompanyRetrieval => OperationId::CompanyQuery,
             default => match (true) {
                 $cord->target === DataTarget::Shipment && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::ShipmentGet,
                 $cord->target === DataTarget::Booking && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::BookingGet,
                 $cord->target === DataTarget::Custom && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::CustomGet,
-                $cord->target === DataTarget::OneOffQuote && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::OneOffQuoteGet,
                 default => null,
             },
         };

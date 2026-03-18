@@ -11,6 +11,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 ## Preferred request flow
 
 - Start from a target such as `shipment()`, `booking()`, `custom()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
+- Call `get()` before `run()` for organization and one-off quote retrievals.
 - Call `run()` to send the request. Cord returns parsed array data by default.
 - Call `inspect()` while iterating or testing to build XML without sending any HTTP request.
 - Call `toJson()` before `run()` when the caller needs a JSON string.
@@ -23,6 +24,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - `Cord::resource()->describe()` lists operations for the selected resource.
 - `Cord::schema('operation.id')` returns the JSON-Schema-like contract for the operation, including required fields, nested objects, and enums.
 - `Cord::fromStructured('operation.id', $payload)` validates input before XML generation. Fix validation errors instead of bypassing the schema.
+- For organization and one-off quote retrievals, call `get()` before `run()`.
 
 ```php
 $schema = Cord::schema('one_off_quote.create');
@@ -37,6 +39,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 ])->inspect();
 ```
 
+- Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - One-off quote retrieval is supported through `oneOffQuote('QCPH00001004')->get()` and `schema('one_off_quote.get')`.
 
 ## Company context and identifiers

@@ -22,6 +22,7 @@ Use this skill when you are adding or changing Cord integrations, building Cargo
 
 - `Cord::describe()` lists available resources.
 - `Cord::staff()->describe()` lists operations for the selected resource.
+- `Cord::organization('SAGFURHEL')->get()->describe()` returns the active schema for organization retrieval.
 - `Cord::oneOffQuote('QCPH00001004')->get()->describe()` returns the active schema for quote retrieval.
 - `Cord::oneOffQuote()->create()->describe()` returns the active schema for the fully scoped builder.
 - `Cord::schema('operation.id')` returns required fields, nested object shapes, and enums.
@@ -63,6 +64,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 
 - Set `withCompany()` whenever the operation depends on company context. For universal requests this also affects derived `SenderID`.
 - Do not assume `sender_id` and `recipient_id` exist on every operation. Use `schema()` to confirm the supported fields.
+- Use `organization(...)->get()` for organization lookups and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.
 - For `rawXml()` requests, remember that `run()` returns the full parsed envelope, not only `Data`.

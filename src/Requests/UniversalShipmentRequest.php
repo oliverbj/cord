@@ -59,7 +59,7 @@ class UniversalShipmentRequest extends Request
     private function isOneOffQuoteQuery(): bool
     {
         return $this->cord->target === DataTarget::OneOffQuote
-            && $this->cord->activeOneOffQuoteIntent() !== 'create'
+            && $this->cord->activeOneOffQuoteIntent() === 'get'
             && is_string($this->cord->targetKey)
             && trim($this->cord->targetKey) !== '';
     }

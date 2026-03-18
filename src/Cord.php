@@ -100,6 +100,8 @@ class Cord
 
     public bool $asXml = false;
 
+    public bool $asJson = false;
+
     protected ?PendingRequest $client = null;
 
     protected array $structuredOverrides = [];
@@ -1844,6 +1846,18 @@ class Cord
     public function toXml(): self
     {
         $this->asXml = true;
+        $this->asJson = false;
+
+        return $this;
+    }
+
+    /**
+     * Determine if the response should be returned as JSON.
+     */
+    public function toJson(): self
+    {
+        $this->asJson = true;
+        $this->asXml = false;
 
         return $this;
     }
@@ -1947,6 +1961,10 @@ class Cord
                 return $xmlResponse;
             }
 
+            if ($this->asJson) {
+                return $this->encodeJson($response);
+            }
+
             return $response;
         }
 
@@ -1980,7 +1998,7 @@ class Cord
 
         // If eAdapter response is successful, return data:
         // Handling different request types
-        return match ($this->requestType) {
+        $payload = match ($this->requestType) {
             RequestType::NativeOrganizationRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Organization'], 'OrgHeader'),
             RequestType::NativeCompanyRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Company'], 'GlbCompany'),
 
@@ -1991,6 +2009,12 @@ class Cord
 
             default => $response['Data'],
         };
+
+        if ($this->asJson) {
+            return $this->encodeJson($payload);
+        }
+
+        return $payload;
     }
 
     private function prepareRequestXml(): void
@@ -2018,6 +2042,11 @@ class Cord
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
         }
+    }
+
+    private function encodeJson(mixed $payload): string
+    {
+        return json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 
     private function addActionRecursively(&$arr, $attribute = 'INSERT')

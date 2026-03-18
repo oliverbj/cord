@@ -151,6 +151,89 @@ XML, 200, ['Content-Type' => 'application/xml']),
         ->and((string) $response->Data->Native->Body->Organization->OrgHeader->Code)->toBe('SAGFURHEL');
 });
 
+it('returns the normalized response as json when toJson is enabled', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response>
+    <Status>OK</Status>
+    <ProcessingLog>1 updates</ProcessingLog>
+    <Data>
+        <Native>
+            <Body>
+                <Organization>
+                    <OrgHeader>
+                        <Code>SAGFURHEL</Code>
+                        <FullName>Sagfur Hel</FullName>
+                    </OrgHeader>
+                </Organization>
+            </Body>
+        </Native>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::organization()
+        ->criteriaGroup([
+            [
+                'Entity' => 'OrgHeader',
+                'FieldName' => 'Code',
+                'Value' => 'SAGFURHEL',
+            ],
+        ], type: 'Exact')
+        ->toJson()
+        ->run();
+
+    expect($response)->toBeString()
+        ->and(json_decode($response, true, 512, JSON_THROW_ON_ERROR))->toMatchArray([
+            'Code' => 'SAGFURHEL',
+            'FullName' => 'Sagfur Hel',
+        ]);
+});
+
+it('returns the full json response envelope for raw xml requests when toJson is enabled', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response>
+    <Status>OK</Status>
+    <ProcessingLog>1 updates</ProcessingLog>
+    <Data>
+        <Native>
+            <Body>
+                <Organization>
+                    <OrgHeader>
+                        <Code>SAGFURHEL</Code>
+                    </OrgHeader>
+                </Organization>
+            </Body>
+        </Native>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::rawXml('<Native><Body /></Native>')
+        ->toJson()
+        ->run();
+
+    expect($response)->toBeString()
+        ->and(json_decode($response, true, 512, JSON_THROW_ON_ERROR))->toMatchArray([
+            'Status' => 'OK',
+            'ProcessingLog' => '1 updates',
+            'Data' => [
+                'Native' => [
+                    'Body' => [
+                        'Organization' => [
+                            'OrgHeader' => [
+                                'Code' => 'SAGFURHEL',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+});
+
 it('includes all native criteria groups in generated xml', function () {
     $xml = Cord::organization()
         ->criteriaGroup([
@@ -948,6 +1031,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'describe',
         'run',
         'inspect',
+        'toJson',
         'toXml',
         'resolveSenderId',
         'resolveRecipientId',

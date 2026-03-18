@@ -37,6 +37,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
   - [Create One-Off Quote](#create-one-off-quote)
 - [Multiple Connections](#multiple-connections)
 - [Raw XML](#raw-xml)
+- [Response as JSON](#response-as-json)
 - [Response as XML](#response-as-xml)
 - [Debugging](#debugging)
 - [Testing](#testing)
@@ -68,7 +69,7 @@ php artisan vendor:publish --tag="cord-config"
 If your application uses [Laravel Boost](https://laravel.com/docs/13.x/boost), Cord ships package-owned Boost resources so Boost can include Cord guidance automatically.
 
 - Cord includes a core guideline that covers configuration, request flow, response handling, and package conventions.
-- Cord also includes an optional `cord-development` skill for on-demand help with `describe()`, `schema()`, `fromStructured()`, `inspect()`, `toXml()`, and `rawXml()`.
+- Cord also includes an optional `cord-development` skill for on-demand help with `describe()`, `schema()`, `fromStructured()`, `inspect()`, `toJson()`, `toXml()`, and `rawXml()`.
 
 In the consuming Laravel application:
 
@@ -110,7 +111,7 @@ CORD_PASSWORD=
 
 ## Usage
 
-Start with a target, then call `run()` to execute the request. By default Cord returns the decoded eAdapter payload as an array.
+Start with a target, then call `run()` to execute the request. By default Cord returns the decoded eAdapter payload as an array. Call `toJson()` or `toXml()` before `run()` when you need serialized output.
 
 ### Operation Schemas
 
@@ -275,6 +276,21 @@ Cord::organization()
             'Value' => 'True',
         ],
     ], type: 'Partial')
+    ->run();
+```
+
+If the caller needs the organization payload as JSON instead of the default array, call `toJson()` before `run()`:
+
+```php
+$json = Cord::organization()
+    ->criteriaGroup([
+        [
+            'Entity' => 'OrgHeader',
+            'FieldName' => 'Code',
+            'Value' => 'SAGFURHEL',
+        ],
+    ], type: 'Key')
+    ->toJson()
     ->run();
 ```
 
@@ -720,6 +736,24 @@ $message = $response['ProcessingLog'] ?? null;
 
 ```php
 $xml = Cord::rawXml($xml)->inspect();
+```
+
+## Response as JSON
+
+If you want the same response payload serialized as JSON, call `toJson()` before `run()`:
+
+```php
+$json = Cord::shipment('SJFK21041242')
+    ->toJson()
+    ->run();
+```
+
+For `rawXml()` requests, `toJson()` returns the full response envelope as JSON, including `Status`, `ProcessingLog`, and `Data`:
+
+```php
+$json = Cord::rawXml($xml)
+    ->toJson()
+    ->run();
 ```
 
 ## Response as XML

@@ -1,6 +1,6 @@
 ---
 name: cord-development
-description: "Use when working with Cord, CargoWise eAdapter XML, fluent request builders, schema(), describe(), fromStructured(), inspect(), toXml(), or rawXml()."
+description: "Use when working with Cord, CargoWise eAdapter XML, fluent request builders, schema(), describe(), fromStructured(), inspect(), toJson(), toXml(), or rawXml()."
 ---
 
 # Cord Development
@@ -16,7 +16,7 @@ Use this skill when you are adding or changing Cord integrations, building Cargo
 3. Prefer fluent builders when hand-written application code should stay readable and close to business intent.
 4. Use `inspect()` first while iterating or testing so XML can be reviewed without sending HTTP.
 5. Use `run()` only after the payload shape is correct.
-6. Use `toXml()` only when the caller needs the original XML response.
+6. Use `toJson()` when the caller needs a JSON string, and `toXml()` when the caller needs the original XML response.
 
 ## Contract discovery
 
@@ -64,13 +64,14 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Do not assume `sender_id` and `recipient_id` exist on every operation. Use `schema()` to confirm the supported fields.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.
 - For `rawXml()` requests, remember that `run()` returns the full parsed envelope, not only `Data`.
+- `rawXml()->toJson()->run()` returns that full envelope as JSON.
 
 ## Escape hatch
 
-Use `rawXml()` for unsupported or fully prebuilt payloads, then verify behavior with `inspect()` or capture the full envelope with `toXml()` if needed.
+Use `rawXml()` for unsupported or fully prebuilt payloads, then verify behavior with `inspect()` or capture the full envelope with `toJson()` or `toXml()` if needed.
 
 ```php
 $response = Cord::rawXml($xml)
-    ->toXml()
+    ->toJson()
     ->run();
 ```

@@ -17,6 +17,7 @@ it('ships a laravel boost guideline at the expected path', function () {
         ->toContain('schema()')
         ->toContain('fromStructured()')
         ->toContain('inspect()')
+        ->toContain('toJson()')
         ->toContain('rawXml()');
 });
 
@@ -38,5 +39,6 @@ it('ships a laravel boost skill with required frontmatter', function () {
         ->toContain('schema()')
         ->toContain('fromStructured()')
         ->toContain('inspect()')
+        ->toContain('toJson()')
         ->toContain('rawXml()');
 });

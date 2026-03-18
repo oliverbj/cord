@@ -13,6 +13,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - Start from a target such as `shipment()`, `booking()`, `custom()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
 - Call `run()` to send the request. Cord returns parsed array data by default.
 - Call `inspect()` while iterating or testing to build XML without sending any HTTP request.
+- Call `toJson()` before `run()` when the caller needs a JSON string.
 - Call `toXml()` before `run()` only when the caller needs the original XML response.
 
 ## AI-friendly operation helpers
@@ -47,6 +48,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 
 - Use `rawXml()` only when you already have a complete XML document or need a request shape Cord does not model yet.
 - For `rawXml()` requests, `run()` returns the full parsed eAdapter envelope with `Status`, `ProcessingLog`, and `Data`.
+- `rawXml()->toJson()->run()` returns the full response envelope as JSON.
 - `rawXml()->toXml()->run()` returns the full XML response envelope.
 
 ```php

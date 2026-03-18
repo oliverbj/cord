@@ -47,6 +47,15 @@ class UniversalShipmentRequest extends Request
         return $context;
     }
 
+    protected function shouldIncludeInterchangeContext(): bool
+    {
+        if ($this->isOneOffQuoteQuery()) {
+            return false;
+        }
+
+        return parent::shouldIncludeInterchangeContext();
+    }
+
     public function schema(): array
     {
         if ($this->cord->target === DataTarget::OneOffQuote) {

@@ -55,7 +55,7 @@ class OperationRegistry
 
         $nativeWriteContext = ['config', 'company', 'enterprise', 'server', 'code_mapping'];
         $universalContext = ['config', 'company', 'sender_id', 'recipient_id'];
-        $oneOffQuoteQueryContext = ['config', 'company', 'enterprise', 'server', 'sender_id', 'recipient_id'];
+        $oneOffQuoteQueryContext = ['config', 'company', 'enterprise', 'server'];
 
         return $this->definitions = [
             OperationId::ShipmentGet->value => new OperationDefinition(

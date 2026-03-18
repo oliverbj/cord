@@ -555,7 +555,8 @@ it('publishes representative operation schemas', function () {
             'resource' => 'one_off_quote',
             'action' => 'get',
         ],
-    ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server', 'sender_id', 'recipient_id'])
+    ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server'])
+        ->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($oneOffQuote)->toMatchArray([
             'type' => 'object',
             'required' => ['company', 'branch', 'department', 'transport_mode', 'port_of_origin', 'port_of_destination'],
@@ -1277,8 +1278,12 @@ it('builds a one-off quote query payload with company context', function () {
         ->get()
         ->inspect();
 
+    expect(str_starts_with($xml, '<UniversalShipmentRequest><ShipmentRequest>'))->toBeTrue();
+
     expect($xml)
         ->toContain('<UniversalShipmentRequest>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
         ->toContain('<Type>OneOffQuote</Type>')
         ->toContain('<Key>QCPH00001004</Key>')
         ->toContain('<Company><Code>CPH</Code></Company>')

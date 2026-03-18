@@ -2,6 +2,10 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+- Added Laravel Boost package resources: a core Cord guideline and an optional `cord-development` skill for Boost-enabled applications.
+
 ## 1.1.4 - 2023-01-24
 
 WIP with facades..

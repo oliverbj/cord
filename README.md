@@ -11,6 +11,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 
 - [Support](#support)
 - [Installation](#installation)
+- [Laravel Boost](#laravel-boost)
 - [Configuration](#configuration)
 - [Usage](#usage)
   - [Operation Schemas](#operation-schemas)
@@ -61,6 +62,27 @@ Publish the config file:
 ```bash
 php artisan vendor:publish --tag="cord-config"
 ```
+
+## Laravel Boost
+
+If your application uses [Laravel Boost](https://laravel.com/docs/13.x/boost), Cord ships package-owned Boost resources so Boost can include Cord guidance automatically.
+
+- Cord includes a core guideline that covers configuration, request flow, response handling, and package conventions.
+- Cord also includes an optional `cord-development` skill for on-demand help with `describe()`, `schema()`, `fromStructured()`, `inspect()`, `toXml()`, and `rawXml()`.
+
+In the consuming Laravel application:
+
+```bash
+php artisan boost:install
+```
+
+After updating Cord or Boost itself, refresh generated agent resources with:
+
+```bash
+php artisan boost:update
+```
+
+Boost discovers these resources from the package automatically, so Cord does not require an extra publish step beyond Boost's normal install and update commands.
 
 ## Configuration
 

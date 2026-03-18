@@ -2,6 +2,69 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.0.4 - 2026-03-18
+
+### v3.0.4 - 2026-03-18
+
+#### Cord v3.0.4
+
+Cord `3.0.4` is a patch release that standardizes retrieval flows so organization queries and One-Off Quote queries now use the same explicit `get()` pattern before execution.
+
+##### Changed
+
+- Standardized query activation for organization and One-Off Quote retrievals.
+- Organization queries now require `get()` before `inspect()` or `run()`, matching the One-Off Quote retrieval flow.
+- One-Off Quote retrievals continue to use `get()`, but the retrieval contract is now enforced consistently across both resources.
+- Updated structured operation bootstrapping so `organization.query` also applies `get()` automatically.
+- Updated README examples to reflect the explicit retrieval flow for organization queries.
+- Updated Laravel Boost guidance and the `cord-development` skill to describe `organization(...)->get()` and `oneOffQuote(...)->get()` as the standard retrieval pattern.
+
+##### Tests
+
+- Added regression coverage to ensure organization queries require `get()` before execution.
+- Added regression coverage to ensure One-Off Quote queries also require explicit `get()` before execution.
+- Added coverage for active schema detection on scoped organization queries using `get()`.
+- Updated query-related test coverage to reflect the standardized retrieval flow.
+- Verified Boost resource tests against the updated guidance.
+
+##### Upgrade Notes
+
+- Organization queries should now use:
+  
+  ```php
+  Cord::organization('SAGFURHEL')->get()->run();
+  
+  ```
+- Organization queries built with criteria groups should now use:
+  
+  ```php
+  Cord::organization()
+      ->criteriaGroup([...], type: 'Key')
+      ->get()
+      ->run();
+  
+  ```
+- One-Off Quote queries continue to use:
+  
+  ```php
+  Cord::withCompany('CPH')
+      ->oneOffQuote('QCPH00001004')
+      ->get()
+      ->run();
+  
+  ```
+- Structured organization queries via `Cord::fromStructured('organization.query', [...])` continue to work and now bootstrap the explicit `get()` step automatically.
+  
+
+##### Summary
+
+`3.0.4` makes retrieval behavior more consistent by standardizing explicit `get()` activation across organization and One-Off Quote queries, while keeping structured query support aligned and updating the package documentation accordingly.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.3...3.0.4
+
+```
+
+```
 ## v3.0.3 - 2026-03-18
 
 ### v3.0.3 - 2026-03-18
@@ -32,6 +95,7 @@ Cord `3.0.3` is a patch release that adds first-class support for querying One-O
 ##### Tests
 
 - Added regression coverage for:
+  
   - fluent One-Off Quote query XML generation
   - structured `one_off_quote.get` XML generation
   - active schema detection for scoped One-Off Quote queries
@@ -39,6 +103,7 @@ Cord `3.0.3` is a patch release that adds first-class support for querying One-O
   - missing company context validation for quote queries
   
 - Updated Boost resource tests to verify that One-Off Quote query guidance ships with the package.
+  
 
 ##### Upgrade Notes
 
@@ -154,6 +219,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 
 

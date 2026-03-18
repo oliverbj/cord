@@ -555,17 +555,17 @@ it('publishes representative operation schemas', function () {
         ],
     ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server', 'sender_id', 'recipient_id'])
         ->and($oneOffQuote)->toMatchArray([
-        'type' => 'object',
-        'required' => ['company', 'branch', 'department', 'transport_mode', 'port_of_origin', 'port_of_destination'],
-        'x-cord' => [
-            'operation_id' => 'one_off_quote.create',
-            'resource' => 'one_off_quote',
-            'action' => 'create',
-        ],
-    ])->and($oneOffQuote['properties']['transport_mode'])->toMatchArray([
-        'type' => 'string',
-        'enum' => ['SEA', 'AIR', 'ROA'],
-    ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
+            'type' => 'object',
+            'required' => ['company', 'branch', 'department', 'transport_mode', 'port_of_origin', 'port_of_destination'],
+            'x-cord' => [
+                'operation_id' => 'one_off_quote.create',
+                'resource' => 'one_off_quote',
+                'action' => 'create',
+            ],
+        ])->and($oneOffQuote['properties']['transport_mode'])->toMatchArray([
+            'type' => 'string',
+            'enum' => ['SEA', 'AIR', 'ROA'],
+        ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
         ->and($oneOffQuote['properties'])->toHaveKeys(['sender_id', 'recipient_id'])

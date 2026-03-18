@@ -2,6 +2,42 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## 3.0.2 - 2026-03-18
+
+### v3.0.2 - 2026-03-18
+
+#### Cord v3.0.2
+
+Cord `3.0.2` is a patch release that adds explicit JSON response serialization for integrations that need string output instead of the default array response.
+
+##### Added
+
+- Added `toJson()` as a new response mode for Cord requests.
+- `toJson()->run()` now returns the same successful payload that `run()` would normally return, serialized as JSON.
+- For `rawXml()` requests, `toJson()->run()` returns the full parsed eAdapter envelope as JSON, including `Status`, `ProcessingLog`, and `Data`.
+
+##### Changed
+
+- Response mode selection is now explicit between `toJson()` and `toXml()`, with the last formatter called taking precedence.
+- Updated the README with JSON response examples, including native organization query usage.
+- Updated Laravel Boost guidance and the `cord-development` skill to document `toJson()` alongside `inspect()`, `toXml()`, and `rawXml()`.
+
+##### Tests
+
+- Added regression coverage for JSON response handling on both typed requests and `rawXml()` requests.
+- Updated Boost resource tests to verify that `toJson()` documentation ships with the package.
+
+##### Upgrade Notes
+
+- Use `->toJson()->run()` when your integration needs a JSON string instead of Cord's default array response.
+- Existing `run()` and `toXml()` behavior is unchanged unless you opt into `toJson()`.
+
+##### Summary
+
+`3.0.2` adds a focused response-formatting improvement for JSON-oriented integrations while keeping Cord's default array-based API and XML response mode intact.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.1...3.0.2
+
 ## v3.0.2 - 2026-03-18
 
 ### Cord v3.0.2
@@ -49,10 +85,13 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 #### Changed
 
 - Config publishing is now exposed only through the package-specific publish tag:
+  
   - `php artisan vendor:publish --tag="cord-config"`
   
 - Cord no longer registers its config under Laravel's broad `config` publish tag.
+  
 - Added regression test coverage for:
+  
   - service provider command registration
   - package config publishing behavior
   
@@ -65,6 +104,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 ```
 #### Summary

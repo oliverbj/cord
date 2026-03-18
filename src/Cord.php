@@ -7,7 +7,6 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request as RequestFacade;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -2032,15 +2031,6 @@ class Cord
             // We need to return the first subelement of the Data element, because the Data element is an array.
             return $xmlResponse->Data->children()[0];
         }
-
-        Log::debug('Request Type is', [
-            'type' => $this->requestType,
-            'targetKey' => $this->targetKey,
-            'target' => $this->target,
-            'company' => $this->company,
-            'response' => $response,
-            'XML' => $this->xml,
-        ]);
 
         // If eAdapter response is successful, return data:
         // Handling different request types

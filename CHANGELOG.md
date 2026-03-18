@@ -2,6 +2,49 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.0.5 - 2026-03-18
+
+### v3.0.5 - 2026-03-18
+
+#### Cord v3.0.5
+
+Cord `3.0.5` is a patch release that fixes the One-Off Quote retrieval envelope so CargoWise receives the expected `UniversalShipmentRequest` shape for quote lookups.
+
+##### Fixed
+
+- Fixed `oneOffQuote('KEY')->get()` to stop emitting top-level `SenderID` and `RecipientID` fields.
+- One-Off Quote retrievals now serialize `ShipmentRequest` as the first child of `UniversalShipmentRequest`, matching the CargoWise scope expected for quote queries.
+- Preserved the required quote lookup `DataContext` payload inside `ShipmentRequest`, including `Company`, `EnterpriseID`, `ServerID`, and `RecipientRoleCollection` with `ORP`.
+
+##### Changed
+
+- Tightened the published `one_off_quote.get` schema so it no longer advertises `sender_id` and `recipient_id` as supported context fields.
+- Standard universal shipment retrievals continue to support interchange IDs; the envelope suppression only applies to the One-Off Quote query shape.
+
+##### Tests
+
+- Added regression coverage to assert that One-Off Quote query XML starts with `ShipmentRequest` under `UniversalShipmentRequest`.
+- Added regression coverage to assert that top-level `SenderID` and `RecipientID` are absent for `one_off_quote.get`.
+- Added schema regression coverage to ensure `one_off_quote.get` exposes `enterprise` and `server`, but not `sender_id` or `recipient_id`.
+
+##### Upgrade Notes
+
+- No application code changes are required for the documented One-Off Quote query flow:
+
+  ```php
+  Cord::withCompany('CPH')
+      ->oneOffQuote('QCPH00001004')
+      ->get()
+      ->run();
+  ```
+- If you built structured payloads for `one_off_quote.get`, stop sending `sender_id` and `recipient_id`; they are not valid for this CargoWise request scope.
+
+##### Summary
+
+`3.0.5` fixes a CargoWise compatibility issue in One-Off Quote retrieval by removing invalid top-level interchange fields from the query envelope while keeping the required quote-specific `DataContext` intact.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.4...3.0.5
+
 ## v3.0.4 - 2026-03-18
 
 ### v3.0.4 - 2026-03-18

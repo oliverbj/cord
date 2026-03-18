@@ -55,6 +55,7 @@ class OperationRegistry
 
         $nativeWriteContext = ['config', 'company', 'enterprise', 'server', 'code_mapping'];
         $universalContext = ['config', 'company', 'sender_id', 'recipient_id'];
+        $oneOffQuoteQueryContext = ['config', 'company', 'enterprise', 'server', 'sender_id', 'recipient_id'];
 
         return $this->definitions = [
             OperationId::ShipmentGet->value => new OperationDefinition(
@@ -77,6 +78,15 @@ class OperationRegistry
                 action: 'get',
                 contextFields: $universalContext,
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
+            ),
+            OperationId::OneOffQuoteGet->value => new OperationDefinition(
+                id: OperationId::OneOffQuoteGet,
+                resource: 'one_off_quote',
+                action: 'get',
+                contextFields: $oneOffQuoteQueryContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['get'],
             ),
             OperationId::ShipmentDocumentsGet->value => new OperationDefinition(
                 id: OperationId::ShipmentDocumentsGet,
@@ -484,6 +494,7 @@ class OperationRegistry
                 $cord->target === DataTarget::Shipment && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::ShipmentGet,
                 $cord->target === DataTarget::Booking && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::BookingGet,
                 $cord->target === DataTarget::Custom && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::CustomGet,
+                $cord->target === DataTarget::OneOffQuote && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::OneOffQuoteGet,
                 default => null,
             },
         };

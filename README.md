@@ -34,6 +34,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
   - [Create Staff](#create-staff)
   - [Update Staff](#update-staff)
 - [One Off Quotes](#one-off-quotes)
+    - [Query One-Off Quote](#query-one-off-quote)
   - [Create One-Off Quote](#create-one-off-quote)
 - [Multiple Connections](#multiple-connections)
 - [Raw XML](#raw-xml)
@@ -154,6 +155,11 @@ Cord currently supports these main targets:
 use Oliverbj\Cord\Facades\Cord;
 
 Cord::shipment('SMIA12345678')->run();
+
+Cord::withCompany('CPH')
+    ->oneOffQuote('QCPH00001004')
+    ->get()
+    ->run();
 
 Cord::withCompany('CPH')
     ->oneOffQuote()
@@ -606,6 +612,26 @@ Cord::withCompany('CPH')
 
 Use Cord to interact with the One-Off Quote module in CargoWise.
 
+### Query One-Off Quote
+
+One-off quote retrieval uses the universal shipment request with `DataTarget Type="OneOffQuote"` and a quote key.
+
+Call `withCompany()` before `run()` so Cord can populate the One-Off Quote `DataContext` with the company, `EnterpriseID`, `ServerID`, and the `ORP` recipient role expected by CargoWise.
+
+```php
+$response = Cord::withCompany('CPH')
+    ->oneOffQuote('QCPH00001004')
+    ->get()
+    ->run();
+```
+
+One-off quote query introspection:
+
+```php
+$schema = Cord::schema('one_off_quote.get');
+$active = Cord::oneOffQuote('QCPH00001004')->get()->describe();
+```
+
 ### Create One-Off Quote
 
 One-off quote creation is sent as a universal shipment request with `DataTarget Type="OneOffQuote"`.
@@ -677,6 +703,9 @@ One-off quote create requirements:
 One-off quote introspection:
 
 ```php
+$querySchema = Cord::schema('one_off_quote.get');
+$query = Cord::oneOffQuote('QCPH00001004')->get()->describe();
+
 $schema = Cord::schema('one_off_quote.create');
 $active = Cord::oneOffQuote()->create()->describe();
 ```

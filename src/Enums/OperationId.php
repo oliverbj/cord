@@ -29,5 +29,6 @@ enum OperationId: string
     case OrganizationCreate = 'organization.create';
     case StaffCreate = 'staff.create';
     case StaffUpdate = 'staff.update';
+    case OneOffQuoteGet = 'one_off_quote.get';
     case OneOffQuoteCreate = 'one_off_quote.create';
 }

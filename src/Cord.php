@@ -268,11 +268,11 @@ class Cord
     /**
      * Select the CargoWise one-off quote resource.
      *
-     * Key is optional for create requests.
+     * Key is optional for create requests and required for get requests.
      *
      * Examples:
      * `->oneOffQuote()`
-     * `->oneOffQuote('00001063')`
+     * `->oneOffQuote('QCPH00001004')->get()`
      */
     public function oneOffQuote(?string $key = null): self
     {
@@ -286,6 +286,10 @@ class Cord
 
         if ($key !== null) {
             $this->markStructuredField('key');
+
+            if (trim($key) !== '') {
+                $this->currentOperation = OperationId::OneOffQuoteGet;
+            }
         }
 
         return $this;
@@ -361,7 +365,15 @@ class Cord
         }
 
         if ($this->target === DataTarget::OneOffQuote) {
-            throw new \Exception('OneOffQuote get() is not implemented yet.');
+            if (! is_string($this->targetKey) || trim($this->targetKey) === '') {
+                throw new \Exception("oneOffQuote('KEY')->get() requires a quote key.");
+            }
+
+            $this->oneOffQuoteIntent = 'get';
+            $this->requestType = RequestType::UniversalShipmentRequest;
+            $this->currentOperation = OperationId::OneOffQuoteGet;
+
+            return $this;
         }
 
         return $this;
@@ -1890,6 +1902,14 @@ class Cord
             return;
         }
 
+        if ($this->isOneOffQuoteQueryRequest()) {
+            if (! is_string($this->company) || trim($this->company) === '') {
+                throw new \Exception('Company code must be provided for one-off quote query requests. Call withCompany() before sending the request.');
+            }
+
+            return;
+        }
+
         if ($this->target === DataTarget::Organization && $this->organizationIntent === 'create') {
             $this->validateOrganizationCreateDraft();
 
@@ -1925,6 +1945,14 @@ class Cord
         }
 
         $this->parseXmlDocument($this->rawXmlPayload, 'The raw XML payload must be well-formed XML.');
+    }
+
+    private function isOneOffQuoteQueryRequest(): bool
+    {
+        return $this->target === DataTarget::OneOffQuote
+            && $this->oneOffQuoteIntent !== 'create'
+            && is_string($this->targetKey)
+            && trim($this->targetKey) !== '';
     }
 
     protected function flattenResponse(array $response, string $key)

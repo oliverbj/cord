@@ -37,6 +37,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 ])->inspect();
 ```
 
+- One-off quote retrieval is supported through `oneOffQuote('QCPH00001004')->get()` and `schema('one_off_quote.get')`.
+
 ## Company context and identifiers
 
 - Use `withCompany()` for operations that depend on company context.
@@ -47,6 +49,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 ## Raw XML and response shape
 
 - Use `rawXml()` only when you already have a complete XML document or need a request shape Cord does not model yet.
+- Do not use `rawXml()` for one-off quote lookups. Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` instead.
 - For `rawXml()` requests, `run()` returns the full parsed eAdapter envelope with `Status`, `ProcessingLog`, and `Data`.
 - `rawXml()->toJson()->run()` returns the full response envelope as JSON.
 - `rawXml()->toXml()->run()` returns the full XML response envelope.

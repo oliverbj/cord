@@ -538,13 +538,23 @@ it('describes staff operations from the registry', function () {
 });
 
 it('publishes representative operation schemas', function () {
+    $oneOffQuoteGet = Cord::schema('one_off_quote.get');
     $oneOffQuote = Cord::schema('one_off_quote.create');
     $staffCreate = Cord::schema('staff.create');
     $staffUpdate = Cord::schema('staff.update');
     $organizationQuery = Cord::schema('organization.query');
     $shipmentGet = Cord::schema('shipment.get');
 
-    expect($oneOffQuote)->toMatchArray([
+    expect($oneOffQuoteGet)->toMatchArray([
+        'type' => 'object',
+        'required' => ['company', 'key'],
+        'x-cord' => [
+            'operation_id' => 'one_off_quote.get',
+            'resource' => 'one_off_quote',
+            'action' => 'get',
+        ],
+    ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server', 'sender_id', 'recipient_id'])
+        ->and($oneOffQuote)->toMatchArray([
         'type' => 'object',
         'required' => ['company', 'branch', 'department', 'transport_mode', 'port_of_origin', 'port_of_destination'],
         'x-cord' => [
@@ -586,6 +596,33 @@ it('returns the active schema when a builder is fully scoped', function () {
     $description = Cord::oneOffQuote()->create()->describe();
 
     expect($description)->toBe(Cord::schema('one_off_quote.create'));
+});
+
+it('returns the active schema for a scoped one-off quote query', function () {
+    $description = Cord::oneOffQuote('QCPH00001004')->get()->describe();
+
+    expect($description)->toBe(Cord::schema('one_off_quote.get'));
+});
+
+it('builds the same one-off quote query xml from structured input', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->get()
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.get', [
+        'company' => 'CPH',
+        'key' => 'QCPH00001004',
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($structuredXml)->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<RecipientRoleCollection>')
+        ->toContain('<Code>ORP</Code>');
 });
 
 it('builds the same one-off quote xml from structured input', function () {
@@ -1221,7 +1258,99 @@ it('describes one-off quote operations from the registry', function () {
     expect($description['resource'])->toBe('one_off_quote')
         ->and($description['operations'])->toBe([
             ['id' => 'one_off_quote.create', 'action' => 'create'],
+            ['id' => 'one_off_quote.get', 'action' => 'get'],
         ]);
+});
+
+it('builds a one-off quote query payload with company context', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->get()
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<UniversalShipmentRequest>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<RecipientRoleCollection>')
+        ->toContain('<Code>ORP</Code>');
+});
+
+it('returns one-off quote query data from a universal shipment response', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<UniversalResponse version="1.1" xmlns="http://www.cargowise.com/Schemas/Universal/2011/11">
+    <Status>PRS</Status>
+    <Data>
+        <UniversalShipment version="1.1" xmlns="http://www.cargowise.com/Schemas/Universal/2011/11">
+            <Shipment>
+                <DataContext>
+                    <DataSourceCollection>
+                        <DataSource>
+                            <Type>OneOffQuote</Type>
+                            <Key>QCPH00001004</Key>
+                        </DataSource>
+                    </DataSourceCollection>
+                    <Company>
+                        <Code>CPH</Code>
+                    </Company>
+                    <EnterpriseID>NT1</EnterpriseID>
+                    <ServerID>TRN</ServerID>
+                </DataContext>
+                <ActualChargeable>71.300</ActualChargeable>
+                <ContainerMode>
+                    <Code>LSE</Code>
+                    <Description>Loose</Description>
+                </ContainerMode>
+            </Shipment>
+        </UniversalShipment>
+    </Data>
+</UniversalResponse>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->get()
+        ->run();
+
+    expect($response)->toMatchArray([
+        'UniversalShipment' => [
+            '@attributes' => [
+                'version' => '1.1',
+            ],
+            'Shipment' => [
+                'DataContext' => [
+                    'DataSourceCollection' => [
+                        'DataSource' => [
+                            'Type' => 'OneOffQuote',
+                            'Key' => 'QCPH00001004',
+                        ],
+                    ],
+                    'Company' => [
+                        'Code' => 'CPH',
+                    ],
+                    'EnterpriseID' => 'NT1',
+                    'ServerID' => 'TRN',
+                ],
+                'ActualChargeable' => '71.300',
+                'ContainerMode' => [
+                    'Code' => 'LSE',
+                    'Description' => 'Loose',
+                ],
+            ],
+        ],
+    ]);
+});
+
+it('requires company context for one-off quote query', function () {
+    expect(fn () => Cord::oneOffQuote('QCPH00001004')
+        ->get()
+        ->inspect())
+        ->toThrow(Exception::class, 'Company code must be provided for one-off quote query requests.');
 });
 
 it('returns deterministic validation errors for one-off quote create required fields', function () {

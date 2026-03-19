@@ -56,6 +56,7 @@ class OperationRegistry
         $nativeWriteContext = ['config', 'company', 'enterprise', 'server', 'code_mapping'];
         $universalContext = ['config', 'company', 'sender_id', 'recipient_id'];
         $oneOffQuoteQueryContext = ['config', 'company', 'enterprise', 'server'];
+        $oneOffQuoteCreateContext = ['config', 'company'];
 
         return $this->definitions = [
             OperationId::ShipmentGet->value => new OperationDefinition(
@@ -267,7 +268,7 @@ class OperationRegistry
                 id: OperationId::OneOffQuoteCreate,
                 resource: 'one_off_quote',
                 action: 'create',
-                contextFields: $universalContext,
+                contextFields: $oneOffQuoteCreateContext,
                 requiredContextFields: ['company'],
                 selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => false, 'type' => 'string'],
                 bootstrapMethods: ['create'],

@@ -49,7 +49,7 @@ class UniversalShipmentRequest extends Request
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteQuery()) {
+        if ($this->isOneOffQuoteRequest()) {
             return false;
         }
 
@@ -67,9 +67,14 @@ class UniversalShipmentRequest extends Request
 
     private function isOneOffQuoteQuery(): bool
     {
-        return $this->cord->target === DataTarget::OneOffQuote
+        return $this->isOneOffQuoteRequest()
             && $this->cord->activeOneOffQuoteIntent() === 'get'
             && is_string($this->cord->targetKey)
             && trim($this->cord->targetKey) !== '';
+    }
+
+    private function isOneOffQuoteRequest(): bool
+    {
+        return $this->cord->target === DataTarget::OneOffQuote;
     }
 }

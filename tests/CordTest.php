@@ -571,7 +571,7 @@ it('publishes representative operation schemas', function () {
         ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
-        ->and($oneOffQuote['properties'])->toHaveKeys(['sender_id', 'recipient_id'])
+        ->and($oneOffQuote['properties'])->not->toHaveKeys(['enterprise', 'server', 'sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
         ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffUpdate['required'])->toBe(['company', 'code'])
@@ -719,7 +719,16 @@ it('builds the same one-off quote xml from structured input', function () {
         ],
     ])->inspect();
 
-    expect($structuredXml)->toBe($fluentXml);
+    expect($structuredXml)->toBe($fluentXml)
+        ->and(str_starts_with($structuredXml, '<UniversalShipmentRequest><ShipmentRequest>'))->toBeTrue();
+
+    expect($structuredXml)
+        ->toContain('<UniversalShipmentRequest>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<DataContext>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<Type>OneOffQuote</Type>');
 });
 
 it('builds the same staff xml from structured create and update input', function () {

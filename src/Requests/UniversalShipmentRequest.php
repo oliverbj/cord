@@ -10,7 +10,7 @@ class UniversalShipmentRequest extends Request
     {
         $context = parent::context();
 
-        if (! $this->isOneOffQuoteQuery()) {
+        if (! $this->isOneOffQuoteRequest()) {
             return $context;
         }
 
@@ -21,7 +21,7 @@ class UniversalShipmentRequest extends Request
         }
 
         if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
-            throw new \Exception('Company code must be provided for one-off quote query requests. Call withCompany() before sending the request.');
+            throw new \Exception('Company code must be provided for one-off quote requests. Call withCompany() before sending the request.');
         }
 
         $enterpriseId = $this->cord->resolveEnterpriseId();
@@ -31,18 +31,23 @@ class UniversalShipmentRequest extends Request
             throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
         }
 
-        $context[$key]['DataContext'] = array_replace_recursive($context[$key]['DataContext'], [
+        $dataContext = [
             'Company' => [
                 'Code' => $this->cord->company,
             ],
             'EnterpriseID' => $enterpriseId,
             'ServerID' => $serverId,
-            'RecipientRoleCollection' => [
+        ];
+
+        if ($this->isOneOffQuoteQuery()) {
+            $dataContext['RecipientRoleCollection'] = [
                 'RecipientRole' => [
                     'Code' => 'ORP',
                 ],
-            ],
-        ]);
+            ];
+        }
+
+        $context[$key]['DataContext'] = array_replace_recursive($context[$key]['DataContext'], $dataContext);
 
         return $context;
     }
@@ -59,6 +64,12 @@ class UniversalShipmentRequest extends Request
     public function schema(): array
     {
         if ($this->cord->target === DataTarget::OneOffQuote) {
+            if ($this->cord->activeOneOffQuoteIntent() === 'create') {
+                return [
+                    'Shipment' => $this->cord->oneOffQuote,
+                ];
+            }
+
             return $this->cord->oneOffQuote;
         }
 

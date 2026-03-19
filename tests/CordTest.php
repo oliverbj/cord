@@ -571,7 +571,8 @@ it('publishes representative operation schemas', function () {
         ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
-        ->and($oneOffQuote['properties'])->not->toHaveKeys(['enterprise', 'server', 'sender_id', 'recipient_id'])
+        ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server'])
+        ->and($oneOffQuote['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
         ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffUpdate['required'])->toBe(['company', 'code'])
@@ -720,7 +721,7 @@ it('builds the same one-off quote xml from structured input', function () {
     ])->inspect();
 
     expect($structuredXml)->toBe($fluentXml)
-        ->and(str_starts_with($structuredXml, '<UniversalShipmentRequest><ShipmentRequest>'))->toBeTrue();
+        ->and(str_starts_with($structuredXml, '<UniversalShipmentRequest><ShipmentRequest><DataContext>'))->toBeTrue();
 
     expect($structuredXml)
         ->toContain('<UniversalShipmentRequest>')
@@ -728,6 +729,9 @@ it('builds the same one-off quote xml from structured input', function () {
         ->not->toContain('<RecipientID>')
         ->toContain('<DataContext>')
         ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<Shipment><TransportMode><Code>SEA</Code></TransportMode>')
         ->toContain('<Type>OneOffQuote</Type>');
 });
 
@@ -1145,9 +1149,15 @@ it('builds a one-off quote create payload with empty key', function () {
         ->goodsValue(15000, 'AUD')
         ->inspect();
 
+    expect(str_starts_with($xml, '<UniversalShipmentRequest><ShipmentRequest><DataContext>'))->toBeTrue();
+
     expect($xml)
         ->toContain('<UniversalShipmentRequest>')
         ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<Shipment>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
         ->toContain('<PortOfOrigin><Code>AUSYD</Code></PortOfOrigin>')
         ->toContain('<PortOfDestination><Code>NZAKL</Code></PortOfDestination>')

@@ -572,7 +572,7 @@ it('publishes representative operation schemas', function () {
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
         ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server'])
-        ->and($oneOffQuote['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
+        ->and($oneOffQuote['properties'])->not->toHaveKeys(['key', 'sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
         ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffUpdate['required'])->toBe(['company', 'code'])
@@ -721,17 +721,18 @@ it('builds the same one-off quote xml from structured input', function () {
     ])->inspect();
 
     expect($structuredXml)->toBe($fluentXml)
-        ->and(str_starts_with($structuredXml, '<UniversalShipmentRequest><ShipmentRequest><DataContext>'))->toBeTrue();
+        ->and(str_starts_with($structuredXml, '<UniversalShipment><Shipment><DataContext>'))->toBeTrue();
 
     expect($structuredXml)
-        ->toContain('<UniversalShipmentRequest>')
+        ->toContain('<UniversalShipment>')
         ->not->toContain('<SenderID>')
         ->not->toContain('<RecipientID>')
         ->toContain('<DataContext>')
         ->toContain('<Company><Code>CPH</Code></Company>')
         ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
         ->toContain('<ServerID>TRN</ServerID>')
-        ->toContain('<Shipment><TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->not->toContain('<Key>')
         ->toContain('<Type>OneOffQuote</Type>');
 });
 
@@ -1131,7 +1132,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
     }
 });
 
-it('builds a one-off quote create payload with empty key', function () {
+it('builds a one-off quote create payload without a key', function () {
     $xml = Cord::withCompany('CPH')
         ->oneOffQuote()
         ->create()
@@ -1149,15 +1150,14 @@ it('builds a one-off quote create payload with empty key', function () {
         ->goodsValue(15000, 'AUD')
         ->inspect();
 
-    expect(str_starts_with($xml, '<UniversalShipmentRequest><ShipmentRequest><DataContext>'))->toBeTrue();
+    expect(str_starts_with($xml, '<UniversalShipment><Shipment><DataContext>'))->toBeTrue();
 
     expect($xml)
-        ->toContain('<UniversalShipmentRequest>')
+        ->toContain('<UniversalShipment>')
         ->toContain('<Type>OneOffQuote</Type>')
         ->toContain('<Company><Code>CPH</Code></Company>')
         ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
         ->toContain('<ServerID>TRN</ServerID>')
-        ->toContain('<Shipment>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
         ->toContain('<PortOfOrigin><Code>AUSYD</Code></PortOfOrigin>')
         ->toContain('<PortOfDestination><Code>NZAKL</Code></PortOfDestination>')
@@ -1165,7 +1165,7 @@ it('builds a one-off quote create payload with empty key', function () {
         ->toContain('<IsDomesticFreight>false</IsDomesticFreight>')
         ->toContain('<GoodsValue>15000</GoodsValue>');
 
-    expect(str_contains($xml, '<Key></Key>') || str_contains($xml, '<Key/>'))->toBeTrue();
+    expect($xml)->not->toContain('<Key>');
 });
 
 it('supports typed addresses and charge lines for one-off quote create', function () {
@@ -1206,6 +1206,7 @@ it('supports typed addresses and charge lines for one-off quote create', functio
         ->inspect();
 
     expect($xml)
+        ->toContain('<UniversalShipment><Shipment><DataContext>')
         ->toContain('<AddressType>QuotationClientAddress</AddressType>')
         ->toContain('<AddressType>OneOffQuotePickupAddress</AddressType>')
         ->toContain('<AddressType>OneOffQuoteDeliveryAddress</AddressType>')
@@ -1244,6 +1245,7 @@ it('supports attached documents for one-off quote create', function () {
         ->inspect();
 
     expect($xml)
+        ->toContain('<UniversalShipment><Shipment><DataContext>')
         ->toContain('<AttachedDocumentCollection>')
         ->toContain('<FileName>quote.pdf</FileName>')
         ->toContain('<Type><Code>QUO</Code></Type>')
@@ -1275,6 +1277,7 @@ it('supports one-off quote raw payload merge without clobbering fluent fields', 
         ->inspect();
 
     expect($xml)
+        ->toContain('<UniversalShipment><Shipment><DataContext>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
         ->toContain('<CustomizedFieldCollection>')
         ->toContain('<Key>Test User</Key>')

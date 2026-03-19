@@ -270,7 +270,6 @@ class OperationRegistry
                 action: 'create',
                 contextFields: $oneOffQuoteCreateContext,
                 requiredContextFields: ['company'],
-                selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => false, 'type' => 'string'],
                 bootstrapMethods: ['create'],
             ),
         ];

@@ -28,6 +28,7 @@ use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
 use Oliverbj\Cord\Requests\NativeStaffCreation;
 use Oliverbj\Cord\Requests\NativeStaffUpdate;
 use Oliverbj\Cord\Requests\RawXmlRequest;
+use Oliverbj\Cord\Requests\UniversalShipment;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
 use Oliverbj\Cord\Requests\UniversalEvent;
 use Oliverbj\Cord\Requests\UniversalShipmentRequest;
@@ -402,8 +403,7 @@ class Cord
 
         if ($this->target === DataTarget::OneOffQuote) {
             $this->oneOffQuoteIntent = 'create';
-            $this->requestType = RequestType::UniversalShipmentRequest;
-            $this->targetKey = $this->targetKey ?? '';
+            $this->requestType = RequestType::UniversalShipment;
             $this->currentOperation = OperationId::OneOffQuoteCreate;
 
             return $this;
@@ -1881,6 +1881,7 @@ class Cord
     {
         return match ($this->requestType) {
             RequestType::RawXml => new RawXmlRequest($this->rawXmlPayload ?? ''),
+            RequestType::UniversalShipment => new UniversalShipment($this),
             RequestType::UniversalShipmentRequest => new UniversalShipmentRequest($this),
             RequestType::UniversalDocumentRequest => new UniversalDocumentRequest($this),
             RequestType::UniversalEvent => new UniversalEvent($this),
@@ -2438,9 +2439,8 @@ class Cord
 
         $this->validateFluentOneOffQuoteCreatePayload($this->oneOffQuoteDraft);
 
-        $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->requestType = RequestType::UniversalShipment;
         $this->target = DataTarget::OneOffQuote;
-        $this->targetKey = $this->targetKey ?? '';
         $this->oneOffQuote = $this->buildOneOffQuotePayload($this->oneOffQuoteDraft);
     }
 

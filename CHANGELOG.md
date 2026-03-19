@@ -2,6 +2,54 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.0.7 - 2026-03-19
+
+### Cord v3.0.7
+
+Cord 3.0.7 is a patch release that fixes the One-Off Quote create envelope so CargoWise receives the expected UniversalShipmentRequest shape for quote creation.
+
+#### Fixed
+
+- Fixed one_off_quote.create to stop emitting top-level SenderID and RecipientID fields.
+- One-Off Quote create requests now serialize ShipmentRequest as the first child of UniversalShipmentRequest, matching the CargoWise scope expected for quote creation.
+- Preserved the required Company payload inside ShipmentRequest > DataContext for one_off_quote.create.
+
+#### Changed
+
+- Tightened the published one_off_quote.create schema so it no longer advertises enterprise, server, sender_id, or recipient_id as supported context fields.
+- Standard universal shipment requests continue to support interchange IDs; the envelope suppression only applies to One-Off Quote request shapes.
+
+#### Tests
+
+- Added regression coverage to assert that One-Off Quote create XML starts with ShipmentRequest under UniversalShipmentRequest.
+- Added regression coverage to assert that top-level SenderID and RecipientID are absent for one_off_quote.create.
+- Added schema regression coverage to ensure one_off_quote.create only exposes the supported context fields.
+
+#### Upgrade Notes
+
+- No application code changes are required for the documented One-Off Quote create flow:
+
+```php
+Cord::fromStructured('one_off_quote.create', [
+    'company' => 'CPH',
+    'branch' => 'A01',
+    'department' => 'FES',
+    'transport_mode' => 'SEA',
+    'port_of_origin' => 'AUSYD',
+    'port_of_destination' => 'NZAKL',
+])->run();
+
+```
+- If you were sending sender_id, recipient_id, enterprise, or server in structured one_off_quote.create payloads, remove them. They are not valid for this CargoWise request scope.
+
+#### Summary
+
+3.0.7 fixes a CargoWise compatibility issue in One-Off Quote creation by removing invalid top-level interchange fields from the UniversalShipmentRequest envelope while keeping Company inside ShipmentRequest > DataContext.
+
+If you want, I can also insert this directly into CHANGELOG.md.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.6...3.0.7
+
 ## v3.0.6 - 2026-03-18
 
 Removed logging from the package.
@@ -42,6 +90,7 @@ Cord `3.0.5` is a patch release that fixes the One-Off Quote retrieval envelope 
       ->oneOffQuote('QCPH00001004')
       ->get()
       ->run();
+  
   
   ```
 - If you built structured payloads for `one_off_quote.get`, stop sending `sender_id` and `recipient_id`; they are not valid for this CargoWise request scope.
@@ -86,6 +135,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   Cord::organization('SAGFURHEL')->get()->run();
   
   
+  
   ```
 - Organization queries built with criteria groups should now use:
   
@@ -96,6 +146,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
       ->run();
   
   
+  
   ```
 - One-Off Quote queries continue to use:
   
@@ -104,6 +155,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
       ->oneOffQuote('QCPH00001004')
       ->get()
       ->run();
+  
   
   
   ```
@@ -117,6 +169,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.3...3.0.4
 
 ```
+
 
 
 ```
@@ -274,6 +327,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 
 

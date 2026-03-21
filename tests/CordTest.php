@@ -192,6 +192,61 @@ XML, 200, ['Content-Type' => 'application/xml']),
         ]);
 });
 
+it('returns an empty array for organization queries with no matches', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response version="1.1">
+    <Status>PRS</Status>
+    <Data />
+    <MessageNumberCollection>
+        <MessageNumber>00000000000013591359</MessageNumber>
+    </MessageNumberCollection>
+    <ProcessingLog>Information - 0 matches found.</ProcessingLog>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::organization()
+        ->criteriaGroup([
+            [
+                'Entity' => 'OrgHeader',
+                'FieldName' => 'Code',
+                'Value' => 'SAGFURHEL',
+            ],
+        ], type: 'Exact')
+        ->get()
+        ->run();
+
+    expect($response)->toBe([]);
+});
+
+it('returns an empty array for company queries with no matches', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response version="1.1">
+    <Status>PRS</Status>
+    <Data />
+    <MessageNumberCollection>
+        <MessageNumber>00000000000013591359</MessageNumber>
+    </MessageNumberCollection>
+    <ProcessingLog>Information - 0 matches found.</ProcessingLog>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::company()
+        ->criteriaGroup([
+            [
+                'Entity' => 'GlbCompany',
+                'FieldName' => 'Code',
+                'Value' => 'CPH',
+            ],
+        ], type: 'Exact')
+        ->run();
+
+    expect($response)->toBe([]);
+});
+
 it('returns the full json response envelope for raw xml requests when toJson is enabled', function () {
     Http::fake([
         '*' => Http::response(<<<'XML'

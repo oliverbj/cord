@@ -1989,6 +1989,17 @@ class Cord
         });
     }
 
+    protected function flattenNativeResponse(array $response, string $path, string $key): array
+    {
+        $items = data_get($response, $path);
+
+        if (! is_array($items)) {
+            return [];
+        }
+
+        return $this->flattenResponse($items, $key);
+    }
+
     protected function fetch(): mixed
     {
         $this->setClient();
@@ -2036,8 +2047,8 @@ class Cord
         // If eAdapter response is successful, return data:
         // Handling different request types
         $payload = match ($this->requestType) {
-            RequestType::NativeOrganizationRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Organization'], 'OrgHeader'),
-            RequestType::NativeCompanyRetrieval => $this->flattenResponse($response['Data']['Native']['Body']['Company'], 'GlbCompany'),
+            RequestType::NativeOrganizationRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Organization', 'OrgHeader'),
+            RequestType::NativeCompanyRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Company', 'GlbCompany'),
 
             // Future implementations for shipment, custom, and booking can be added here
             // RequestType::UniversalShipmentRequest, RequestType::Custom, RequestType::Booking => {

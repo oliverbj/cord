@@ -519,7 +519,14 @@ Cord 3 is the most capable Cord release so far and lays the groundwork for both 
 
 ## Unreleased
 
-- Nothing yet.
+### Fixed
+
+- Native organization retrieval now returns `[]` when CargoWise responds with `PRS` and an empty `Data` envelope for 0 matches, instead of assuming `Data.Native.Body.Organization` exists.
+- Native company retrieval now applies the same empty-result handling when `Data.Native.Body.Company` is missing.
+
+### Tests
+
+- Added regression coverage for zero-match native organization and company queries.
 
 ## 1.1.4 - 2023-01-24
 

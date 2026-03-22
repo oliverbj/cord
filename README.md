@@ -132,7 +132,7 @@ $response = Cord::fromStructured('one_off_quote.create', [
     'transport_mode' => 'SEA',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
-    'client_address' => 'NTGAIRRTM',
+    'client_address' => 'ABSDEOSLP',
 ])->run();
 ```
 
@@ -663,7 +663,7 @@ Cord::withCompany('CPH')
     ->goodsValue(15000, 'AUD')
     ->additionalTerms('Export Only')
     ->isDomesticFreight(false)
-    ->clientAddress('NTGAIRRTM')
+    ->clientAddress('ABSDEOSLP')
     ->pickupAddress(fn ($a) => $a
         ->addressLine1('3 TENTH AVENUE')
         ->city('OYSTER BAY')
@@ -694,7 +694,7 @@ Cord::withCompany('CPH')
     ->run();
 ```
 
-The address setters accept either a full nested address builder or a CargoWise organization code string such as `NTGAIRRTM`.
+The address setters accept either a full nested address builder or a CargoWise organization code string such as `ABSDEOSLP`.
 
 Structured one-off quote create payloads support the same shortcuts:
 
@@ -708,7 +708,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'transport_mode' => 'SEA',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
-    'client_address' => 'NTGAIRRTM',
+    'client_address' => 'ABSDEOSLP',
     'pickup_address' => [
         'address_line_1' => '3 TENTH AVENUE',
         'city' => 'OYSTER BAY',

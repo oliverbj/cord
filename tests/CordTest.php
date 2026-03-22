@@ -836,7 +836,7 @@ it('supports organization code only addresses for one-off quote create', functio
         ->transportMode('SEA')
         ->portOfOrigin('AUSYD')
         ->portOfDestination('NZAKL')
-        ->clientAddress('NTGAIRRTM')
+        ->clientAddress('ABSDEOSLP')
         ->pickupAddress(fn ($a) => $a->organizationCode('AUSYDPK1'))
         ->deliveryAddress('NZAKLDL1')
         ->inspect();
@@ -848,14 +848,14 @@ it('supports organization code only addresses for one-off quote create', functio
         'transport_mode' => 'SEA',
         'port_of_origin' => 'AUSYD',
         'port_of_destination' => 'NZAKL',
-        'client_address' => 'NTGAIRRTM',
+        'client_address' => 'ABSDEOSLP',
         'pickup_address' => 'AUSYDPK1',
         'delivery_address' => 'NZAKLDL1',
     ])->inspect();
 
     expect($structuredXml)->toBe($fluentXml)
         ->and($structuredXml)->toContain('<AddressType>QuotationClientAddress</AddressType>')
-        ->toContain('<OrganizationCode>NTGAIRRTM</OrganizationCode>')
+        ->toContain('<OrganizationCode>ABSDEOSLP</OrganizationCode>')
         ->toContain('<AddressType>OneOffQuotePickupAddress</AddressType>')
         ->toContain('<OrganizationCode>AUSYDPK1</OrganizationCode>')
         ->toContain('<AddressType>OneOffQuoteDeliveryAddress</AddressType>')

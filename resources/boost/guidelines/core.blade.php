@@ -38,7 +38,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'transport_mode' => 'SEA',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
-    'client_address' => 'NTGAIRRTM',
+    'client_address' => 'ABSDEOSLP',
 ])->inspect();
 ```
 

@@ -30,11 +30,11 @@ class SchemaValidator
     private function validateValue(array $schema, mixed $value, string $path, array &$errors, array $configuredFields = [], bool $isRoot = false): void
     {
         if ($this->shouldSkipTypeValidation($schema)) {
-            if (($schema['type'] ?? null) === 'object' && is_array($value)) {
+            if ($this->expectsType($schema, 'object') && is_array($value) && ! array_is_list($value)) {
                 $this->validateObject($schema, $value, $path, $errors, $configuredFields, $isRoot);
             }
 
-            if (($schema['type'] ?? null) === 'array' && is_array($value) && isset($schema['items']) && is_array($schema['items'])) {
+            if ($this->expectsType($schema, 'array') && is_array($value) && array_is_list($value) && isset($schema['items']) && is_array($schema['items'])) {
                 $this->validateArray($schema, $value, $path, $errors);
             }
 
@@ -51,11 +51,11 @@ class SchemaValidator
             $errors[$path === '' ? 'payload' : $path][] = 'The field must be one of the allowed values.';
         }
 
-        if (($schema['type'] ?? null) === 'object' && is_array($value)) {
+        if ($this->expectsType($schema, 'object') && is_array($value) && ! array_is_list($value)) {
             $this->validateObject($schema, $value, $path, $errors, $configuredFields, $isRoot);
         }
 
-        if (($schema['type'] ?? null) === 'array' && is_array($value)) {
+        if ($this->expectsType($schema, 'array') && is_array($value) && array_is_list($value)) {
             $this->validateArray($schema, $value, $path, $errors);
         }
     }
@@ -143,6 +143,19 @@ class SchemaValidator
             'null' => $value === null,
             default => true,
         };
+    }
+
+    private function expectsType(array $schema, string $type): bool
+    {
+        $expected = $schema['type'] ?? null;
+
+        if (! is_string($expected) && ! is_array($expected)) {
+            return false;
+        }
+
+        $types = is_array($expected) ? $expected : [$expected];
+
+        return in_array($type, $types, true);
     }
 
     private function joinPath(string $prefix, string $segment): string

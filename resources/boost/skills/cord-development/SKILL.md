@@ -47,6 +47,7 @@ Use fluent builders when:
 - the request is hand-written and should stay easy to scan
 - closures make nested structures clearer than arrays
 - the payload maps naturally to a small number of builder calls
+- one-off quote addresses should be passed as organization code strings instead of expanded address objects
 
 ```php
 $xml = Cord::fromStructured('shipment.event.add', [
@@ -64,6 +65,8 @@ $xml = Cord::fromStructured('shipment.event.add', [
 
 - Set `withCompany()` whenever the operation depends on company context. For universal requests this also affects derived `SenderID`.
 - Do not assume `sender_id` and `recipient_id` exist on every operation. Use `schema()` to confirm the supported fields.
+- For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
+- `client_address`, `pickup_address`, and `delivery_address` on `one_off_quote.create` accept either structured address objects or plain organization code strings.
 - Use `organization(...)->get()` for organization lookups and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.

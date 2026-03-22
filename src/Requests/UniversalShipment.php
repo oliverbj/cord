@@ -23,7 +23,7 @@ class UniversalShipment extends Request
             throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
         }
 
-        return [
+        $context = [
             'Shipment' => [
                 'DataContext' => [
                     'DataTargetCollection' => [
@@ -39,6 +39,22 @@ class UniversalShipment extends Request
                 ],
             ],
         ];
+
+        $quoteDraft = $this->cord->currentOneOffQuoteDraft();
+
+        if (is_string($quoteDraft['eventBranch'] ?? null) && trim($quoteDraft['eventBranch']) !== '') {
+            $context['Shipment']['DataContext']['EventBranch'] = [
+                'Code' => $quoteDraft['eventBranch'],
+            ];
+        }
+
+        if (is_string($quoteDraft['eventDepartment'] ?? null) && trim($quoteDraft['eventDepartment']) !== '') {
+            $context['Shipment']['DataContext']['EventDepartment'] = [
+                'Code' => $quoteDraft['eventDepartment'],
+            ];
+        }
+
+        return $context;
     }
 
     protected function shouldIncludeInterchangeContext(): bool

@@ -623,10 +623,15 @@ it('publishes representative operation schemas', function () {
         ])->and($oneOffQuote['properties']['transport_mode'])->toMatchArray([
             'type' => 'string',
             'enum' => ['SEA', 'AIR', 'ROA'],
-        ])->and($oneOffQuote['properties']['client_address']['type'])->toBe('object')
+        ]);
+
+    $clientAddressTypes = $oneOffQuote['properties']['client_address']['type'];
+    sort($clientAddressTypes);
+
+    expect($clientAddressTypes)->toBe(['object', 'string'])
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
-        ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server'])
+        ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server', 'event_branch', 'event_department'])
         ->and($oneOffQuote['properties'])->not->toHaveKeys(['key', 'sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
         ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
@@ -789,6 +794,98 @@ it('builds the same one-off quote xml from structured input', function () {
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
         ->not->toContain('<Key>')
         ->toContain('<Type>OneOffQuote</Type>');
+});
+
+it('supports event branch and department in one-off quote create data context', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->eventBranch('QTE')
+        ->eventDepartment('PRC')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'event_branch' => 'QTE',
+        'event_department' => 'PRC',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($structuredXml)->toContain('<DataContext>')
+        ->toContain('<EventBranch><Code>QTE</Code></EventBranch>')
+        ->toContain('<EventDepartment><Code>PRC</Code></EventDepartment>')
+        ->toContain('<Company><Code>CPH</Code></Company>');
+});
+
+it('supports organization code only addresses for one-off quote create', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->clientAddress('NTGAIRRTM')
+        ->pickupAddress(fn ($a) => $a->organizationCode('AUSYDPK1'))
+        ->deliveryAddress('NZAKLDL1')
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'client_address' => 'NTGAIRRTM',
+        'pickup_address' => 'AUSYDPK1',
+        'delivery_address' => 'NZAKLDL1',
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($structuredXml)->toContain('<AddressType>QuotationClientAddress</AddressType>')
+        ->toContain('<OrganizationCode>NTGAIRRTM</OrganizationCode>')
+        ->toContain('<AddressType>OneOffQuotePickupAddress</AddressType>')
+        ->toContain('<OrganizationCode>AUSYDPK1</OrganizationCode>')
+        ->toContain('<AddressType>OneOffQuoteDeliveryAddress</AddressType>')
+        ->toContain('<OrganizationCode>NZAKLDL1</OrganizationCode>')
+        ->not->toContain('<Address1>');
+});
+
+it('keeps structured address object validation when organization code shortcuts are enabled', function () {
+    $errors = null;
+
+    try {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'client_address' => [
+                'address_line_1' => '3 TENTH AVENUE',
+                'country' => 'AU',
+            ],
+        ]);
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'client_address.city' => ['The field is required.'],
+    ]);
 });
 
 it('builds the same staff xml from structured create and update input', function () {
@@ -1158,6 +1255,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'custom',
         'withDocuments',
         'activeOneOffQuoteIntent',
+        'currentOneOffQuoteDraft',
     ];
 
     foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {

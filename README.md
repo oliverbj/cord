@@ -127,9 +127,12 @@ $response = Cord::fromStructured('one_off_quote.create', [
     'company' => 'CPH',
     'branch' => 'A01',
     'department' => 'FES',
+    'event_branch' => 'QTE',
+    'event_department' => 'PRC',
     'transport_mode' => 'SEA',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
+    'client_address' => 'NTGAIRRTM',
 ])->run();
 ```
 
@@ -640,12 +643,16 @@ $active = Cord::oneOffQuote('QCPH00001004')->get()->describe();
 
 One-off quote creation is sent as a universal shipment request with `DataTarget Type="OneOffQuote"`.
 
+Call `withCompany()` before `run()` so Cord can populate the create `DataContext` with the company, `EnterpriseID`, `ServerID`, and any optional `eventBranch()` / `eventDepartment()` codes.
+
 ```php
 Cord::withCompany('CPH')
     ->oneOffQuote()
     ->create()
     ->branch('A01')
     ->department('FES')
+    ->eventBranch('QTE')
+    ->eventDepartment('PRC')
     ->transportMode('SEA')
     ->portOfOrigin('AUSYD')
     ->portOfDestination('NZAKL')
@@ -656,21 +663,13 @@ Cord::withCompany('CPH')
     ->goodsValue(15000, 'AUD')
     ->additionalTerms('Export Only')
     ->isDomesticFreight(false)
-    ->clientAddress(fn ($a) => $a
-        ->addressLine1('3 TENTH AVENUE')
-        ->city('OYSTER BAY')
-        ->country('AU')
-    )
+    ->clientAddress('NTGAIRRTM')
     ->pickupAddress(fn ($a) => $a
         ->addressLine1('3 TENTH AVENUE')
         ->city('OYSTER BAY')
         ->country('AU')
     )
-    ->deliveryAddress(fn ($a) => $a
-        ->addressLine1('10 TEST ROAD')
-        ->city('AUCKLAND')
-        ->country('NZ')
-    )
+    ->deliveryAddress('NZAKLDL1')
     ->addChargeLine(fn ($c) => $c
         ->chargeCode('FRT')
         ->description('International Freight')
@@ -695,6 +694,30 @@ Cord::withCompany('CPH')
     ->run();
 ```
 
+The address setters accept either a full nested address builder or a CargoWise organization code string such as `NTGAIRRTM`.
+
+Structured one-off quote create payloads support the same shortcuts:
+
+```php
+$xml = Cord::fromStructured('one_off_quote.create', [
+    'company' => 'CPH',
+    'branch' => 'A01',
+    'department' => 'FES',
+    'event_branch' => 'QTE',
+    'event_department' => 'PRC',
+    'transport_mode' => 'SEA',
+    'port_of_origin' => 'AUSYD',
+    'port_of_destination' => 'NZAKL',
+    'client_address' => 'NTGAIRRTM',
+    'pickup_address' => [
+        'address_line_1' => '3 TENTH AVENUE',
+        'city' => 'OYSTER BAY',
+        'country' => 'AU',
+    ],
+    'delivery_address' => 'NZAKLDL1',
+])->inspect();
+```
+
 One-off quote create requirements:
 
 - `withCompany(...)`
@@ -703,6 +726,13 @@ One-off quote create requirements:
 - `transportMode(...)`
 - `portOfOrigin(...)`
 - `portOfDestination(...)`
+
+Optional one-off quote create helpers:
+
+- `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
+- `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
+- `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
+- In structured payloads, use `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
 
 One-off quote introspection:
 

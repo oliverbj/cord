@@ -33,11 +33,17 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'company' => 'CPH',
     'branch' => 'A01',
     'department' => 'FES',
+    'event_branch' => 'QTE',
+    'event_department' => 'PRC',
     'transport_mode' => 'SEA',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
+    'client_address' => 'NTGAIRRTM',
 ])->inspect();
 ```
+
+- For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
+- `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - One-off quote retrieval is supported through `oneOffQuote('QCPH00001004')->get()` and `schema('one_off_quote.get')`.

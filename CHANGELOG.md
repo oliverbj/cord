@@ -532,6 +532,16 @@ Cord 3 is the most capable Cord release so far and lays the groundwork for both 
 
 ## Unreleased
 
+### Changed
+
+- One-off quote create now accepts optional `event_branch` and `event_department` fields and serializes them into `Shipment > DataContext > EventBranch` / `EventDepartment`.
+- One-off quote create address fields now accept either full address payloads or bare organization codes for client, pickup, and delivery addresses.
+
+### Documentation
+
+- Updated the README one-off quote create examples and notes for `event_branch`, `event_department`, and organization-code-only addresses.
+- Updated the shipped Laravel Boost guideline and `cord-development` skill with the same one-off quote create guidance.
+
 ### Fixed
 
 - Native organization retrieval now returns `[]` when CargoWise responds with `PRS` and an empty `Data` envelope for 0 matches, instead of assuming `Data.Native.Body.Organization` exists.
@@ -540,6 +550,8 @@ Cord 3 is the most capable Cord release so far and lays the groundwork for both 
 ### Tests
 
 - Added regression coverage for zero-match native organization and company queries.
+- Added regression coverage for one-off quote create `EventBranch` / `EventDepartment` DataContext serialization.
+- Added regression coverage to keep the shipped Laravel Boost resources aligned with the documented one-off quote create contract.
 
 ## 1.1.4 - 2023-01-24
 

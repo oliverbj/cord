@@ -705,6 +705,24 @@ class Cord
     }
 
     /**
+     * Set the one-off quote event branch code.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'event_branch')]
+    public function eventBranch(string $branch): self
+    {
+        return $this->setOneOffQuoteDraftValue('eventBranch', $branch);
+    }
+
+    /**
+     * Set the one-off quote event department code.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'event_department')]
+    public function eventDepartment(string $department): self
+    {
+        return $this->setOneOffQuoteDraftValue('eventDepartment', $department);
+    }
+
+    /**
      * Set the staff work phone number.
      *
      * Maps to `WorkPhone` in the CargoWise payload.
@@ -897,30 +915,30 @@ class Cord
     }
 
     /**
-     * Set one-off quote client address.
+     * Set one-off quote client address or organization code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'client_address', builder: OneOffQuoteAddressBuilder::class)]
-    public function clientAddress(Closure $builder): self
+    public function clientAddress(Closure|string $address): self
     {
-        return $this->setOneOffQuoteTypedAddress('client', $builder);
+        return $this->setOneOffQuoteTypedAddress('client', $address);
     }
 
     /**
-     * Set one-off quote pickup address.
+     * Set one-off quote pickup address or organization code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'pickup_address', builder: OneOffQuoteAddressBuilder::class)]
-    public function pickupAddress(Closure $builder): self
+    public function pickupAddress(Closure|string $address): self
     {
-        return $this->setOneOffQuoteTypedAddress('pickup', $builder);
+        return $this->setOneOffQuoteTypedAddress('pickup', $address);
     }
 
     /**
-     * Set one-off quote delivery address.
+     * Set one-off quote delivery address or organization code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'delivery_address', builder: OneOffQuoteAddressBuilder::class)]
-    public function deliveryAddress(Closure $builder): self
+    public function deliveryAddress(Closure|string $address): self
     {
-        return $this->setOneOffQuoteTypedAddress('delivery', $builder);
+        return $this->setOneOffQuoteTypedAddress('delivery', $address);
     }
 
     /**
@@ -2416,18 +2434,23 @@ class Cord
         return array_replace_recursive($payload, $staffDetails['attributes'] ?? []);
     }
 
-    private function setOneOffQuoteTypedAddress(string $type, Closure $builder): self
+    private function setOneOffQuoteTypedAddress(string $type, Closure|string $address): self
     {
         $this->assertOneOffQuoteBuilderContext($type.'Address');
 
-        $addressBuilder = new OneOffQuoteAddressBuilder;
-        $builder($addressBuilder);
+        if (is_string($address)) {
+            $addressPayload = ['organizationCode' => $address];
+        } else {
+            $addressBuilder = new OneOffQuoteAddressBuilder;
+            $address($addressBuilder);
+            $addressPayload = $addressBuilder->toArray();
+        }
 
         if (! isset($this->oneOffQuoteDraft['addresses']) || ! is_array($this->oneOffQuoteDraft['addresses'])) {
             $this->oneOffQuoteDraft['addresses'] = [];
         }
 
-        $this->oneOffQuoteDraft['addresses'][$type] = $addressBuilder->toArray();
+        $this->oneOffQuoteDraft['addresses'][$type] = $addressPayload;
         $this->markStructuredField(match ($type) {
             'client' => 'client_address',
             'pickup' => 'pickup_address',
@@ -2491,6 +2514,32 @@ class Cord
             }
 
             $address = $payload['addresses'][$addressKey];
+            $organizationCode = $address['organizationCode'] ?? null;
+
+            if (is_string($organizationCode) && trim($organizationCode) !== '') {
+                continue;
+            }
+
+            $hasAddressDetails = false;
+            foreach (['address1', 'city', 'countryCode'] as $requiredField) {
+                $value = $address[$requiredField] ?? null;
+
+                if (is_string($value) && trim($value) !== '') {
+                    $hasAddressDetails = true;
+
+                    break;
+                }
+            }
+
+            if (array_key_exists('organizationCode', $address)
+                && is_string($organizationCode)
+                && trim($organizationCode) === ''
+                && ! $hasAddressDetails) {
+                $errors[$errorPrefix.'.organizationCode'] = ['The organizationCode field is required.'];
+
+                continue;
+            }
+
             foreach (['address1', 'city', 'countryCode'] as $requiredField) {
                 $value = $address[$requiredField] ?? null;
                 if (! is_string($value) || trim($value) === '') {
@@ -2657,13 +2706,22 @@ class Cord
     {
         $payload = [
             'AddressType' => $addressType,
-            'Address1' => $address['address1'],
-            'City' => $address['city'],
-            'Country' => [
-                'Code' => $address['countryCode'],
-            ],
             'AddressOverride' => $this->normalizeBoolean((bool) ($address['addressOverride'] ?? false)),
         ];
+
+        if (is_string($address['address1'] ?? null) && trim($address['address1']) !== '') {
+            $payload['Address1'] = $address['address1'];
+        }
+
+        if (is_string($address['city'] ?? null) && trim($address['city']) !== '') {
+            $payload['City'] = $address['city'];
+        }
+
+        if (is_string($address['countryCode'] ?? null) && trim($address['countryCode']) !== '') {
+            $payload['Country'] = [
+                'Code' => $address['countryCode'],
+            ];
+        }
 
         foreach ([
             'address2' => 'Address2',
@@ -3098,6 +3156,11 @@ class Cord
         return $this->oneOffQuoteIntent;
     }
 
+    public function currentOneOffQuoteDraft(): array
+    {
+        return $this->oneOffQuoteDraft;
+    }
+
     private function operationRegistry(): OperationRegistry
     {
         static $registry;
@@ -3213,7 +3276,11 @@ class Cord
         $value = $this->transformStructuredValueForMethod($method, $value);
 
         if ($builderClass !== null) {
-            return [$this->buildStructuredClosure($builderClass, is_array($value) ? $value : [])];
+            if (is_array($value)) {
+                return [$this->buildStructuredClosure($builderClass, $value)];
+            }
+
+            return [$value];
         }
 
         if (count($reflection->getParameters()) === 1) {

@@ -545,8 +545,11 @@ class OperationRegistry
         if (count($parameters) === 1) {
             $parameter = $parameters[0];
 
-            if ($builderClass !== null || $this->parameterIsClosure($parameter)) {
-                return $this->builderSchema($builderClass ?? $this->resolveBuilderClassFromMethod($method));
+            if ($builderClass !== null || $this->parameterIncludesClosure($parameter)) {
+                return $this->mergeBuilderAndParameterSchema(
+                    $this->builderSchema($builderClass ?? $this->resolveBuilderClassFromMethod($method)),
+                    $this->parameterSchema($parameter),
+                );
             }
 
             return $this->parameterSchema($parameter);
@@ -626,9 +629,47 @@ class OperationRegistry
         };
     }
 
-    private function parameterIsClosure(ReflectionParameter $parameter): bool
+    private function mergeBuilderAndParameterSchema(array $builderSchema, array $parameterSchema): array
     {
-        $type = $parameter->getType();
+        $parameterTypes = $parameterSchema['type'] ?? null;
+
+        if ($parameterTypes === null) {
+            return $builderSchema;
+        }
+
+        $builderTypes = $builderSchema['type'] ?? null;
+        $types = array_merge(
+            is_array($builderTypes) ? $builderTypes : [$builderTypes],
+            is_array($parameterTypes) ? $parameterTypes : [$parameterTypes],
+        );
+
+        $types = array_values(array_unique(array_filter($types, static fn ($type) => is_string($type) && $type !== '')));
+
+        if ($types === []) {
+            return $builderSchema;
+        }
+
+        $builderSchema['type'] = count($types) === 1 ? $types[0] : $types;
+
+        return $builderSchema;
+    }
+
+    private function parameterIncludesClosure(ReflectionParameter $parameter): bool
+    {
+        return $this->typeIncludesClosure($parameter->getType());
+    }
+
+    private function typeIncludesClosure(?ReflectionType $type): bool
+    {
+        if ($type instanceof ReflectionUnionType) {
+            foreach ($type->getTypes() as $unionType) {
+                if ($this->typeIncludesClosure($unionType)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         return $type instanceof ReflectionNamedType
             && ! $type->isBuiltin()

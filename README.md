@@ -127,6 +127,7 @@ $response = Cord::fromStructured('one_off_quote.create', [
     'company' => 'CPH',
     'branch' => 'A01',
     'department' => 'FES',
+    'org_role' => 'LOC',
     'event_branch' => 'QTE',
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
@@ -643,7 +644,7 @@ $active = Cord::oneOffQuote('QCPH00001004')->get()->describe();
 
 One-off quote creation is sent as a universal shipment request with `DataTarget Type="OneOffQuote"`.
 
-Call `withCompany()` before `run()` so Cord can populate the create `DataContext` with the company, `EnterpriseID`, `ServerID`, and any optional `eventBranch()` / `eventDepartment()` codes.
+Call `withCompany()` before `run()` so Cord can populate the create `DataContext` with the company, required quote `branch()`, optional `orgRole()`, `EnterpriseID`, `ServerID`, and any optional `eventBranch()` / `eventDepartment()` codes.
 
 ```php
 Cord::withCompany('CPH')
@@ -651,6 +652,7 @@ Cord::withCompany('CPH')
     ->create()
     ->branch('A01')
     ->department('FES')
+    ->orgRole('LOC')
     ->eventBranch('QTE')
     ->eventDepartment('PRC')
     ->transportMode('SEA')
@@ -703,6 +705,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'company' => 'CPH',
     'branch' => 'A01',
     'department' => 'FES',
+    'org_role' => 'LOC',
     'event_branch' => 'QTE',
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
@@ -729,10 +732,12 @@ One-off quote create requirements:
 
 Optional one-off quote create helpers:
 
+- `branch(...)` maps to both `Shipment > DataContext > Branch > Code` and `Shipment > JobCosting > Branch > Code`.
+- `orgRole(...)` maps to `Shipment > DataContext > OrgRole`; use `LOC` for Local Client or `OAG` for Overseas Agent.
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
 - `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
-- In structured payloads, use `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
+- In structured payloads, use `org_role`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
 
 One-off quote introspection:
 

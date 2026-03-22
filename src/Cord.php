@@ -723,6 +723,15 @@ class Cord
     }
 
     /**
+     * Set the one-off quote organization role.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'org_role', enum: ['LOC', 'OAG'])]
+    public function orgRole(string $role): self
+    {
+        return $this->setOneOffQuoteDraftValue('orgRole', $role);
+    }
+
+    /**
      * Set the staff work phone number.
      *
      * Maps to `WorkPhone` in the CargoWise payload.

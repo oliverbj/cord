@@ -33,6 +33,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'company' => 'CPH',
     'branch' => 'A01',
     'department' => 'FES',
+    'org_role' => 'LOC',
     'event_branch' => 'QTE',
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
@@ -42,6 +43,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 ])->inspect();
 ```
 
+- For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
+- For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string.
 

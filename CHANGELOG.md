@@ -534,12 +534,14 @@ Cord 3 is the most capable Cord release so far and lays the groundwork for both 
 
 ### Changed
 
+- One-off quote create now serializes the required `branch` into `Shipment > DataContext > Branch` in addition to `Shipment > JobCosting > Branch`.
+- One-off quote create now accepts optional `org_role` values and serializes them into `Shipment > DataContext > OrgRole`; supported values are `LOC` and `OAG`.
 - One-off quote create now accepts optional `event_branch` and `event_department` fields and serializes them into `Shipment > DataContext > EventBranch` / `EventDepartment`.
 - One-off quote create address fields now accept either full address payloads or bare organization codes for client, pickup, and delivery addresses.
 
 ### Documentation
 
-- Updated the README one-off quote create examples and notes for `event_branch`, `event_department`, and organization-code-only addresses.
+- Updated the README one-off quote create examples and notes for `branch`, `org_role`, `event_branch`, `event_department`, and organization-code-only addresses.
 - Updated the shipped Laravel Boost guideline and `cord-development` skill with the same one-off quote create guidance.
 
 ### Fixed
@@ -550,6 +552,8 @@ Cord 3 is the most capable Cord release so far and lays the groundwork for both 
 ### Tests
 
 - Added regression coverage for zero-match native organization and company queries.
+- Added regression coverage for one-off quote create `Branch` DataContext serialization.
+- Added regression coverage for one-off quote create `OrgRole` DataContext serialization.
 - Added regression coverage for one-off quote create `EventBranch` / `EventDepartment` DataContext serialization.
 - Added regression coverage to keep the shipped Laravel Boost resources aligned with the documented one-off quote create contract.
 

@@ -26,6 +26,7 @@ use Oliverbj\Cord\Requests\NativeOrganizationCreation;
 use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
 use Oliverbj\Cord\Requests\NativeStaffCreation;
+use Oliverbj\Cord\Requests\NativeStaffRetrieval;
 use Oliverbj\Cord\Requests\NativeStaffUpdate;
 use Oliverbj\Cord\Requests\RawXmlRequest;
 use Oliverbj\Cord\Requests\UniversalDocumentRequest;
@@ -332,15 +333,25 @@ class Cord
      */
     public function staff(?string $code = null): self
     {
+        $this->criteriaGroups = [];
         $this->target = DataTarget::Staff;
-        $this->targetKey = $code;
+        $this->targetKey = null;
+        $this->requestType = RequestType::NativeStaffRetrieval;
         $this->staffIntent = null;
         $this->staffDraft = [];
         $this->staff = [];
         $this->currentOperation = null;
 
         if ($code !== null) {
+            $this->targetKey = $code;
             $this->markStructuredField('code');
+            $this->criteriaGroup([
+                [
+                    'Entity' => 'GlbStaff',
+                    'FieldName' => 'Code',
+                    'Value' => $code,
+                ],
+            ], type: 'Key');
         }
 
         return $this;
@@ -349,15 +360,17 @@ class Cord
     /**
      * Set the intent to retrieve a resource.
      *
-     * Staff retrieval is not implemented yet.
-     *
      * Example:
      * `->get()`
      */
     public function get(): self
     {
         if ($this->target === DataTarget::Staff) {
-            throw new \Exception('Staff get() is not implemented yet. Use staff() endpoints that already support retrieval.');
+            $this->staffIntent = 'get';
+            $this->requestType = RequestType::NativeStaffRetrieval;
+            $this->currentOperation = OperationId::StaffQuery;
+
+            return $this;
         }
 
         if ($this->target === DataTarget::Organization) {
@@ -1652,11 +1665,37 @@ class Cord
             'required' => ['criteria'],
         ]
     )]
+    #[OperationField(
+        OperationId::StaffQuery,
+        name: 'criteria_groups',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'criteria' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'entity' => ['type' => 'string'],
+                            'field_name' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['entity', 'field_name', 'value'],
+                    ],
+                ],
+                'type' => ['type' => 'string', 'enum' => ['Key', 'Partial']],
+            ],
+            'required' => ['criteria'],
+        ]
+    )]
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
 
-        if ($this->requestType !== RequestType::NativeOrganizationRetrieval && $this->requestType !== RequestType::NativeCompanyRetrieval) {
-            throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization() or company()');
+        if ($this->requestType !== RequestType::NativeOrganizationRetrieval && $this->requestType !== RequestType::NativeCompanyRetrieval && $this->requestType !== RequestType::NativeStaffRetrieval) {
+            throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization(), company(), or staff().');
         }
 
         $criteriaGroup = [
@@ -1929,6 +1968,7 @@ class Cord
             RequestType::NativeOrganizationUpdate => new NativeOrganizationUpdate($this),
             RequestType::NativeOrganizationCreation => new NativeOrganizationCreation($this),
             RequestType::NativeCompanyRetrieval => new NativeCompanyRetrieval($this),
+            RequestType::NativeStaffRetrieval => new NativeStaffRetrieval($this),
             RequestType::NativeStaffCreation => new NativeStaffCreation($this),
             RequestType::NativeStaffUpdate => new NativeStaffUpdate($this),
         };
@@ -1955,6 +1995,14 @@ class Cord
         if ($this->target === DataTarget::Organization && $this->requestType === RequestType::NativeOrganizationRetrieval) {
             if ($this->organizationIntent !== 'get') {
                 throw new \Exception('organization()->get() must be called before inspect() or run().');
+            }
+
+            return;
+        }
+
+        if ($this->target === DataTarget::Staff && $this->requestType === RequestType::NativeStaffRetrieval) {
+            if ($this->staffIntent !== 'get') {
+                throw new \Exception('staff()->get() must be called before inspect() or run().');
             }
 
             return;
@@ -2089,6 +2137,7 @@ class Cord
         $payload = match ($this->requestType) {
             RequestType::NativeOrganizationRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Organization', 'OrgHeader'),
             RequestType::NativeCompanyRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Company', 'GlbCompany'),
+            RequestType::NativeStaffRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Staff', 'GlbStaff'),
 
             // Future implementations for shipment, custom, and booking can be added here
             // RequestType::UniversalShipmentRequest, RequestType::Custom, RequestType::Booking => {

@@ -11,7 +11,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 ## Preferred request flow
 
 - Start from a target such as `shipment()`, `booking()`, `custom()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
-- Call `get()` before `run()` for organization and one-off quote retrievals.
+- Call `get()` before `run()` for organization, staff, and one-off quote retrievals.
 - Call `run()` to send the request. Cord returns parsed array data by default.
 - Call `inspect()` while iterating or testing to build XML without sending any HTTP request.
 - Call `toJson()` before `run()` when the caller needs a JSON string.
@@ -24,7 +24,8 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - `Cord::resource()->describe()` lists operations for the selected resource.
 - `Cord::schema('operation.id')` returns the JSON-Schema-like contract for the operation, including required fields, nested objects, and enums.
 - `Cord::fromStructured('operation.id', $payload)` validates input before XML generation. Fix validation errors instead of bypassing the schema.
-- For organization and one-off quote retrievals, call `get()` before `run()`.
+- For organization, staff, and one-off quote retrievals, call `get()` before `run()`.
+- For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 
 ```php
@@ -50,6 +51,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
+- Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.
 - One-off quote retrieval is supported through `oneOffQuote('QCPH00001004')->get()` and `schema('one_off_quote.get')`.
 
 ## Company context and identifiers

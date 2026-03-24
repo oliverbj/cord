@@ -247,6 +247,72 @@ XML, 200, ['Content-Type' => 'application/xml']),
     expect($response)->toBe([]);
 });
 
+it('builds a native staff query payload and flattens the response', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response>
+    <Status>OK</Status>
+    <ProcessingLog>1 matches found.</ProcessingLog>
+    <Data>
+        <Native>
+            <Body>
+                <Staff>
+                    <GlbStaff>
+                        <Code>BVO</Code>
+                        <FullName>User Test</FullName>
+                    </GlbStaff>
+                </Staff>
+            </Body>
+        </Native>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::staff('BVO')
+        ->get()
+        ->run();
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->body(), '<Staff>')
+            && str_contains($request->body(), '<CriteriaGroup Type="Key">')
+            && str_contains($request->body(), '<Criteria Entity="GlbStaff" FieldName="Code">BVO</Criteria>');
+    });
+
+    expect($response)->toMatchArray([
+        'Code' => 'BVO',
+        'FullName' => 'User Test',
+    ]);
+});
+
+it('returns an empty array for staff queries with no matches', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response version="1.1">
+    <Status>PRS</Status>
+    <Data />
+    <MessageNumberCollection>
+        <MessageNumber>00000000000013591359</MessageNumber>
+    </MessageNumberCollection>
+    <ProcessingLog>Information - 0 matches found.</ProcessingLog>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::staff()
+        ->criteriaGroup([
+            [
+                'Entity' => 'GlbStaff',
+                'FieldName' => 'Code',
+                'Value' => 'BVO',
+            ],
+        ], type: 'Exact')
+        ->get()
+        ->run();
+
+    expect($response)->toBe([]);
+});
+
 it('returns the full json response envelope for raw xml requests when toJson is enabled', function () {
     Http::fake([
         '*' => Http::response(<<<'XML'
@@ -532,6 +598,11 @@ it('supports fluent staff update setters', function () {
         ->toContain('<UserAddress1>Test 123</UserAddress1>');
 });
 
+    it('requires get before staff query execution', function () {
+        expect(fn () => Cord::staff('BVO')->inspect())
+        ->toThrow(Exception::class, 'staff()->get() must be called before inspect() or run().');
+    });
+
 it('forces ChangePasswordAtNextLogin when password is set', function () {
     $xml = Cord::withCompany('CPH')
         ->staff('BVO')
@@ -595,6 +666,7 @@ it('describes staff operations from the registry', function () {
     expect($description['resource'])->toBe('staff')
         ->and($description['operations'])->toBe([
             ['id' => 'staff.create', 'action' => 'create'],
+            ['id' => 'staff.query', 'action' => 'query'],
             ['id' => 'staff.update', 'action' => 'update'],
         ]);
 });
@@ -602,6 +674,7 @@ it('describes staff operations from the registry', function () {
 it('publishes representative operation schemas', function () {
     $oneOffQuoteGet = Cord::schema('one_off_quote.get');
     $oneOffQuote = Cord::schema('one_off_quote.create');
+    $staffQuery = Cord::schema('staff.query');
     $staffCreate = Cord::schema('staff.create');
     $staffUpdate = Cord::schema('staff.update');
     $organizationQuery = Cord::schema('organization.query');
@@ -642,6 +715,16 @@ it('publishes representative operation schemas', function () {
             'enum' => ['LOC', 'OAG'],
         ])
         ->and($oneOffQuote['properties'])->not->toHaveKeys(['key', 'sender_id', 'recipient_id'])
+        ->and($staffQuery)->toMatchArray([
+            'type' => 'object',
+            'x-cord' => [
+                'operation_id' => 'staff.query',
+                'resource' => 'staff',
+                'action' => 'query',
+            ],
+        ])
+        ->and($staffQuery['properties'])->toHaveKeys(['code', 'criteria_groups'])
+        ->and($staffQuery['properties']['criteria_groups']['type'])->toBe('array')
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
         ->and($staffCreate['properties'])->toHaveKey('can_login')
         ->and($staffCreate['properties']['can_login'])->toMatchArray(['type' => 'boolean'])
@@ -1009,6 +1092,36 @@ it('builds the same staff xml from structured create and update input', function
     );
 });
 
+it('builds the same staff query xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('staff.query', [
+        'criteria_groups' => [
+            [
+                'type' => 'Partial',
+                'criteria' => [
+                    [
+                        'entity' => 'GlbStaff',
+                        'field_name' => 'Code',
+                        'value' => 'BV%',
+                    ],
+                ],
+            ],
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::staff()
+        ->criteriaGroup([
+            [
+                'Entity' => 'GlbStaff',
+                'FieldName' => 'Code',
+                'Value' => 'BV%',
+            ],
+        ], type: 'Partial')
+        ->get()
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
 it('builds the same organization query xml from structured input', function () {
     $structuredXml = Cord::fromStructured('organization.query', [
         'criteria_groups' => [
@@ -1060,6 +1173,12 @@ it('returns the active schema for a scoped organization query', function () {
     $description = Cord::organization('SAGFURHEL')->get()->describe();
 
     expect($description)->toBe(Cord::schema('organization.query'));
+});
+
+it('returns the active schema for a scoped staff query', function () {
+    $description = Cord::staff('BVO')->get()->describe();
+
+    expect($description)->toBe(Cord::schema('staff.query'));
 });
 
 it('builds the same organization address xml from structured input', function () {

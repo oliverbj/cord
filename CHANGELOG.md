@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### Added
+
+* Added `canLogin()` / structured `can_login` support for `staff.create` and `staff.update`, mapping to CargoWise `CanLogin` with a default of `true` on create.
+
 ## 3.1.2 - 2026-03-22
 
 ### What's Changed

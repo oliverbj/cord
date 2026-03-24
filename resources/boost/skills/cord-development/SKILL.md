@@ -65,6 +65,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 
 - Set `withCompany()` whenever the operation depends on company context. For universal requests this also affects derived `SenderID`.
 - Do not assume `sender_id` and `recipient_id` exist on every operation. Use `schema()` to confirm the supported fields.
+- For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.

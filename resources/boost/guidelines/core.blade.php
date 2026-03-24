@@ -25,6 +25,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - `Cord::schema('operation.id')` returns the JSON-Schema-like contract for the operation, including required fields, nested objects, and enums.
 - `Cord::fromStructured('operation.id', $payload)` validates input before XML generation. Fix validation errors instead of bypassing the schema.
 - For organization and one-off quote retrievals, call `get()` before `run()`.
+- For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 
 ```php
 $schema = Cord::schema('one_off_quote.create');

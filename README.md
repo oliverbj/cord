@@ -575,6 +575,7 @@ Common fluent setters:
 - `code`, `loginName`, `password`, `fullName`, `branch`, `department`, and `country` are required for create requests.
 - `withCompany('CPH')` is required for native staff create/update requests.
 - `password(...)` automatically sets `ChangePasswordAtNextLogin` to `true`.
+- `canLogin(...)` maps to CargoWise `CanLogin`. Create payloads default to `true` when omitted; update payloads only include it when you set it.
 - new staff create payloads automatically include `IsOperational=true`.
 - `replaceGroups([...])`, `addGroup(...)`, and `removeGroup(...)` are available for explicit group semantics.
 - `withPayload([...])` can be used as a passthrough for CargoWise fields not yet wrapped by dedicated methods.
@@ -598,6 +599,7 @@ Cord::withCompany('CPH')
     ->staff('BVO')
     ->update()
     ->fullName('Updated User')
+    ->canLogin(false)
     ->email('updated@example.com')
     ->branch('CPH')
     ->department('OPS')

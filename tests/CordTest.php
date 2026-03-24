@@ -393,6 +393,7 @@ it('builds a native staff creation payload with headers, groups, and working hou
         ->toContain('<GlbStaff Action="Insert">')
         ->toContain('<Code>BVO</Code>')
         ->toContain('<IsOperational>true</IsOperational>')
+        ->toContain('<CanLogin>true</CanLogin>')
         ->toContain('<GlbGroupLink Action="MERGE">')
         ->toContain('<Code>ORGALL</Code>')
         ->toContain('<WorkPhone>+111</WorkPhone>')
@@ -425,6 +426,7 @@ it('builds a native staff update payload for non-collection fields', function ()
         ->staff('BVO')
         ->update()
         ->fullName('Updated User')
+        ->canLogin(false)
         ->email('updated@example.com')
         ->branch('CPH')
         ->department('OPS')
@@ -443,6 +445,7 @@ it('builds a native staff update payload for non-collection fields', function ()
         ->toContain('<GlbStaff Action="UPDATE">')
         ->toContain('<Code>BVO</Code>')
         ->toContain('<FullName>Updated User</FullName>')
+        ->toContain('<CanLogin>false</CanLogin>')
         ->toContain('<FriendlyName>Updated</FriendlyName>')
         ->toContain('<Title>Branch Manager</Title>')
         ->toContain('<EmailAddress>updated@example.com</EmailAddress>')
@@ -474,6 +477,7 @@ it('supports fluent staff create with toPayload and raw payload passthrough', fu
         ->code('BVO')
         ->loginName('user.test')
         ->password('1234')
+        ->canLogin(false)
         ->fullName('User Test')
         ->branch('TLS')
         ->department('FES')
@@ -487,6 +491,7 @@ it('supports fluent staff create with toPayload and raw payload passthrough', fu
 
     expect($payload['Code'])->toBe('BVO')
         ->and($payload['LoginName'])->toBe('user.test')
+        ->and($payload['CanLogin'])->toBe('false')
         ->and($payload['GlbGroupLinkCollection']['GlbGroupLink'][0]['GlbGroup']['Code'])->toBe('ORGALL')
         ->and($payload['CustomFieldX'])->toBe('foo');
 
@@ -638,8 +643,12 @@ it('publishes representative operation schemas', function () {
         ])
         ->and($oneOffQuote['properties'])->not->toHaveKeys(['key', 'sender_id', 'recipient_id'])
         ->and($staffCreate['required'])->toBe(['company', 'code', 'login_name', 'password', 'full_name', 'branch', 'department', 'country'])
+        ->and($staffCreate['properties'])->toHaveKey('can_login')
+        ->and($staffCreate['properties']['can_login'])->toMatchArray(['type' => 'boolean'])
         ->and($staffCreate['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($staffUpdate['required'])->toBe(['company', 'code'])
+        ->and($staffUpdate['properties'])->toHaveKey('can_login')
+        ->and($staffUpdate['properties']['can_login'])->toMatchArray(['type' => 'boolean'])
         ->and($organizationQuery['properties']['criteria_groups']['type'])->toBe('array')
         ->and($shipmentGet['required'])->toBe(['key'])
         ->and($shipmentGet['properties'])->toHaveKeys(['sender_id', 'recipient_id']);
@@ -941,6 +950,7 @@ it('builds the same staff xml from structured create and update input', function
         'code' => 'BVO',
         'login_name' => 'user.test',
         'password' => '1234',
+        'can_login' => false,
         'full_name' => 'User Test',
         'email' => 'user.test@test.com',
         'branch' => 'TLS',
@@ -958,6 +968,7 @@ it('builds the same staff xml from structured create and update input', function
             ->code('BVO')
             ->loginName('user.test')
             ->password('1234')
+            ->canLogin(false)
             ->fullName('User Test')
             ->email('user.test@test.com')
             ->branch('TLS')
@@ -973,6 +984,7 @@ it('builds the same staff xml from structured create and update input', function
         'company' => 'CPH',
         'code' => 'BVO',
         'full_name' => 'Updated User',
+        'can_login' => false,
         'email' => 'updated@example.com',
         'branch' => 'CPH',
         'department' => 'OPS',
@@ -986,6 +998,7 @@ it('builds the same staff xml from structured create and update input', function
             ->staff('BVO')
             ->update()
             ->fullName('Updated User')
+            ->canLogin(false)
             ->email('updated@example.com')
             ->branch('CPH')
             ->department('OPS')

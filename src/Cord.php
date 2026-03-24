@@ -554,6 +554,19 @@ class Cord
     }
 
     /**
+     * Set whether the staff member can log in.
+     *
+     * Example:
+     * `->canLogin(true)`
+     */
+    #[OperationField(OperationId::StaffCreate, name: 'can_login')]
+    #[OperationField(OperationId::StaffUpdate, name: 'can_login')]
+    public function canLogin(bool $canLogin): self
+    {
+        return $this->setStaffDraftValue('canLogin', $canLogin);
+    }
+
+    /**
      * Set the full display name of the staff member.
      *
      * Required for create requests.
@@ -2253,6 +2266,7 @@ class Cord
             'IsActive' => $this->normalizeBoolean($staffDetails['active'] ?? true),
             'LoginName' => $staffDetails['loginName'],
             'Password' => $staffDetails['password'],
+            'CanLogin' => $this->normalizeBoolean($staffDetails['canLogin'] ?? true),
             'IsSalesRep' => $this->normalizeBoolean($staffDetails['isSalesRep'] ?? false),
             'IsController' => $this->normalizeBoolean($staffDetails['isController'] ?? false),
             'IsSystemAccount' => $this->normalizeBoolean($staffDetails['isSystemAccount'] ?? false),
@@ -2344,6 +2358,7 @@ class Cord
         $this->setStaffValueIfProvided($payload, $staffDetails, 'active', 'IsActive', fn ($value) => $this->normalizeBoolean($value));
         $this->setStaffValueIfProvided($payload, $staffDetails, 'loginName', 'LoginName');
         $this->setStaffValueIfProvided($payload, $staffDetails, 'password', 'Password');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'canLogin', 'CanLogin', fn ($value) => $this->normalizeBoolean($value));
         $this->setStaffValueIfProvided($payload, $staffDetails, 'isSalesRep', 'IsSalesRep', fn ($value) => $this->normalizeBoolean($value));
         $this->setStaffValueIfProvided($payload, $staffDetails, 'isController', 'IsController', fn ($value) => $this->normalizeBoolean($value));
         $this->setStaffValueIfProvided($payload, $staffDetails, 'isSystemAccount', 'IsSystemAccount', fn ($value) => $this->normalizeBoolean($value));

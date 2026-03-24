@@ -31,6 +31,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Company](#company)
   - [Query Company](#query-company)
 - [Staff](#staff)
+    - [Query Staff](#query-staff)
   - [Create Staff](#create-staff)
   - [Update Staff](#update-staff)
 - [One Off Quotes](#one-off-quotes)
@@ -112,7 +113,7 @@ CORD_PASSWORD=
 
 ## Usage
 
-Start with a target, call `get()` before `run()` for organization and one-off quote retrievals, then execute the request with `run()`. By default Cord returns the decoded eAdapter payload as an array. Call `toJson()` or `toXml()` before `run()` when you need serialized output.
+Start with a target, call `get()` before `run()` for organization, staff, and one-off quote retrievals, then execute the request with `run()`. By default Cord returns the decoded eAdapter payload as an array. Call `toJson()` or `toXml()` before `run()` when you need serialized output.
 
 ### Operation Schemas
 
@@ -141,6 +142,7 @@ $response = Cord::fromStructured('one_off_quote.create', [
 
 - `Cord::describe()` lists all published resources and operation ids.
 - `Cord::staff()->describe()` lists the operations for the selected resource.
+- `Cord::staff('OJ0')->get()->describe()` returns the active JSON-Schema-style contract for staff retrieval.
 - `Cord::staff()->create()->describe()` returns the active JSON-Schema-style contract for that fully scoped builder.
 
 ### Targets
@@ -153,6 +155,7 @@ Cord currently supports these main targets:
 - Customs declarations via `custom()`
 - Organizations via `organization()`
 - Companies via `company()`
+- Staff via `staff()`
 - Receivables / invoices via `receivable()` or `receiveable()` for document requests
 
 ```php
@@ -538,6 +541,32 @@ Cord::company()
 ```
 ## Staff
 You can also use Cord to manage Staff records in CargoWise.
+
+### Query Staff
+
+Staff queries follow the same native criteria-group pattern as organization queries, but use `GlbStaff` as the criteria entity. Call `get()` before `inspect()` or `run()`.
+
+```php
+Cord::staff()
+    ->criteriaGroup([
+        [
+            'Entity' => 'GlbStaff',
+            'FieldName' => 'Code',
+            'Value' => 'BVO',
+        ],
+    ], type: 'Key')
+    ->get()
+    ->run();
+```
+
+If you already know the staff code, `staff('BVO')->get()` preloads the same key criteria group for you.
+
+Method introspection:
+
+```php
+$schema = Cord::schema('staff.query');
+$active = Cord::staff('BVO')->get()->describe();
+```
 
 ### Create Staff
 

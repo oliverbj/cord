@@ -22,6 +22,7 @@ Use this skill when you are adding or changing Cord integrations, building Cargo
 
 - `Cord::describe()` lists available resources.
 - `Cord::staff()->describe()` lists operations for the selected resource.
+- `Cord::staff('BVO')->get()->describe()` returns the active schema for staff retrieval.
 - `Cord::organization('SAGFURHEL')->get()->describe()` returns the active schema for organization retrieval.
 - `Cord::oneOffQuote('QCPH00001004')->get()->describe()` returns the active schema for quote retrieval.
 - `Cord::oneOffQuote()->create()->describe()` returns the active schema for the fully scoped builder.
@@ -30,6 +31,8 @@ Use this skill when you are adding or changing Cord integrations, building Cargo
 
 ```php
 $description = Cord::staff()->describe();
+
+$querySchema = Cord::schema('staff.query');
 
 $schema = Cord::schema('staff.create');
 ```
@@ -65,12 +68,13 @@ $xml = Cord::fromStructured('shipment.event.add', [
 
 - Set `withCompany()` whenever the operation depends on company context. For universal requests this also affects derived `SenderID`.
 - Do not assume `sender_id` and `recipient_id` exist on every operation. Use `schema()` to confirm the supported fields.
+- For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - `client_address`, `pickup_address`, and `delivery_address` on `one_off_quote.create` accept either structured address objects or plain organization code strings.
-- Use `organization(...)->get()` for organization lookups and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
+- Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.
 - For `rawXml()` requests, remember that `run()` returns the full parsed envelope, not only `Data`.

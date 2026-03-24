@@ -176,6 +176,13 @@ class OperationRegistry
                 action: 'query',
                 selector: ['field' => 'code', 'method' => 'company', 'required' => false, 'type' => 'string'],
             ),
+            OperationId::StaffQuery->value => new OperationDefinition(
+                id: OperationId::StaffQuery,
+                resource: 'staff',
+                action: 'query',
+                selector: ['field' => 'code', 'method' => 'staff', 'required' => false, 'type' => 'string'],
+                bootstrapMethods: ['get'],
+            ),
             OperationId::OrganizationAddressAdd->value => new OperationDefinition(
                 id: OperationId::OrganizationAddressAdd,
                 resource: 'organization',

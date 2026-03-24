@@ -598,10 +598,10 @@ it('supports fluent staff update setters', function () {
         ->toContain('<UserAddress1>Test 123</UserAddress1>');
 });
 
-    it('requires get before staff query execution', function () {
-        expect(fn () => Cord::staff('BVO')->inspect())
+it('requires get before staff query execution', function () {
+    expect(fn () => Cord::staff('BVO')->inspect())
         ->toThrow(Exception::class, 'staff()->get() must be called before inspect() or run().');
-    });
+});
 
 it('forces ChangePasswordAtNextLogin when password is set', function () {
     $xml = Cord::withCompany('CPH')

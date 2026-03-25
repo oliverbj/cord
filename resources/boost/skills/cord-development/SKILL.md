@@ -69,6 +69,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Set `withCompany()` whenever the operation depends on company context. For universal requests this also affects derived `SenderID`.
 - Do not assume `sender_id` and `recipient_id` exist on every operation. Use `schema()` to confirm the supported fields.
 - For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
+- For `container.query`, use `GlbContainerType` as the native criteria entity, or call `container('20GP')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
@@ -77,7 +78,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
-- Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
+- Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, `container(...)->get()` for container type lookups, and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.
 - For `rawXml()` requests, remember that `run()` returns the full parsed envelope, not only `Data`.

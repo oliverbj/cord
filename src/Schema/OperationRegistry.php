@@ -177,6 +177,13 @@ class OperationRegistry
                 action: 'query',
                 selector: ['field' => 'code', 'method' => 'company', 'required' => false, 'type' => 'string'],
             ),
+            OperationId::ContainerQuery->value => new OperationDefinition(
+                id: OperationId::ContainerQuery,
+                resource: 'container',
+                action: 'query',
+                selector: ['field' => 'code', 'method' => 'container', 'required' => false, 'type' => 'string'],
+                bootstrapMethods: ['get'],
+            ),
             OperationId::StaffQuery->value => new OperationDefinition(
                 id: OperationId::StaffQuery,
                 resource: 'staff',
@@ -510,6 +517,7 @@ class OperationRegistry
 
         return match ($cord->requestType) {
             RequestType::NativeCompanyRetrieval => OperationId::CompanyQuery,
+            RequestType::NativeContainerRetrieval => OperationId::ContainerQuery,
             default => match (true) {
                 $cord->target === DataTarget::Shipment && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::ShipmentGet,
                 $cord->target === DataTarget::Booking && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::BookingGet,

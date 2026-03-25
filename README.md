@@ -155,6 +155,7 @@ Cord currently supports these main targets:
 - Customs declarations via `custom()`
 - Organizations via `organization()`
 - Companies via `company()`
+- Containers via `container()`
 - Staff via `staff()`
 - Receivables / invoices via `receivable()` or `receiveable()` for document requests
 
@@ -541,6 +542,47 @@ Cord::company()
     ])
     ->run();
 ```
+## Staff
+You can also use Cord to manage Staff records in CargoWise.
+
+## Container
+
+Cord supports querying CargoWise container types via the native request pattern.
+
+### Query Container
+
+Container queries use `GlbContainerType` as the criteria entity. Call `get()` before `inspect()` or `run()`.
+
+```php
+Cord::container()
+    ->criteriaGroup([
+        [
+            'Entity' => 'GlbContainerType',
+            'FieldName' => 'Code',
+            'Value' => '20GP',
+        ],
+    ])
+    ->get()
+    ->run();
+```
+
+If you already know the container code, `container('20GP')->get()` preloads the same key criteria group.
+
+Structured container queries work the same way:
+
+```php
+$xml = Cord::fromStructured('container.query', [
+    'criteria_groups' => [
+        [
+            'type' => 'Key',
+            'criteria' => [
+                ['entity' => 'GlbContainerType', 'field_name' => 'Code', 'value' => '20GP'],
+            ],
+        ],
+    ],
+])->inspect();
+```
+
 ## Staff
 You can also use Cord to manage Staff records in CargoWise.
 

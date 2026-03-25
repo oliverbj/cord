@@ -248,6 +248,111 @@ XML, 200, ['Content-Type' => 'application/xml']),
     expect($response)->toBe([]);
 });
 
+it('builds a native container query payload and flattens the response', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response>
+    <Status>OK</Status>
+    <ProcessingLog>1 matches found.</ProcessingLog>
+    <Data>
+        <Native>
+            <Body>
+                <ContainerType>
+                    <GlbContainerType>
+                        <Code>20GP</Code>
+                        <Description>Twenty foot general purpose</Description>
+                        <IsActive>true</IsActive>
+                        <ShippingMode>SEA</ShippingMode>
+                    </GlbContainerType>
+                </ContainerType>
+            </Body>
+        </Native>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::container()
+        ->criteriaGroup([
+            [
+                'Entity' => 'GlbContainerType',
+                'FieldName' => 'Code',
+                'Value' => '20GP',
+            ],
+        ])
+        ->get()
+        ->run();
+
+    expect($response)->toMatchArray([
+        'Code' => '20GP',
+        'Description' => 'Twenty foot general purpose',
+        'IsActive' => 'true',
+        'ShippingMode' => 'SEA',
+    ]);
+});
+
+it('builds a container query by code shorthand', function () {
+    $xml = Cord::container('20GP')->get()->inspect();
+
+    expect($xml)
+        ->toContain('<ContainerType>')
+        ->toContain('<Criteria Entity="GlbContainerType" FieldName="Code">20GP</Criteria>');
+});
+
+it('builds the same container query xml from structured input', function () {
+    $structuredXml = Cord::fromStructured('container.query', [
+        'criteria_groups' => [
+            [
+                'type' => 'Key',
+                'criteria' => [
+                    ['entity' => 'GlbContainerType', 'field_name' => 'Code', 'value' => '20GP'],
+                ],
+            ],
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::container()
+        ->criteriaGroup([
+            ['Entity' => 'GlbContainerType', 'FieldName' => 'Code', 'Value' => '20GP'],
+        ])
+        ->get()
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+});
+
+it('returns an empty array for container queries with no matches', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response version="1.1">
+    <Status>PRS</Status>
+    <Data />
+    <ProcessingLog>Information - 0 matches found.</ProcessingLog>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $response = Cord::container()
+        ->criteriaGroup([
+            ['Entity' => 'GlbContainerType', 'FieldName' => 'Code', 'Value' => 'NONE'],
+        ])
+        ->get()
+        ->run();
+
+    expect($response)->toBe([]);
+});
+
+it('requires get before container query execution', function () {
+    expect(fn () => Cord::container()->inspect())
+        ->toThrow(Exception::class, 'container()->get() must be called before inspect() or run().');
+});
+
+it('returns the active schema for a scoped container query', function () {
+    $description = Cord::container('20GP')->get()->describe();
+
+    expect($description)->toBe(Cord::schema('container.query'));
+});
+
 it('builds a native staff query payload and flattens the response', function () {
     Http::fake([
         '*' => Http::response(<<<'XML'
@@ -1462,6 +1567,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'resolveServerId',
         'nativeHeader',
         'company',
+        'container',
         'custom',
         'withDocuments',
         'activeOneOffQuoteIntent',

@@ -19,6 +19,7 @@ enum OperationId: string
     case CustomDocumentAdd = 'custom.document.add';
     case OrganizationQuery = 'organization.query';
     case CompanyQuery = 'company.query';
+    case ContainerQuery = 'container.query';
     case StaffQuery = 'staff.query';
     case OrganizationAddressAdd = 'organization.address.add';
     case OrganizationContactAdd = 'organization.contact.add';

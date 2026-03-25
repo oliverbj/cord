@@ -2834,9 +2834,12 @@ class Cord
 
     private function buildOneOffQuoteAddressPayload(string $addressType, array $address): array
     {
+        $hasOrganizationCode = is_string($address['organizationCode'] ?? null) && trim($address['organizationCode']) !== '';
+        $defaultAddressOverride = ! $hasOrganizationCode;
+
         $payload = [
             'AddressType' => $addressType,
-            'AddressOverride' => $this->normalizeBoolean((bool) ($address['addressOverride'] ?? false)),
+            'AddressOverride' => $this->normalizeBoolean((bool) ($address['addressOverride'] ?? $defaultAddressOverride)),
         ];
 
         if (is_string($address['address1'] ?? null) && trim($address['address1']) !== '') {

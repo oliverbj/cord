@@ -13,7 +13,7 @@ class NativeContainerRetrieval extends NativeRequest
     {
         return [
             'Body' => [
-                'ContainerType' => $criteriaGroups,
+                'Container' => $criteriaGroups,
             ],
         ];
     }

@@ -1688,7 +1688,7 @@ class Cord
             $this->markStructuredField('code');
             $this->criteriaGroup([
                 [
-                    'Entity' => 'GlbContainerType',
+                    'Entity' => 'RefContainer',
                     'FieldName' => 'Code',
                     'Value' => $code,
                 ],
@@ -2270,7 +2270,7 @@ class Cord
         $payload = match ($this->requestType) {
             RequestType::NativeOrganizationRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Organization', 'OrgHeader'),
             RequestType::NativeCompanyRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Company', 'GlbCompany'),
-            RequestType::NativeContainerRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.ContainerType', 'GlbContainerType'),
+            RequestType::NativeContainerRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Container', 'RefContainer'),
             RequestType::NativeStaffRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Staff', 'GlbStaff'),
 
             // Future implementations for shipment, custom, and booking can be added here

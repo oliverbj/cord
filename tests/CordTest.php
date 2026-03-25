@@ -257,14 +257,14 @@ it('builds a native container query payload and flattens the response', function
     <Data>
         <Native>
             <Body>
-                <ContainerType>
-                    <GlbContainerType>
+                <Container>
+                    <RefContainer>
                         <Code>20GP</Code>
                         <Description>Twenty foot general purpose</Description>
                         <IsActive>true</IsActive>
                         <ShippingMode>SEA</ShippingMode>
-                    </GlbContainerType>
-                </ContainerType>
+                    </RefContainer>
+                </Container>
             </Body>
         </Native>
     </Data>
@@ -275,7 +275,7 @@ XML, 200, ['Content-Type' => 'application/xml']),
     $response = Cord::container()
         ->criteriaGroup([
             [
-                'Entity' => 'GlbContainerType',
+                'Entity' => 'RefContainer',
                 'FieldName' => 'Code',
                 'Value' => '20GP',
             ],
@@ -295,8 +295,8 @@ it('builds a container query by code shorthand', function () {
     $xml = Cord::container('20GP')->get()->inspect();
 
     expect($xml)
-        ->toContain('<ContainerType>')
-        ->toContain('<Criteria Entity="GlbContainerType" FieldName="Code">20GP</Criteria>');
+        ->toContain('<Container>')
+        ->toContain('<Criteria Entity="RefContainer" FieldName="Code">20GP</Criteria>');
 });
 
 it('builds the same container query xml from structured input', function () {
@@ -305,7 +305,7 @@ it('builds the same container query xml from structured input', function () {
             [
                 'type' => 'Key',
                 'criteria' => [
-                    ['entity' => 'GlbContainerType', 'field_name' => 'Code', 'value' => '20GP'],
+                    ['entity' => 'RefContainer', 'field_name' => 'Code', 'value' => '20GP'],
                 ],
             ],
         ],
@@ -313,7 +313,7 @@ it('builds the same container query xml from structured input', function () {
 
     $fluentXml = Cord::container()
         ->criteriaGroup([
-            ['Entity' => 'GlbContainerType', 'FieldName' => 'Code', 'Value' => '20GP'],
+            ['Entity' => 'RefContainer', 'FieldName' => 'Code', 'Value' => '20GP'],
         ])
         ->get()
         ->inspect();
@@ -334,7 +334,7 @@ XML, 200, ['Content-Type' => 'application/xml']),
 
     $response = Cord::container()
         ->criteriaGroup([
-            ['Entity' => 'GlbContainerType', 'FieldName' => 'Code', 'Value' => 'NONE'],
+            ['Entity' => 'RefContainer', 'FieldName' => 'Code', 'Value' => 'NONE'],
         ])
         ->get()
         ->run();

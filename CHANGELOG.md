@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### Fixed
+
+* Fixed one-off quote pack line serialization to emit `PackQty` instead of `Quantity` for `addPackLine()` / structured `pack_lines` payloads.
+
 ## v3.1.6 - 2026-03-25
 
 ### What's Changed
@@ -17,13 +23,6 @@ All notable changes to `cord` will be documented in this file.
 * Add pack lines by @oliverbj in https://github.com/oliverbj/cord/pull/30
 
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.1.4...3.1.5
-
-## Unreleased
-
-### Added
-
-* Added `addPackLine()` / structured `pack_lines` support for `one_off_quote.create`, mapping to CargoWise `PackingLineCollection > PackingLine`. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
-* Added `one_off_quote.document.add` operation supporting `addDocument()` and structured `fromStructured('one_off_quote.document.add', [...])` for attaching documents to existing one-off quotes.
 
 ## v3.1.4 - 2026-03-24
 

@@ -2935,7 +2935,7 @@ class Cord
     {
         $payload = [
             'PackType' => ['Code' => $packLine['packTypeCode']],
-            'Quantity' => (string) $packLine['quantity'],
+            'PackQty' => (string) $packLine['quantity'],
         ];
 
         if (isset($packLine['weightValue'])) {

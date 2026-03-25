@@ -24,6 +24,7 @@ use Oliverbj\Cord\Enums\OperationId;
 use Oliverbj\Cord\Enums\RequestType;
 use Oliverbj\Cord\Interfaces\RequestInterface;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
+use Oliverbj\Cord\Requests\NativeContainerRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationCreation;
 use Oliverbj\Cord\Requests\NativeOrganizationRetrieval;
 use Oliverbj\Cord\Requests\NativeOrganizationUpdate;
@@ -96,6 +97,8 @@ class Cord
     protected ?string $organizationIntent = null;
 
     public array $organizationDraft = [];
+
+    protected ?string $containerIntent = null;
 
     protected ?string $xml = null;
 
@@ -391,6 +394,14 @@ class Cord
             $this->oneOffQuoteIntent = 'get';
             $this->requestType = RequestType::UniversalShipmentRequest;
             $this->currentOperation = OperationId::OneOffQuoteGet;
+
+            return $this;
+        }
+
+        if ($this->target === DataTarget::Container) {
+            $this->containerIntent = 'get';
+            $this->requestType = RequestType::NativeContainerRetrieval;
+            $this->currentOperation = OperationId::ContainerQuery;
 
             return $this;
         }
@@ -1655,6 +1666,39 @@ class Cord
     }
 
     /**
+     * Select the CargoWise container type resource.
+     *
+     * Optionally pre-select a container type code for lookup flows.
+     *
+     * Examples:
+     * `->container()`
+     * `->container('20GP')`
+     */
+    public function container(?string $code = null): self
+    {
+        $this->criteriaGroups = [];
+        $this->targetKey = null;
+        $this->containerIntent = null;
+        $this->requestType = RequestType::NativeContainerRetrieval;
+        $this->target = DataTarget::Container;
+        $this->currentOperation = null;
+
+        if ($code !== null) {
+            $this->targetKey = $code;
+            $this->markStructuredField('code');
+            $this->criteriaGroup([
+                [
+                    'Entity' => 'GlbContainerType',
+                    'FieldName' => 'Code',
+                    'Value' => $code,
+                ],
+            ], type: 'Key');
+        }
+
+        return $this;
+    }
+
+    /**
      * Add criteriaGroup to the native query methods.
      */
     #[OperationField(
@@ -1710,6 +1754,32 @@ class Cord
         ]
     )]
     #[OperationField(
+        OperationId::ContainerQuery,
+        name: 'criteria_groups',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'criteria' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'entity' => ['type' => 'string'],
+                            'field_name' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['entity', 'field_name', 'value'],
+                    ],
+                ],
+                'type' => ['type' => 'string', 'enum' => ['Key', 'Partial']],
+            ],
+            'required' => ['criteria'],
+        ]
+    )]
+    #[OperationField(
         OperationId::StaffQuery,
         name: 'criteria_groups',
         repeatable: true,
@@ -1738,8 +1808,8 @@ class Cord
     public function criteriaGroup(array $criteria, string $type = 'Key'): self
     {
 
-        if ($this->requestType !== RequestType::NativeOrganizationRetrieval && $this->requestType !== RequestType::NativeCompanyRetrieval && $this->requestType !== RequestType::NativeStaffRetrieval) {
-            throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization(), company(), or staff().');
+        if ($this->requestType !== RequestType::NativeOrganizationRetrieval && $this->requestType !== RequestType::NativeCompanyRetrieval && $this->requestType !== RequestType::NativeStaffRetrieval && $this->requestType !== RequestType::NativeContainerRetrieval) {
+            throw new \Exception('You must call a native query request method before calling the criteraGroup() method. This could for example be organization(), company(), staff(), or container().');
         }
 
         $criteriaGroup = [
@@ -2022,6 +2092,7 @@ class Cord
             RequestType::NativeOrganizationUpdate => new NativeOrganizationUpdate($this),
             RequestType::NativeOrganizationCreation => new NativeOrganizationCreation($this),
             RequestType::NativeCompanyRetrieval => new NativeCompanyRetrieval($this),
+            RequestType::NativeContainerRetrieval => new NativeContainerRetrieval($this),
             RequestType::NativeStaffRetrieval => new NativeStaffRetrieval($this),
             RequestType::NativeStaffCreation => new NativeStaffCreation($this),
             RequestType::NativeStaffUpdate => new NativeStaffUpdate($this),
@@ -2054,6 +2125,14 @@ class Cord
             return;
         }
 
+        if ($this->target === DataTarget::Container && $this->requestType === RequestType::NativeContainerRetrieval) {
+            if ($this->containerIntent !== 'get') {
+                throw new \Exception('container()->get() must be called before inspect() or run().');
+            }
+
+            return;
+        }
+
         if ($this->target === DataTarget::Staff && $this->requestType === RequestType::NativeStaffRetrieval) {
             if ($this->staffIntent !== 'get') {
                 throw new \Exception('staff()->get() must be called before inspect() or run().');
@@ -2076,7 +2155,7 @@ class Cord
             return;
         }
 
-        if (! $this->targetKey && ! in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval])) {
+        if (! $this->targetKey && ! in_array($this->requestType, [RequestType::NativeOrganizationRetrieval, RequestType::NativeCompanyRetrieval, RequestType::NativeContainerRetrieval])) {
             throw new \Exception('You haven\'t set any target key. This is usually the shipment number, customs declaration number or booking number.');
         }
     }
@@ -2191,6 +2270,7 @@ class Cord
         $payload = match ($this->requestType) {
             RequestType::NativeOrganizationRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Organization', 'OrgHeader'),
             RequestType::NativeCompanyRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Company', 'GlbCompany'),
+            RequestType::NativeContainerRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.ContainerType', 'GlbContainerType'),
             RequestType::NativeStaffRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Staff', 'GlbStaff'),
 
             // Future implementations for shipment, custom, and booking can be added here
@@ -3422,6 +3502,7 @@ class Cord
         return match (true) {
             $this->requestType === RequestType::NativeCompanyRetrieval => 'company',
             $this->target === DataTarget::Organization => 'organization',
+            $this->target === DataTarget::Container => 'container',
             $this->target === DataTarget::Staff => 'staff',
             $this->target === DataTarget::OneOffQuote => 'one_off_quote',
             $this->target === DataTarget::Receiveable => 'receivable',
@@ -3463,6 +3544,7 @@ class Cord
                 'staff' => 'staff',
                 'one_off_quote' => 'oneOffQuote',
                 'organization' => 'organization',
+                'container' => 'container',
                 default => null,
             };
 
@@ -3643,6 +3725,7 @@ class Cord
             'staff' => $this->target === DataTarget::Staff,
             'organization' => $this->target === DataTarget::Organization && $this->requestType !== RequestType::NativeCompanyRetrieval,
             'company' => $this->requestType === RequestType::NativeCompanyRetrieval,
+            'container' => $this->target === DataTarget::Container,
             default => false,
         };
     }

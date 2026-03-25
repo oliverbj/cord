@@ -26,6 +26,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - `Cord::fromStructured('operation.id', $payload)` validates input before XML generation. Fix validation errors instead of bypassing the schema.
 - For organization, staff, and one-off quote retrievals, call `get()` before `run()`.
 - For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
+- For `container.query`, use `GlbContainerType` as the native criteria entity, or call `container('20GP')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 
 ```php

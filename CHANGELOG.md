@@ -8,6 +8,12 @@ All notable changes to `cord` will be documented in this file.
 
 * Small additions 2 by @oliverbj in https://github.com/oliverbj/cord/pull/35
 
+## Unreleased
+
+### What's Changed
+
+* Add native container type query support via `container()` / `fromStructured('container.query', ...)`. Uses `GlbContainerType` as the criteria entity and maps to `ContainerCollection` in the native XML body.
+
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.1.9...3.2.0
 
 ## Unreleased

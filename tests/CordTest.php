@@ -1323,6 +1323,36 @@ it('builds the same shipment helper xml from structured input', function () {
     expect($normalizeEventTime($structuredDocumentXml))->toBe($normalizeEventTime($fluentDocumentXml));
 });
 
+it('builds shipment document add payloads as universal events with company data context', function () {
+    $xml = Cord::withCompany('CPH')
+        ->shipment('SJFK21060014')
+        ->addDocument(
+            file_contents: base64_encode('doc'),
+            name: 'myfile.pdf',
+            type: 'MSC',
+            description: 'Optional description',
+            isPublished: true,
+        )
+        ->inspect();
+
+    expect(str_starts_with($xml, '<UniversalEvent><Event><DataContext>'))->toBeTrue();
+
+    expect($xml)
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<Type>ForwardingShipment</Type>')
+        ->toContain('<Key>SJFK21060014</Key>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EventType>DDI</EventType>')
+        ->toContain('<EventReference>MSC</EventReference>')
+        ->toContain('<AttachedDocumentCollection>')
+        ->toContain('<FileName>myfile.pdf</FileName>')
+        ->toContain('<Description>Optional description</Description>')
+        ->toContain('<IsPublished>true</IsPublished>');
+});
+
 it('validates structured payload enums, unknown fields, and nested dotted paths', function () {
     expect(fn () => Cord::fromStructured('one_off_quote.create', [
         'company' => 'CPH',
@@ -1760,7 +1790,7 @@ it('builds a one-off quote document add payload', function () {
     expect($structuredXml)->toBe($fluentXml);
 
     expect($fluentXml)
-        ->toContain('<UniversalShipment>')
+        ->toContain('<UniversalEvent>')
         ->not->toContain('<SenderID>')
         ->not->toContain('<RecipientID>')
         ->toContain('<Type>OneOffQuote</Type>')
@@ -1768,6 +1798,8 @@ it('builds a one-off quote document add payload', function () {
         ->toContain('<Company><Code>CPH</Code></Company>')
         ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
         ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<EventType>DDI</EventType>')
+        ->toContain('<EventReference>QUO</EventReference>')
         ->toContain('<AttachedDocumentCollection>')
         ->toContain('<FileName>terms.pdf</FileName>')
         ->toContain('<Code>QUO</Code>')

@@ -1806,36 +1806,9 @@ class Cord
             return $this;
         }
 
-        if ($this->target === DataTarget::OneOffQuote) {
-            $documentPayload = [
-                'AttachedDocumentCollection' => [
-                    'AttachedDocument' => [
-                        'FileName' => $name,
-                        'ImageData' => $file_contents,
-                        'Type' => [
-                            'Code' => $type,
-                        ],
-                        'IsPublished' => var_export($isPublished, true),
-                    ],
-                ],
-            ];
-
-            if ($description !== '') {
-                $documentPayload['AttachedDocumentCollection']['AttachedDocument']['Type']['Description'] = $description;
-            }
-
-            $this->oneOffQuote = $documentPayload;
-            $this->requestType = RequestType::UniversalShipment;
-            $this->oneOffQuoteIntent = 'document_add';
-            $this->currentOperation = OperationId::OneOffQuoteDocumentAdd;
-            $this->markStructuredField('document');
-
-            return $this;
-        }
-
         $this->requestType = RequestType::UniversalEvent;
 
-        $this->addEvent(date('c'), 'DIM', 'Document imported automatically from XML');
+        $this->addEvent(date('c'), 'DDI', $type);
 
         $this->document = [
             'AttachedDocumentCollection' => [
@@ -1844,16 +1817,25 @@ class Cord
                     'ImageData' => $file_contents,
                     'Type' => [
                         'Code' => $type,
-                        'Description' => $description,
                     ],
                     'IsPublished' => var_export($isPublished, true), // cast to string,
                 ],
             ],
         ];
+
+        if ($description !== '') {
+            $this->document['AttachedDocumentCollection']['AttachedDocument']['Type']['Description'] = $description;
+        }
+
+        if ($this->target === DataTarget::OneOffQuote) {
+            $this->oneOffQuoteIntent = 'document_add';
+        }
+
         $this->currentOperation = match ($this->target) {
             DataTarget::Shipment => OperationId::ShipmentDocumentAdd,
             DataTarget::Booking => OperationId::BookingDocumentAdd,
             DataTarget::Custom => OperationId::CustomDocumentAdd,
+            DataTarget::OneOffQuote => OperationId::OneOffQuoteDocumentAdd,
             default => $this->currentOperation,
         };
         $this->markStructuredField('document');

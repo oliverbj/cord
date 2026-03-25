@@ -240,6 +240,8 @@ Available filters:
 
 You can upload a document to a CargoWise file with `addDocument()`:
 
+Document uploads are sent as `UniversalEvent` requests. When `withCompany()` is provided, Cord places `Company`, `EnterpriseID`, and `ServerID` inside `Event > DataContext` instead of using top-level interchange identifiers.
+
 ```php
 Cord::shipment('SJFK21060014')
     ->addDocument(
@@ -800,7 +802,7 @@ $docSchema = Cord::schema('one_off_quote.document.add');
 
 ### Add Document to One-Off Quote
 
-Add a document to an existing one-off quote with `addDocument()`. Call `withCompany()` so Cord can populate the required company `DataContext`.
+Add a document to an existing one-off quote with `addDocument()`. This uses `UniversalEvent` rather than `UniversalShipment`. Call `withCompany()` so Cord can populate `Event > DataContext` with `Company`, `EnterpriseID`, and `ServerID` for the target quote key.
 
 ```php
 Cord::withCompany('CPH')

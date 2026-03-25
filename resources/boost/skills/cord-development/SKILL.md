@@ -75,6 +75,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - `client_address`, `pickup_address`, and `delivery_address` on `one_off_quote.create` accept either structured address objects or plain organization code strings.
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
+- Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. Requires `withCompany()` and a quote key. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
 - Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.

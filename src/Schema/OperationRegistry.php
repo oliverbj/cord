@@ -280,6 +280,14 @@ class OperationRegistry
                 requiredContextFields: ['company'],
                 bootstrapMethods: ['create'],
             ),
+            OperationId::OneOffQuoteDocumentAdd->value => new OperationDefinition(
+                id: OperationId::OneOffQuoteDocumentAdd,
+                resource: 'one_off_quote',
+                action: 'document.add',
+                contextFields: $oneOffQuoteCreateContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => true, 'type' => 'string'],
+            ),
         ];
     }
 
@@ -494,6 +502,10 @@ class OperationRegistry
 
         if ($cord->target === DataTarget::OneOffQuote && $cord->activeOneOffQuoteIntent() === 'create') {
             return OperationId::OneOffQuoteCreate;
+        }
+
+        if ($cord->target === DataTarget::OneOffQuote && $cord->activeOneOffQuoteIntent() === 'document_add') {
+            return OperationId::OneOffQuoteDocumentAdd;
         }
 
         return match ($cord->requestType) {

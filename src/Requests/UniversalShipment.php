@@ -8,6 +8,10 @@ class UniversalShipment extends Request
 {
     protected function context(): array
     {
+        if ($this->isOneOffQuoteDocumentAdd()) {
+            return $this->buildOneOffQuoteDocumentAddContext();
+        }
+
         if (! $this->isOneOffQuoteCreate()) {
             return parent::context();
         }
@@ -69,7 +73,7 @@ class UniversalShipment extends Request
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteCreate()) {
+        if ($this->isOneOffQuoteCreate() || $this->isOneOffQuoteDocumentAdd()) {
             return false;
         }
 
@@ -89,5 +93,43 @@ class UniversalShipment extends Request
     {
         return $this->cord->target === DataTarget::OneOffQuote
             && $this->cord->activeOneOffQuoteIntent() === 'create';
+    }
+
+    private function isOneOffQuoteDocumentAdd(): bool
+    {
+        return $this->cord->target === DataTarget::OneOffQuote
+            && $this->cord->activeOneOffQuoteIntent() === 'document_add';
+    }
+
+    private function buildOneOffQuoteDocumentAddContext(): array
+    {
+        if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
+            throw new \Exception('Company code must be provided for one-off quote document add requests. Call withCompany() before sending the request.');
+        }
+
+        $enterpriseId = $this->cord->resolveEnterpriseId();
+        $serverId = $this->cord->resolveServerId();
+
+        if (! $enterpriseId || ! $serverId) {
+            throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
+        }
+
+        return [
+            'Shipment' => [
+                'DataContext' => [
+                    'DataTargetCollection' => [
+                        'DataTarget' => [
+                            'Type' => $this->cord->target->value,
+                            'Key' => $this->cord->targetKey,
+                        ],
+                    ],
+                    'Company' => [
+                        'Code' => $this->cord->company,
+                    ],
+                    'EnterpriseID' => $enterpriseId,
+                    'ServerID' => $serverId,
+                ],
+            ],
+        ];
     }
 }

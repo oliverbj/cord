@@ -1450,6 +1450,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         OneOffQuoteAddressBuilder::class,
         OneOffQuoteChargeLineBuilder::class,
         OneOffQuoteAttachedDocumentBuilder::class,
+        \Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder::class,
     ] as $builderClass) {
         $reflection = new ReflectionClass($builderClass);
 
@@ -1590,6 +1591,106 @@ it('supports attached documents for one-off quote create', function () {
         ->toContain('<Type><Code>TXT</Code></Type>');
 
     expect(substr_count($xml, '<AttachedDocument>'))->toBe(2);
+});
+
+it('supports pack lines for one-off quote create', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->addPackLine(fn ($p) => $p
+            ->packageType('BOX')
+            ->quantity(2)
+            ->weight(100, 'KG')
+            ->volume(0.5, 'M3')
+            ->description('Fragile goods'))
+        ->addPackLine(fn ($p) => $p
+            ->packageType('PLT')
+            ->quantity(1)
+            ->weight(500, 'KG')
+            ->volume(1.2, 'M3')
+            ->length(1.2, 'M')
+            ->width(0.8, 'M')
+            ->height(1.0, 'M'))
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'pack_lines' => [
+            [
+                'pack_type' => 'BOX',
+                'quantity' => 2,
+                'weight' => ['value' => 100, 'unit_code' => 'KG'],
+                'volume' => ['value' => 0.5, 'unit_code' => 'M3'],
+                'description' => 'Fragile goods',
+            ],
+            [
+                'pack_type' => 'PLT',
+                'quantity' => 1,
+                'weight' => ['value' => 500, 'unit_code' => 'KG'],
+                'volume' => ['value' => 1.2, 'unit_code' => 'M3'],
+                'length' => ['value' => 1.2, 'unit_code' => 'M'],
+                'width' => ['value' => 0.8, 'unit_code' => 'M'],
+                'height' => ['value' => 1.0, 'unit_code' => 'M'],
+            ],
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+
+    expect($fluentXml)
+        ->toContain('<PackingLineCollection>')
+        ->toContain('<PackType><Code>BOX</Code></PackType>')
+        ->toContain('<Quantity>2</Quantity>')
+        ->toContain('<Weight>100</Weight>')
+        ->toContain('<WeightUnit><Code>KG</Code></WeightUnit>')
+        ->toContain('<Volume>0.5</Volume>')
+        ->toContain('<VolumeUnit><Code>M3</Code></VolumeUnit>')
+        ->toContain('<Description>Fragile goods</Description>')
+        ->toContain('<PackType><Code>PLT</Code></PackType>')
+        ->toContain('<Quantity>1</Quantity>')
+        ->toContain('<Length>1.2</Length>')
+        ->toContain('<LengthUnit><Code>M</Code></LengthUnit>')
+        ->toContain('<Width>0.8</Width>')
+        ->toContain('<WidthUnit><Code>M</Code></WidthUnit>')
+        ->toContain('<Height>1</Height>')
+        ->toContain('<HeightUnit><Code>M</Code></HeightUnit>');
+
+    expect(substr_count($fluentXml, '<PackingLine>'))->toBe(2);
+});
+
+it('validates required pack line fields', function () {
+    try {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'pack_lines' => [
+                ['description' => 'Missing pack type and quantity'],
+            ],
+        ]);
+
+        $errors = [];
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'pack_lines.0.pack_type' => ['The field is required.'],
+        'pack_lines.0.quantity' => ['The field is required.'],
+    ]);
 });
 
 it('supports one-off quote raw payload merge without clobbering fluent fields', function () {

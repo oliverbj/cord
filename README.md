@@ -709,6 +709,12 @@ Cord::withCompany('CPH')
         ->costAmount('500.0000', 'AUD')
         ->sellAmount('1500.0000', 'AUD')
     )
+    ->addPackLine(fn ($p) => $p
+        ->packageType('BOX')
+        ->quantity(10)
+        ->weight(500, 'KG')
+        ->volume(2.5, 'M3')
+    )
     ->addAttachedDocument(fn ($d) => $d
         ->fileName('Quote.pdf')
         ->imageData(base64_encode(file_get_contents('Quote.pdf')))
@@ -749,6 +755,14 @@ $xml = Cord::fromStructured('one_off_quote.create', [
         'country' => 'AU',
     ],
     'delivery_address' => 'NZAKLDL1',
+    'pack_lines' => [
+        [
+            'pack_type' => 'BOX',
+            'quantity' => 10,
+            'weight' => ['value' => 500, 'unit_code' => 'KG'],
+            'volume' => ['value' => 2.5, 'unit_code' => 'M3'],
+        ],
+    ],
 ])->inspect();
 ```
 
@@ -769,6 +783,8 @@ Optional one-off quote create helpers:
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
 - `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
 - In structured payloads, use `org_role`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
+- `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
+- In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.
 
 One-off quote introspection:
 

@@ -14,6 +14,7 @@ use Oliverbj\Cord\Attributes\OperationField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
 use Oliverbj\Cord\Builders\OrganizationContactBuilder;
 use Oliverbj\Cord\Builders\OrganizationEDICommunicationBuilder;
@@ -993,6 +994,27 @@ class Cord
 
         $this->oneOffQuoteDraft['chargeLines'][] = $chargeLineBuilder->toArray();
         $this->markStructuredField('charge_lines');
+
+        return $this;
+    }
+
+    /**
+     * Add a single pack line to the one-off quote.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'pack_lines', repeatable: true, builder: OneOffQuotePackLineBuilder::class)]
+    public function addPackLine(Closure $builder): self
+    {
+        $this->assertOneOffQuoteBuilderContext('addPackLine');
+
+        $packLineBuilder = new OneOffQuotePackLineBuilder;
+        $builder($packLineBuilder);
+
+        if (! isset($this->oneOffQuoteDraft['packLines']) || ! is_array($this->oneOffQuoteDraft['packLines'])) {
+            $this->oneOffQuoteDraft['packLines'] = [];
+        }
+
+        $this->oneOffQuoteDraft['packLines'][] = $packLineBuilder->toArray();
+        $this->markStructuredField('pack_lines');
 
         return $this;
     }
@@ -2632,6 +2654,20 @@ class Cord
             }
         }
 
+        if (isset($payload['packLines']) && is_array($payload['packLines'])) {
+            foreach ($payload['packLines'] as $index => $packLine) {
+                $packTypeCode = $packLine['packTypeCode'] ?? null;
+                if (! is_string($packTypeCode) || trim($packTypeCode) === '') {
+                    $errors['packLines.'.$index.'.packTypeCode'] = ['The packTypeCode field is required.'];
+                }
+
+                $quantity = $packLine['quantity'] ?? null;
+                if (! is_int($quantity) && ! (is_string($quantity) && ctype_digit($quantity))) {
+                    $errors['packLines.'.$index.'.quantity'] = ['The quantity field is required.'];
+                }
+            }
+        }
+
         if (isset($payload['attachedDocuments']) && is_array($payload['attachedDocuments'])) {
             foreach ($payload['attachedDocuments'] as $index => $document) {
                 foreach (['fileName', 'imageData', 'typeCode'] as $requiredField) {
@@ -2737,6 +2773,17 @@ class Cord
 
             $payload['JobCosting']['ChargeLineCollection'] = [
                 'ChargeLine' => count($chargeLines) === 1 ? $chargeLines[0] : $chargeLines,
+            ];
+        }
+
+        if (isset($quoteDetails['packLines']) && is_array($quoteDetails['packLines']) && $quoteDetails['packLines'] !== []) {
+            $packLines = array_map(
+                fn (array $packLine) => $this->buildOneOffQuotePackLinePayload($packLine),
+                $quoteDetails['packLines']
+            );
+
+            $payload['PackingLineCollection'] = [
+                'PackingLine' => count($packLines) === 1 ? $packLines[0] : $packLines,
             ];
         }
 
@@ -2854,6 +2901,45 @@ class Cord
         }
 
         return array_replace_recursive($payload, $address['attributes'] ?? []);
+    }
+
+    private function buildOneOffQuotePackLinePayload(array $packLine): array
+    {
+        $payload = [
+            'PackType' => ['Code' => $packLine['packTypeCode']],
+            'Quantity' => (string) $packLine['quantity'],
+        ];
+
+        if (isset($packLine['weightValue'])) {
+            $payload['Weight'] = (string) $packLine['weightValue'];
+            $payload['WeightUnit'] = ['Code' => $packLine['weightUnitCode']];
+        }
+
+        if (isset($packLine['volumeValue'])) {
+            $payload['Volume'] = (string) $packLine['volumeValue'];
+            $payload['VolumeUnit'] = ['Code' => $packLine['volumeUnitCode']];
+        }
+
+        if (isset($packLine['lengthValue'])) {
+            $payload['Length'] = (string) $packLine['lengthValue'];
+            $payload['LengthUnit'] = ['Code' => $packLine['lengthUnitCode']];
+        }
+
+        if (isset($packLine['widthValue'])) {
+            $payload['Width'] = (string) $packLine['widthValue'];
+            $payload['WidthUnit'] = ['Code' => $packLine['widthUnitCode']];
+        }
+
+        if (isset($packLine['heightValue'])) {
+            $payload['Height'] = (string) $packLine['heightValue'];
+            $payload['HeightUnit'] = ['Code' => $packLine['heightUnitCode']];
+        }
+
+        if (is_string($packLine['description'] ?? null) && $packLine['description'] !== '') {
+            $payload['Description'] = $packLine['description'];
+        }
+
+        return array_replace_recursive($payload, $packLine['attributes'] ?? []);
     }
 
     private function buildOneOffQuoteAttachedDocumentPayload(array $document): array

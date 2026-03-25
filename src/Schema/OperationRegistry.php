@@ -9,6 +9,7 @@ use Oliverbj\Cord\Attributes\StructuredField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
 use Oliverbj\Cord\Builders\OrganizationContactBuilder;
 use Oliverbj\Cord\Builders\OrganizationEDICommunicationBuilder;
@@ -688,6 +689,7 @@ class OperationRegistry
         return match ($method->getName()) {
             'clientAddress', 'pickupAddress', 'deliveryAddress' => OneOffQuoteAddressBuilder::class,
             'addChargeLine' => OneOffQuoteChargeLineBuilder::class,
+            'addPackLine' => OneOffQuotePackLineBuilder::class,
             'addAttachedDocument' => OneOffQuoteAttachedDocumentBuilder::class,
             'addAddress' => OrganizationAddressBuilder::class,
             'addContact' => OrganizationContactBuilder::class,

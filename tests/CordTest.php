@@ -7,7 +7,6 @@ use Oliverbj\Cord\Attributes\StructuredField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
-use Oliverbj\Cord\Builders\OneOffQuoteContainerBuilder;
 use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Facades\Cord;
 

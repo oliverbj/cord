@@ -15,6 +15,8 @@ All notable changes to `cord` will be documented in this file.
 ### Fixed
 
 * Fixed one-off quote pack line serialization to emit `PackQty` instead of `Quantity` for `addPackLine()` / structured `pack_lines` payloads.
+* Fixed document uploads to existing one-off quotes to use `UniversalEvent`, matching the document upload flow used for other targets.
+* Fixed document upload events to place `Company`, `EnterpriseID`, and `ServerID` inside `Event > DataContext` when company context is available, instead of emitting top-level interchange fields.
 
 ## v3.1.6 - 2026-03-25
 

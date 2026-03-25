@@ -50,7 +50,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string.
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
-- Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. Requires `withCompany()` and a quote key. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
+- Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.
@@ -60,6 +60,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 
 - Use `withCompany()` for operations that depend on company context.
 - For universal requests, `withCompany()` also lets Cord derive `SenderID`. The default `RecipientID` is `Cord`.
+- For document uploads, `withCompany()` populates `Event > DataContext > Company`, `EnterpriseID`, and `ServerID` instead of top-level `SenderID` / `RecipientID` when the request shape supports it.
 - Override sender and recipient identifiers only when the integration explicitly requires custom values.
 - Do not assume every operation accepts `sender_id` and `recipient_id`; use `schema()` to confirm the supported fields for the selected operation.
 

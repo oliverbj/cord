@@ -7,6 +7,7 @@ use Oliverbj\Cord\Attributes\StructuredField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Facades\Cord;
 
 it('builds request xml without sending a network request when inspecting', function () {
@@ -1450,7 +1451,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         OneOffQuoteAddressBuilder::class,
         OneOffQuoteChargeLineBuilder::class,
         OneOffQuoteAttachedDocumentBuilder::class,
-        \Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder::class,
+        OneOffQuotePackLineBuilder::class,
     ] as $builderClass) {
         $reflection = new ReflectionClass($builderClass);
 

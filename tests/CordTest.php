@@ -1724,6 +1724,87 @@ it('validates required pack line fields', function () {
     ]);
 });
 
+it('supports containers for one-off quote create', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->addContainer(fn ($c) => $c
+            ->type('20GP')
+            ->count(1)
+            ->typeDescription('Twenty foot general purpose')
+            ->isoCode('22G0')
+            ->category('DRY', 'Dry Storage'))
+        ->addContainer(fn ($c) => $c
+            ->type('40HC')
+            ->count(2))
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'containers' => [
+            [
+                'type' => '20GP',
+                'count' => 1,
+                'type_description' => 'Twenty foot general purpose',
+                'iso_code' => '22G0',
+                'category' => ['code' => 'DRY', 'description' => 'Dry Storage'],
+            ],
+            [
+                'type' => '40HC',
+                'count' => 2,
+            ],
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+
+    expect($fluentXml)
+        ->toContain('<ContainerCollection>')
+        ->toContain('<ContainerType><Code>20GP</Code>')
+        ->toContain('<ContainerCount>1</ContainerCount>')
+        ->toContain('<Description>Twenty foot general purpose</Description>')
+        ->toContain('<ISOCode>22G0</ISOCode>')
+        ->toContain('<Category><Code>DRY</Code><Description>Dry Storage</Description></Category>')
+        ->toContain('<ContainerType><Code>40HC</Code></ContainerType>')
+        ->toContain('<ContainerCount>2</ContainerCount>');
+
+    expect(substr_count($fluentXml, '<Container>'))->toBe(2);
+});
+
+it('validates required container type field', function () {
+    try {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'containers' => [
+                ['count' => 1],
+            ],
+        ]);
+
+        $errors = [];
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'containers.0.type' => ['The field is required.'],
+    ]);
+});
+
 it('supports one-off quote raw payload merge without clobbering fluent fields', function () {
     $xml = Cord::withCompany('CPH')
         ->oneOffQuote()

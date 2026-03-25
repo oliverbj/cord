@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### What's Changed
+
+* Add container support (`addContainer()` / structured `containers`) to `one_off_quote.create` for FCL shipments. Maps to `ContainerCollection > Container` in XML.
+
 ## v3.1.9 - 2026-03-25
 
 ### What's Changed

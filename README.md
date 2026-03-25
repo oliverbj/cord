@@ -787,6 +787,8 @@ Optional one-off quote create helpers:
 - In structured payloads, use `org_role`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
 - `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.
+- `addContainer(...)` adds individual containers with `type` (required, e.g. `20GP`), optional `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`). Maps to `ContainerCollection > Container` in XML. Use this for FCL shipments.
+- In structured payloads, use `containers` as an array of objects with `type` and the optional fields above.
 
 One-off quote introspection:
 

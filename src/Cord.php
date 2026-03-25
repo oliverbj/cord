@@ -14,6 +14,7 @@ use Oliverbj\Cord\Attributes\OperationField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteContainerBuilder;
 use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
 use Oliverbj\Cord\Builders\OrganizationContactBuilder;
@@ -1015,6 +1016,27 @@ class Cord
 
         $this->oneOffQuoteDraft['packLines'][] = $packLineBuilder->toArray();
         $this->markStructuredField('pack_lines');
+
+        return $this;
+    }
+
+    /**
+     * Add a single container to the one-off quote.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'containers', repeatable: true, builder: OneOffQuoteContainerBuilder::class)]
+    public function addContainer(Closure $builder): self
+    {
+        $this->assertOneOffQuoteBuilderContext('addContainer');
+
+        $containerBuilder = new OneOffQuoteContainerBuilder;
+        $builder($containerBuilder);
+
+        if (! isset($this->oneOffQuoteDraft['containers']) || ! is_array($this->oneOffQuoteDraft['containers'])) {
+            $this->oneOffQuoteDraft['containers'] = [];
+        }
+
+        $this->oneOffQuoteDraft['containers'][] = $containerBuilder->toArray();
+        $this->markStructuredField('containers');
 
         return $this;
     }
@@ -2678,6 +2700,15 @@ class Cord
             }
         }
 
+        if (isset($payload['containers']) && is_array($payload['containers'])) {
+            foreach ($payload['containers'] as $index => $container) {
+                $typeCode = $container['containerTypeCode'] ?? null;
+                if (! is_string($typeCode) || trim($typeCode) === '') {
+                    $errors['containers.'.$index.'.containerTypeCode'] = ['The containerTypeCode field is required.'];
+                }
+            }
+        }
+
         if (isset($payload['attachedDocuments']) && is_array($payload['attachedDocuments'])) {
             foreach ($payload['attachedDocuments'] as $index => $document) {
                 foreach (['fileName', 'imageData', 'typeCode'] as $requiredField) {
@@ -2794,6 +2825,17 @@ class Cord
 
             $payload['PackingLineCollection'] = [
                 'PackingLine' => count($packLines) === 1 ? $packLines[0] : $packLines,
+            ];
+        }
+
+        if (isset($quoteDetails['containers']) && is_array($quoteDetails['containers']) && $quoteDetails['containers'] !== []) {
+            $containers = array_map(
+                fn (array $container) => $this->buildOneOffQuoteContainerPayload($container),
+                $quoteDetails['containers']
+            );
+
+            $payload['ContainerCollection'] = [
+                'Container' => count($containers) === 1 ? $containers[0] : $containers,
             ];
         }
 
@@ -2953,6 +2995,34 @@ class Cord
         }
 
         return array_replace_recursive($payload, $packLine['attributes'] ?? []);
+    }
+
+    private function buildOneOffQuoteContainerPayload(array $container): array
+    {
+        $payload = [
+            'ContainerCount' => (string) ($container['containerCount'] ?? 1),
+            'ContainerType' => [
+                'Code' => $container['containerTypeCode'],
+            ],
+        ];
+
+        if (is_string($container['containerTypeDescription'] ?? null) && $container['containerTypeDescription'] !== '') {
+            $payload['ContainerType']['Description'] = $container['containerTypeDescription'];
+        }
+
+        if (is_string($container['containerTypeIsoCode'] ?? null) && $container['containerTypeIsoCode'] !== '') {
+            $payload['ContainerType']['ISOCode'] = $container['containerTypeIsoCode'];
+        }
+
+        if (is_string($container['containerTypeCategoryCode'] ?? null) && $container['containerTypeCategoryCode'] !== '') {
+            $payload['ContainerType']['Category'] = ['Code' => $container['containerTypeCategoryCode']];
+
+            if (is_string($container['containerTypeCategoryDescription'] ?? null) && $container['containerTypeCategoryDescription'] !== '') {
+                $payload['ContainerType']['Category']['Description'] = $container['containerTypeCategoryDescription'];
+            }
+        }
+
+        return array_replace_recursive($payload, $container['attributes'] ?? []);
     }
 
     private function buildOneOffQuoteAttachedDocumentPayload(array $document): array

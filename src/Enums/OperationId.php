@@ -32,4 +32,5 @@ enum OperationId: string
     case StaffUpdate = 'staff.update';
     case OneOffQuoteGet = 'one_off_quote.get';
     case OneOffQuoteCreate = 'one_off_quote.create';
+    case OneOffQuoteDocumentAdd = 'one_off_quote.document.add';
 }

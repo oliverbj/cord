@@ -1777,6 +1777,7 @@ class Cord
     #[OperationField(OperationId::ShipmentDocumentAdd, name: 'document', required: true)]
     #[OperationField(OperationId::BookingDocumentAdd, name: 'document', required: true)]
     #[OperationField(OperationId::CustomDocumentAdd, name: 'document', required: true)]
+    #[OperationField(OperationId::OneOffQuoteDocumentAdd, name: 'document', required: true)]
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
         if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
@@ -1801,6 +1802,33 @@ class Cord
 
             $this->oneOffQuoteDraft['attachedDocuments'][] = $document;
             $this->markStructuredField('attached_documents');
+
+            return $this;
+        }
+
+        if ($this->target === DataTarget::OneOffQuote) {
+            $documentPayload = [
+                'AttachedDocumentCollection' => [
+                    'AttachedDocument' => [
+                        'FileName' => $name,
+                        'ImageData' => $file_contents,
+                        'Type' => [
+                            'Code' => $type,
+                        ],
+                        'IsPublished' => var_export($isPublished, true),
+                    ],
+                ],
+            ];
+
+            if ($description !== '') {
+                $documentPayload['AttachedDocumentCollection']['AttachedDocument']['Type']['Description'] = $description;
+            }
+
+            $this->oneOffQuote = $documentPayload;
+            $this->requestType = RequestType::UniversalShipment;
+            $this->oneOffQuoteIntent = 'document_add';
+            $this->currentOperation = OperationId::OneOffQuoteDocumentAdd;
+            $this->markStructuredField('document');
 
             return $this;
         }
@@ -2009,7 +2037,7 @@ class Cord
         }
 
         if ($this->target === DataTarget::OneOffQuote && is_string($this->targetKey) && trim($this->targetKey) !== '') {
-            if ($this->oneOffQuoteIntent !== 'get') {
+            if ($this->oneOffQuoteIntent !== 'get' && $this->oneOffQuoteIntent !== 'document_add') {
                 throw new \Exception("oneOffQuote('KEY')->get() must be called before inspect() or run().");
             }
         }

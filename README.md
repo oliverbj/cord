@@ -794,6 +794,41 @@ $query = Cord::oneOffQuote('QCPH00001004')->get()->describe();
 
 $schema = Cord::schema('one_off_quote.create');
 $active = Cord::oneOffQuote()->create()->describe();
+
+$docSchema = Cord::schema('one_off_quote.document.add');
+```
+
+### Add Document to One-Off Quote
+
+Add a document to an existing one-off quote with `addDocument()`. Call `withCompany()` so Cord can populate the required company `DataContext`.
+
+```php
+Cord::withCompany('CPH')
+    ->oneOffQuote('QCPH00001004')
+    ->addDocument(
+        file_contents: base64_encode(file_get_contents('quote.pdf')),
+        name: 'quote.pdf',
+        type: 'QUO',
+        description: 'Signed quote',
+        isPublished: true,
+    )
+    ->run();
+```
+
+Structured equivalent:
+
+```php
+Cord::fromStructured('one_off_quote.document.add', [
+    'company' => 'CPH',
+    'key' => 'QCPH00001004',
+    'document' => [
+        'file_contents' => base64_encode(file_get_contents('quote.pdf')),
+        'name' => 'quote.pdf',
+        'type' => 'QUO',
+        'description' => 'Signed quote',
+        'is_published' => true,
+    ],
+])->run();
 ```
 
 ## Multiple Connections

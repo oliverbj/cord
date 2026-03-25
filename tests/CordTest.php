@@ -1728,8 +1728,60 @@ it('describes one-off quote operations from the registry', function () {
     expect($description['resource'])->toBe('one_off_quote')
         ->and($description['operations'])->toBe([
             ['id' => 'one_off_quote.create', 'action' => 'create'],
+            ['id' => 'one_off_quote.document.add', 'action' => 'document.add'],
             ['id' => 'one_off_quote.get', 'action' => 'get'],
         ]);
+});
+
+it('builds a one-off quote document add payload', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->addDocument(
+            file_contents: base64_encode('pdf-data'),
+            name: 'terms.pdf',
+            type: 'QUO',
+            description: 'Quote terms',
+            isPublished: true,
+        )
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.document.add', [
+        'company' => 'CPH',
+        'key' => 'QCPH00001004',
+        'document' => [
+            'file_contents' => base64_encode('pdf-data'),
+            'name' => 'terms.pdf',
+            'type' => 'QUO',
+            'description' => 'Quote terms',
+            'is_published' => true,
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+
+    expect($fluentXml)
+        ->toContain('<UniversalShipment>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<AttachedDocumentCollection>')
+        ->toContain('<FileName>terms.pdf</FileName>')
+        ->toContain('<Code>QUO</Code>')
+        ->toContain('<Description>Quote terms</Description>')
+        ->toContain('<IsPublished>true</IsPublished>');
+});
+
+it('returns the active schema for a scoped one-off quote document add', function () {
+    $description = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->addDocument(base64_encode('data'), 'doc.pdf', 'QUO')
+        ->describe();
+
+    expect($description)->toBe(Cord::schema('one_off_quote.document.add'));
 });
 
 it('builds a one-off quote query payload with company context', function () {

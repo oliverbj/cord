@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### Added
+
+* Added `addPackLine()` / structured `pack_lines` support for `one_off_quote.create`, mapping to CargoWise `PackingLineCollection > PackingLine`. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
+
 ## v3.1.4 - 2026-03-24
 
 ### What's Changed
@@ -17,13 +23,6 @@ All notable changes to `cord` will be documented in this file.
 * Add `canLogin()` support for staff creation and updates, mapping to C… by @oliverbj in https://github.com/oliverbj/cord/pull/28
 
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.1.2...3.1.3
-
-## Unreleased
-
-### Added
-
-* Added `canLogin()` / structured `can_login` support for `staff.create` and `staff.update`, mapping to CargoWise `CanLogin` with a default of `true` on create.
-* Added native `staff.query` support, including `staff()->get()`, structured `staff.query`, and native criteria groups using `GlbStaff`.
 
 ## 3.1.2 - 2026-03-22
 

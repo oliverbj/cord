@@ -49,6 +49,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string.
+- Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.

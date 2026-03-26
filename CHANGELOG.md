@@ -6,7 +6,7 @@ All notable changes to `cord` will be documented in this file.
 
 ### What's Changed
 
-* Update address handling to allow partial addresses without address_li… by @oliverbj in https://github.com/oliverbj/cord/pull/39
+* Align one-off quote address validator with the XML builder default: when no `organizationCode` is present, `AddressOverride` is now inferred as `true` in validation (matching the existing XML builder behaviour), so `city` + `country` alone are sufficient for a freeform address — `address_line_1` is no longer required in that case.
 
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.2.3...3.2.4
 

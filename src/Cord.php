@@ -2802,9 +2802,11 @@ class Cord
             }
 
             $rawOverride = $address['addressOverride'] ?? null;
+            $hasOrganizationCode = is_string($organizationCode) && trim($organizationCode) !== '';
             $addressOverride = $rawOverride === true
                 || $rawOverride === 1
-                || (is_string($rawOverride) && strtolower($rawOverride) === 'true');
+                || (is_string($rawOverride) && strtolower($rawOverride) === 'true')
+                || ! $hasOrganizationCode;
             $requiredAddressFields = $addressOverride
                 ? ['city', 'countryCode']
                 : ['address1', 'city', 'countryCode'];

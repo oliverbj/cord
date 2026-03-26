@@ -1155,31 +1155,27 @@ it('allows a partial address without address_line_1 when address_override is tru
         ->not->toContain('<Address1>');
 });
 
-it('still requires address_line_1 without address_override', function () {
-    $errors = null;
+it('allows a partial address with only city and country when no organization code is present', function () {
+    // No organizationCode → validator infers addressOverride=true (matching the XML builder default).
+    // So city + country alone should be enough to pass validation and produce valid XML.
+    $xml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'client_address' => [
+            'city' => 'SYDNEY',
+            'country' => 'AU',
+        ],
+    ])->inspect();
 
-    try {
-        Cord::fromStructured('one_off_quote.create', [
-            'company' => 'CPH',
-            'branch' => 'A01',
-            'department' => 'FES',
-            'transport_mode' => 'SEA',
-            'port_of_origin' => 'AUSYD',
-            'port_of_destination' => 'NZAKL',
-            'client_address' => [
-                'city' => 'SYDNEY',
-                'country' => 'AU',
-            ],
-        ])->inspect();
-    } catch (ValidationException $e) {
-        $errors = $e->errors();
-    } catch (Throwable $e) {
-        $errors = ['__exception' => [get_class($e).': '.$e->getMessage()]];
-    }
-
-    expect($errors)->toMatchArray([
-        'addresses.client.address1' => ['The address1 field is required.'],
-    ]);
+    expect($xml)
+        ->toContain('<AddressType>QuotationClientAddress</AddressType>')
+        ->toContain('<AddressOverride>true</AddressOverride>')
+        ->toContain('<City>SYDNEY</City>')
+        ->not->toContain('<Address1>');
 });
 
 it('builds the same staff xml from structured create and update input', function () {

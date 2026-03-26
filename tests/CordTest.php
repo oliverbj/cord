@@ -1173,7 +1173,7 @@ it('still requires address_line_1 without address_override', function () {
         ])->inspect();
     } catch (ValidationException $e) {
         $errors = $e->errors();
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $errors = ['__exception' => [get_class($e).': '.$e->getMessage()]];
     }
 

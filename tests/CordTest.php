@@ -1561,6 +1561,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'inspect',
         'toJson',
         'toXml',
+        'select',
         'resolveSenderId',
         'resolveRecipientId',
         'resolveEnterpriseId',

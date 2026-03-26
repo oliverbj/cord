@@ -41,6 +41,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Raw XML](#raw-xml)
 - [Response as JSON](#response-as-json)
 - [Response as XML](#response-as-xml)
+- [Field Selection](#field-selection)
 - [Debugging](#debugging)
 - [Testing](#testing)
   - [Manual staff test](#manual-staff-test)
@@ -967,6 +968,42 @@ For `rawXml()` requests, `toXml()` returns the full response envelope, including
 ```php
 $response = Cord::rawXml($xml)
     ->toXml()
+    ->run();
+```
+
+## Field Selection
+
+Chain `select()` before `run()` on any query to restrict the returned payload to just the fields you need:
+
+```php
+// Varargs — top-level fields
+$result = Cord::container()
+    ->criteriaGroup([
+        [
+            'Entity' => 'GlbContainerType',
+            'FieldName' => 'ShippingMode',
+            'Value' => 'SEA',
+        ],
+    ], type: 'Partial')
+    ->get()
+    ->select('Code', 'ShippingMode')
+    ->run();
+
+// Single array argument
+->select(['Code', 'ShippingMode', 'Description'])
+
+// Dot-notation for nested fields
+->select('Code', 'Owner.Code')
+```
+
+`select()` works across all response types: flat single-record responses, multi-record lists, and universal shipment payloads. It also composes with `toJson()`:
+
+```php
+$json = Cord::organization()
+    ->criteriaGroup([...])
+    ->get()
+    ->select('Code', 'FullName')
+    ->toJson()
     ->run();
 ```
 

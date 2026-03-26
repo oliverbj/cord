@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.3.1 - 2026-03-26
+
+### What's Changed
+
+* Allow partial one-off quote addresses without `address_line_1` when `address_override` is `true` — the address builder no longer marks `address_line_1` as schema-required; fluent and structured validation only enforce it when `address_override` is absent or `false`.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.3.0...3.3.1
+
 ## v3.2.3 - 2026-03-26
 
 ### What's Changed

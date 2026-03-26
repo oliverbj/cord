@@ -1133,6 +1133,55 @@ it('keeps structured address object validation when organization code shortcuts 
     ]);
 });
 
+it('allows a partial address without address_line_1 when address_override is true', function () {
+    $xml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'client_address' => [
+            'city' => 'SYDNEY',
+            'country' => 'AU',
+            'address_override' => true,
+        ],
+    ])->inspect();
+
+    expect($xml)
+        ->toContain('<AddressType>QuotationClientAddress</AddressType>')
+        ->toContain('<AddressOverride>true</AddressOverride>')
+        ->toContain('<City>SYDNEY</City>')
+        ->not->toContain('<Address1>');
+});
+
+it('still requires address_line_1 without address_override', function () {
+    $errors = null;
+
+    try {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'client_address' => [
+                'city' => 'SYDNEY',
+                'country' => 'AU',
+            ],
+        ])->inspect();
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    } catch (\Throwable $e) {
+        $errors = ['__exception' => [get_class($e).': '.$e->getMessage()]];
+    }
+
+    expect($errors)->toMatchArray([
+        'addresses.client.address1' => ['The address1 field is required.'],
+    ]);
+});
+
 it('builds the same staff xml from structured create and update input', function () {
     $createXml = Cord::fromStructured('staff.create', [
         'company' => 'CPH',

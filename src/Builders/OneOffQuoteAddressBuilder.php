@@ -8,7 +8,7 @@ class OneOffQuoteAddressBuilder
 {
     protected array $payload = [];
 
-    #[StructuredField(name: 'address_line_1', required: true)]
+    #[StructuredField(name: 'address_line_1')]
     public function addressLine1(string $value): self
     {
         $this->payload['address1'] = $value;

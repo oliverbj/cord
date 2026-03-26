@@ -2801,7 +2801,15 @@ class Cord
                 continue;
             }
 
-            foreach (['address1', 'city', 'countryCode'] as $requiredField) {
+            $rawOverride = $address['addressOverride'] ?? null;
+            $addressOverride = $rawOverride === true
+                || $rawOverride === 1
+                || (is_string($rawOverride) && strtolower($rawOverride) === 'true');
+            $requiredAddressFields = $addressOverride
+                ? ['city', 'countryCode']
+                : ['address1', 'city', 'countryCode'];
+
+            foreach ($requiredAddressFields as $requiredField) {
                 $value = $address[$requiredField] ?? null;
                 if (! is_string($value) || trim($value) === '') {
                     $errors[$errorPrefix.'.'.$requiredField] = ['The '.$requiredField.' field is required.'];

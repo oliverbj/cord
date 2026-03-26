@@ -827,6 +827,7 @@ Optional one-off quote create helpers:
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
 - `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
+- When passing an address object, `address_line_1` is required unless `address_override` is set to `true`. With `address_override: true`, only `city` and `country` are required — useful for sending a partial address without a street line.
 - In structured payloads, use `org_role`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
 - `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.

@@ -17,6 +17,7 @@ Use this skill when you are adding or changing Cord integrations, building Cargo
 4. Use `inspect()` first while iterating or testing so XML can be reviewed without sending HTTP.
 5. Use `run()` only after the payload shape is correct.
 6. Use `toJson()` when the caller needs a JSON string, and `toXml()` when the caller needs the original XML response.
+7. Use `select()` before `run()` when only a subset of response fields is needed. Accepts varargs or a single array; dot notation supported for nested keys.
 
 ## Contract discovery
 
@@ -83,6 +84,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.
 - For `rawXml()` requests, remember that `run()` returns the full parsed envelope, not only `Data`.
 - `rawXml()->toJson()->run()` returns that full envelope as JSON.
+- Use `select('Field', ...)` before `run()` to return only a subset of fields from any response. Accepts varargs or a single array; dot notation (e.g. `'Owner.Code'`) is supported for nested keys. Composes with `toJson()`.
 
 ## Escape hatch
 

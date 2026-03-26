@@ -16,6 +16,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - Call `inspect()` while iterating or testing to build XML without sending any HTTP request.
 - Call `toJson()` before `run()` when the caller needs a JSON string.
 - Call `toXml()` before `run()` only when the caller needs the original XML response.
+- Call `select('Field', 'Nested.Field')` before `run()` to restrict the returned payload to a subset of fields. Accepts varargs or a single array. Dot notation is supported for nested keys.
 
 ## AI-friendly operation helpers
 

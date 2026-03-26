@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.3.0 - 2026-03-26
+
+### What's Changed
+
+* Add `select()` response field filtering — chain `->select('Code', 'ShippingMode')` before `run()` on any query to restrict the returned payload to a subset of fields. Accepts varargs or a single array. Dot-notation is supported for nested fields (e.g. `'Owner.Code'`). Works across all response types (flat arrays, lists, and universal shipment payloads).
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.2.2...3.3.0
+
 ## v3.2.2 - 2026-03-25
 
 ### What's Changed

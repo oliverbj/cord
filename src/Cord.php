@@ -64,6 +64,8 @@ class Cord
 
     public array $criteriaGroups = [];
 
+    public array $selectFields = [];
+
     public array $filters = [];
 
     public array $event = [];
@@ -2080,6 +2082,25 @@ class Cord
         return $this;
     }
 
+    /**
+     * Restrict the response to a subset of fields.
+     *
+     * Accepts individual field names or a single array. Dot notation is
+     * supported for nested keys (e.g. 'Owner.Code').
+     *
+     * Example:
+     * `->select('Code', 'ShippingMode')`
+     * `->select(['Code', 'ShippingMode'])`
+     */
+    public function select(string|array ...$fields): self
+    {
+        foreach ($fields as $field) {
+            $this->selectFields = array_merge($this->selectFields, (array) $field);
+        }
+
+        return $this;
+    }
+
     protected function buildRequest(): RequestInterface
     {
         return match ($this->requestType) {
@@ -2221,6 +2242,35 @@ class Cord
         return $this->flattenResponse($items, $key);
     }
 
+    protected function applyFieldSelection(mixed $payload): mixed
+    {
+        if (! is_array($payload)) {
+            return $payload;
+        }
+
+        if (array_is_list($payload)) {
+            return array_map(fn (mixed $item) => is_array($item) ? $this->filterFields($item) : $item, $payload);
+        }
+
+        return $this->filterFields($payload);
+    }
+
+    protected function filterFields(array $item): array
+    {
+        $result = [];
+
+        foreach ($this->selectFields as $field) {
+            if (str_contains((string) $field, '.')) {
+                $value = Arr::get($item, $field);
+                Arr::set($result, $field, $value);
+            } elseif (array_key_exists($field, $item)) {
+                $result[$field] = $item[$field];
+            }
+        }
+
+        return $result;
+    }
+
     protected function fetch(): mixed
     {
         $this->setClient();
@@ -2280,6 +2330,10 @@ class Cord
 
             default => $response['Data'],
         };
+
+        if ($this->selectFields !== []) {
+            $payload = $this->applyFieldSelection($payload);
+        }
 
         if ($this->asJson) {
             return $this->encodeJson($payload);

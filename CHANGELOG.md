@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.4.0 - 2026-03-29
+
+### What's Changed
+
+* Add one-off quote update support via `oneOffQuote('KEY')->update()`. The new `one_off_quote.update` operation sends a sparse `UniversalShipment` with the existing quote key in `DataTargetCollection/DataTarget`. All fluent field setters (`transportMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, address builders, charge lines, pack lines, containers, and attached documents) are available on the update path — only the fields you set are included in the payload. `fromStructured('one_off_quote.update', [...])` and `schema('one_off_quote.update')` are also supported.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.3.1...3.4.0
+
 ## v3.2.5 - 2026-03-26
 
 ### What's Changed

@@ -1993,6 +1993,7 @@ it('describes one-off quote operations from the registry', function () {
             ['id' => 'one_off_quote.create', 'action' => 'create'],
             ['id' => 'one_off_quote.document.add', 'action' => 'document.add'],
             ['id' => 'one_off_quote.get', 'action' => 'get'],
+            ['id' => 'one_off_quote.update', 'action' => 'update'],
         ]);
 });
 
@@ -2259,9 +2260,17 @@ it('requires company context for one-off quote create', function () {
     ]);
 });
 
-it('does not support one-off quote update in v1', function () {
-    expect(fn () => Cord::oneOffQuote('00001063')->update())
-        ->toThrow(Exception::class, 'OneOffQuote update() is not implemented yet.');
+it('supports one-off quote update', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote('00001063')
+        ->update()
+        ->transportMode('SEA')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<Key>00001063</Key>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>');
 });
 
 it('builds an organization create payload with INSERT action', function () {
@@ -2374,4 +2383,106 @@ it('validates fullName is required for organization create', function () {
 it('requires a code when calling organization create', function () {
     expect(fn () => Cord::organization()->create())
         ->toThrow(Exception::class, 'organization() requires a code for create().');
+});
+
+// One-off quote update tests
+
+it('throws when calling oneOffQuote update without a key', function () {
+    expect(fn () => Cord::oneOffQuote()->update())
+        ->toThrow(Exception::class, "oneOffQuote('KEY')->update() requires a quote key.");
+});
+
+it('throws when calling oneOffQuote update without a company', function () {
+    expect(fn () => Cord::oneOffQuote('QCPH00001004')->update()->transportMode('SEA')->inspect())
+        ->toThrow(Exception::class, 'Company code must be provided for one-off quote update requests.');
+});
+
+it('builds a one-off quote update xml with a key and transport mode only', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->update()
+        ->transportMode('SEA')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<UniversalShipment>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>');
+});
+
+it('builds the same one-off quote update xml from structured input', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->update()
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->totalWeight(5000, 'KG')
+        ->goodsValue(15000, 'AUD')
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.update', [
+        'company' => 'CPH',
+        'key' => 'QCPH00001004',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'total_weight' => ['value' => 5000, 'unit_code' => 'KG'],
+        'goods_value' => ['amount' => 15000, 'currency_code' => 'AUD'],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($structuredXml)
+        ->toContain('<UniversalShipment>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<GoodsValue>15000</GoodsValue>');
+});
+
+it('returns the active schema for a one-off quote update context', function () {
+    $description = Cord::oneOffQuote('QCPH00001004')->update()->describe();
+
+    expect($description)->toBe(Cord::schema('one_off_quote.update'));
+});
+
+it('includes the one_off_quote.update schema', function () {
+    $schema = Cord::schema('one_off_quote.update');
+
+    expect($schema)->toMatchArray([
+        'type' => 'object',
+        'x-cord' => [
+            'operation_id' => 'one_off_quote.update',
+            'resource' => 'one_off_quote',
+            'action' => 'update',
+        ],
+    ]);
+
+    expect($schema['properties'])->toHaveKeys(['key', 'transport_mode', 'port_of_origin', 'port_of_destination']);
+    expect(in_array('key', $schema['required'] ?? []))->toBeTrue();
+    expect(in_array('transport_mode', $schema['required'] ?? []))->toBeFalse();
+});
+
+it('builds a one-off quote update xml without no-op keys from create', function () {
+    $xml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->update()
+        ->serviceLevel('EXP')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<ServiceLevel><Code>EXP</Code></ServiceLevel>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>');
 });

@@ -37,6 +37,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [One Off Quotes](#one-off-quotes)
     - [Query One-Off Quote](#query-one-off-quote)
   - [Create One-Off Quote](#create-one-off-quote)
+  - [Update One-Off Quote](#update-one-off-quote)
 - [Multiple Connections](#multiple-connections)
 - [Raw XML](#raw-xml)
 - [Response as JSON](#response-as-json)
@@ -843,7 +844,53 @@ $query = Cord::oneOffQuote('QCPH00001004')->get()->describe();
 $schema = Cord::schema('one_off_quote.create');
 $active = Cord::oneOffQuote()->create()->describe();
 
+$updateSchema = Cord::schema('one_off_quote.update');
+
 $docSchema = Cord::schema('one_off_quote.document.add');
+```
+
+### Update One-Off Quote
+
+One-off quote updates are sent as a sparse `UniversalShipment` request. Only the fields you set are included — all setters are optional.
+
+Call `withCompany()` before `run()` so Cord can populate the update `DataContext` with the company, `EnterpriseID`, and `ServerID`. The quote key passed to `oneOffQuote()` is written into `DataTargetCollection > DataTarget > Key`.
+
+```php
+Cord::withCompany('CPH')
+    ->oneOffQuote('QCPH00001004')
+    ->update()
+    ->transportMode('AIR')
+    ->portOfOrigin('AUSYD')
+    ->portOfDestination('GBLON')
+    ->serviceLevel('EXP')
+    ->run();
+```
+
+Exact same fluent setters as create are available — `transportMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, `clientAddress`, `pickupAddress`, `deliveryAddress`, `addChargeLine`, `addPackLine`, `addContainer`, `addAttachedDocument`, and `withPayload`. Only the setters you call will appear in the outgoing XML.
+
+Structured equivalent:
+
+```php
+Cord::fromStructured('one_off_quote.update', [
+    'company' => 'CPH',
+    'key' => 'QCPH00001004',
+    'transport_mode' => 'AIR',
+    'port_of_origin' => 'AUSYD',
+    'port_of_destination' => 'GBLON',
+    'service_level' => 'EXP',
+])->run();
+```
+
+Requirements:
+
+- `withCompany(...)` — required.
+- A quote key passed to `oneOffQuote('KEY')` — required.
+
+Introspection:
+
+```php
+$schema = Cord::schema('one_off_quote.update');
+$active = Cord::oneOffQuote('QCPH00001004')->update()->describe();
 ```
 
 ### Add Document to One-Off Quote

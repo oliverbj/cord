@@ -8,12 +8,12 @@ class UniversalShipment extends Request
 {
     protected function context(): array
     {
-        if (! $this->isOneOffQuoteCreate()) {
+        if (! $this->isOneOffQuoteWriteIntent()) {
             return parent::context();
         }
 
         if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
-            throw new \Exception('Company code must be provided for one-off quote create requests. Call withCompany() before sending the request.');
+            throw new \Exception('Company code must be provided for one-off quote write requests. Call withCompany() before sending the request.');
         }
 
         $enterpriseId = $this->cord->resolveEnterpriseId();
@@ -23,13 +23,19 @@ class UniversalShipment extends Request
             throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
         }
 
+        $dataTarget = [
+            'Type' => $this->cord->target->value,
+        ];
+
+        if ($this->isOneOffQuoteUpdate()) {
+            $dataTarget['Key'] = $this->cord->targetKey;
+        }
+
         $context = [
             'Shipment' => [
                 'DataContext' => [
                     'DataTargetCollection' => [
-                        'DataTarget' => [
-                            'Type' => $this->cord->target->value,
-                        ],
+                        'DataTarget' => $dataTarget,
                     ],
                     'Company' => [
                         'Code' => $this->cord->company,
@@ -69,7 +75,7 @@ class UniversalShipment extends Request
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteCreate()) {
+        if ($this->isOneOffQuoteWriteIntent()) {
             return false;
         }
 
@@ -85,9 +91,15 @@ class UniversalShipment extends Request
         return [];
     }
 
-    private function isOneOffQuoteCreate(): bool
+    private function isOneOffQuoteWriteIntent(): bool
     {
         return $this->cord->target === DataTarget::OneOffQuote
-            && $this->cord->activeOneOffQuoteIntent() === 'create';
+            && in_array($this->cord->activeOneOffQuoteIntent(), ['create', 'update'], true);
+    }
+
+    private function isOneOffQuoteUpdate(): bool
+    {
+        return $this->cord->target === DataTarget::OneOffQuote
+            && $this->cord->activeOneOffQuoteIntent() === 'update';
     }
 }

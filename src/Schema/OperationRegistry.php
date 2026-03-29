@@ -287,6 +287,15 @@ class OperationRegistry
                 requiredContextFields: ['company'],
                 bootstrapMethods: ['create'],
             ),
+            OperationId::OneOffQuoteUpdate->value => new OperationDefinition(
+                id: OperationId::OneOffQuoteUpdate,
+                resource: 'one_off_quote',
+                action: 'update',
+                contextFields: $oneOffQuoteCreateContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['update'],
+            ),
             OperationId::OneOffQuoteDocumentAdd->value => new OperationDefinition(
                 id: OperationId::OneOffQuoteDocumentAdd,
                 resource: 'one_off_quote',

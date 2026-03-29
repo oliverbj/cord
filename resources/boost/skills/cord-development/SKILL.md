@@ -27,6 +27,7 @@ Use this skill when you are adding or changing Cord integrations, building Cargo
 - `Cord::organization('SAGFURHEL')->get()->describe()` returns the active schema for organization retrieval.
 - `Cord::oneOffQuote('QCPH00001004')->get()->describe()` returns the active schema for quote retrieval.
 - `Cord::oneOffQuote()->create()->describe()` returns the active schema for the fully scoped builder.
+- `Cord::oneOffQuote('QCPH00001004')->update()->describe()` returns the active schema for one-off quote update.
 - `Cord::schema('operation.id')` returns required fields, nested object shapes, and enums.
 - Treat `fromStructured()` validation failures as contract feedback. Update the payload to match the schema instead of bypassing validation.
 
@@ -80,7 +81,8 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
-- Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, `container(...)->get()` for container type lookups, and `oneOffQuote(...)->get()` for quote lookups so retrieval flows stay explicit.
+- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update fields on an existing quote. The operation is sparse — only the setters you call are included in the outgoing `UniversalShipment`. `key` and `company` are the only requirements. All fluent setters available on `one_off_quote.create` are also available on the update path. The `DataTarget > Key` is automatically populated from the key passed to `oneOffQuote()`.
+- Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, `container(...)->get()` for container type lookups, `oneOffQuote(...)->get()` for quote lookups, and `oneOffQuote('KEY')->update()` for sparse quote updates so retrieval and write flows stay explicit.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.
 - For `rawXml()` requests, remember that `run()` returns the full parsed envelope, not only `Data`.

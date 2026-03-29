@@ -55,9 +55,12 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
 
+- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update an existing one-off quote with a sparse `UniversalShipment`. Only the fields you set are sent. Requires `withCompany()` and a quote key. All fluent setters available on create (`transportMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, address builders, charge lines, pack lines, containers, attached documents, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`) are also available on the update path.
+
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.
 - One-off quote retrieval is supported through `oneOffQuote('QCPH00001004')->get()` and `schema('one_off_quote.get')`.
+- One-off quote update is supported through `oneOffQuote('QCPH00001004')->update()` and `schema('one_off_quote.update')`. All fields are optional — only the setters you call appear in the payload.
 
 ## Company context and identifiers
 

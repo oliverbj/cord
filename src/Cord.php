@@ -3230,36 +3230,24 @@ class Cord
 
     private function buildOneOffQuoteChargeLinePayload(array $chargeLine, array $lineDefaults): array
     {
-        $costLocalAmount = (string) ($chargeLine['costAmount']['value'] ?? '0.0000');
-        $sellLocalAmount = (string) ($chargeLine['sellAmount']['value'] ?? '0.0000');
-
         $payload = [
-            'APCashAdvanceRequired' => 'false',
-            'ARCashAdvanceRequired' => 'false',
-            'CostExchangeRate' => '1.000000000',
-            'CostIsPosted' => 'false',
-            'CostLocalAmount' => $costLocalAmount,
-            'CostOSAmount' => $costLocalAmount,
-            'CostOSGSTVATAmount' => '0',
-            'CostRatingBehaviour' => [
-                'Code' => 'NEW',
-                'Description' => 'Create new Charge during AutoRating',
-            ],
-            'Description' => $chargeLine['description'],
-            'SellExchangeRate' => '1.000000000',
-            'SellInvoiceType' => 'FIN',
-            'SellIsPosted' => 'false',
-            'SellLocalAmount' => $sellLocalAmount,
-            'SellOSAmount' => $sellLocalAmount,
-            'SellOSGSTVATAmount' => '0',
-            'SellRatingBehaviour' => [
-                'Code' => 'NEW',
-                'Description' => 'Create new Charge during AutoRating',
-            ],
             'ChargeCode' => [
                 'Code' => $chargeLine['chargeCode'],
             ],
+            'Description' => $chargeLine['description'],
         ];
+
+        if (isset($chargeLine['costAmount']['value'])) {
+            $costLocalAmount = (string) $chargeLine['costAmount']['value'];
+            $payload['CostLocalAmount'] = $costLocalAmount;
+            $payload['CostOSAmount'] = $costLocalAmount;
+        }
+
+        if (isset($chargeLine['sellAmount']['value'])) {
+            $sellLocalAmount = (string) $chargeLine['sellAmount']['value'];
+            $payload['SellLocalAmount'] = $sellLocalAmount;
+            $payload['SellOSAmount'] = $sellLocalAmount;
+        }
 
         if (is_string($chargeLine['chargeCodeGroup'] ?? null) && $chargeLine['chargeCodeGroup'] !== '') {
             $payload['ChargeCodeGroup'] = [

@@ -1731,6 +1731,7 @@ it('supports typed addresses and charge lines for one-off quote create', functio
         ->toContain('<AddressType>OneOffQuotePickupAddress</AddressType>')
         ->toContain('<AddressType>OneOffQuoteDeliveryAddress</AddressType>')
         ->toContain('<OrganizationCode>AU10IMSYD</OrganizationCode>')
+        ->toContain('<ImportMetaData><Instruction>INSERT</Instruction></ImportMetaData>')
         ->toContain('<ChargeCode><Code>FRT</Code></ChargeCode>')
         ->toContain('<ChargeCode><Code>SURF</Code></ChargeCode>')
         ->toContain('<CostOSCurrency><Code>AUD</Code></CostOSCurrency>')

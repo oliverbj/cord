@@ -834,6 +834,8 @@ Optional one-off quote create helpers:
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.
 - `addContainer(...)` adds individual containers with `type` (required, e.g. `20GP`), optional `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`). Maps to `ContainerCollection > Container` in XML. Use this for FCL shipments.
 - In structured payloads, use `containers` as an array of objects with `type` and the optional fields above.
+- `addChargeLine(...)` adds individual charge lines. Required setters are `chargeCode` and `description`; optional setters are `costAmount(value, currencyCode)`, `sellAmount(value, currencyCode)`, `chargeCodeGroup`, `branch`, `department`, `debtor`, and `displaySequence`. Only the fields you provide appear in the outgoing XML — no rating behaviours, exchange rates, or posted flags are hard-coded. CargoWise eAdapter requires an `ImportMetaData` element on every charge line when importing; Cord adds `<ImportMetaData><Instruction>INSERT</Instruction></ImportMetaData>` automatically.
+- In structured payloads, use `charge_lines` as an array of objects with `charge_code`, `description`, and optional `cost_amount` / `sell_amount` (each with `value` and `currency_code`), `charge_code_group`, `branch`, `department`, `debtor`, and `display_sequence`.
 
 One-off quote introspection:
 

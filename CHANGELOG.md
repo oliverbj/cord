@@ -2,6 +2,15 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.2.8 - 2026-04-05
+
+### What's Changed
+
+* Charge line payloads now only serialize fields you explicitly provide. Removed hard-coded `CostRatingBehaviour`, `SellRatingBehaviour`, `CostExchangeRate`, `SellExchangeRate`, `CostIsPosted`, `SellIsPosted`, `SellInvoiceType`, `APCashAdvanceRequired`, `ARCashAdvanceRequired`, and GST/VAT amount fields. `CostLocalAmount`/`CostOSAmount` and `SellLocalAmount`/`SellOSAmount` are also only emitted when `costAmount` / `sellAmount` are provided.
+* CargoWise eAdapter requires an `ImportMetaData` element on every charge line for the row to be imported (without it, the line is silently skipped). Cord now automatically prepends `<ImportMetaData><Instruction>INSERT</Instruction></ImportMetaData>` to every charge line, both fluent and structured.
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.2.7...3.2.8
+
 ## v3.2.7 - 2026-03-30
 
 ### What's Changed

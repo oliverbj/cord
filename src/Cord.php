@@ -3231,6 +3231,9 @@ class Cord
     private function buildOneOffQuoteChargeLinePayload(array $chargeLine, array $lineDefaults): array
     {
         $payload = [
+            'ImportMetaData' => [
+                'Instruction' => 'INSERT',
+            ],
             'ChargeCode' => [
                 'Code' => $chargeLine['chargeCode'],
             ],

@@ -842,6 +842,7 @@ it('describes staff operations from the registry', function () {
 
 it('publishes representative operation schemas', function () {
     $docManagerGet = Cord::schema('doc_manager.get');
+    $oneOffQuoteEventAdd = Cord::schema('one_off_quote.event.add');
     $oneOffQuoteGet = Cord::schema('one_off_quote.get');
     $oneOffQuote = Cord::schema('one_off_quote.create');
     $staffQuery = Cord::schema('staff.query');
@@ -888,6 +889,18 @@ it('publishes representative operation schemas', function () {
     sort($clientAddressTypes);
 
     expect($clientAddressTypes)->toBe(['object', 'string'])
+        ->and($oneOffQuoteEventAdd)->toMatchArray([
+            'type' => 'object',
+            'required' => ['company', 'key', 'event'],
+            'x-cord' => [
+                'operation_id' => 'one_off_quote.event.add',
+                'resource' => 'one_off_quote',
+                'action' => 'event.add',
+            ],
+        ])
+        ->and($oneOffQuoteEventAdd['properties'])->toHaveKeys(['company', 'enterprise', 'server', 'key', 'event'])
+        ->and($oneOffQuoteEventAdd['properties']['event']['type'])->toBe('object')
+        ->and($oneOffQuoteEventAdd['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
         ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server', 'org_role', 'event_branch', 'event_department'])
@@ -2070,9 +2083,48 @@ it('describes one-off quote operations from the registry', function () {
         ->and($description['operations'])->toBe([
             ['id' => 'one_off_quote.create', 'action' => 'create'],
             ['id' => 'one_off_quote.document.add', 'action' => 'document.add'],
+            ['id' => 'one_off_quote.event.add', 'action' => 'event.add'],
             ['id' => 'one_off_quote.get', 'action' => 'get'],
             ['id' => 'one_off_quote.update', 'action' => 'update'],
         ]);
+});
+
+it('builds a one-off quote event add payload', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->addEvent(
+            date: '2026-01-01T00:00:00+00:00',
+            type: 'DIM',
+            reference: 'Quote event',
+            isEstimate: true,
+        )
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.event.add', [
+        'company' => 'CPH',
+        'key' => 'QCPH00001004',
+        'event' => [
+            'date' => '2026-01-01T00:00:00+00:00',
+            'type' => 'DIM',
+            'reference' => 'Quote event',
+            'is_estimate' => true,
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+
+    expect($fluentXml)
+        ->toContain('<UniversalEvent>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<Type>OneOffQuote</Type>')
+        ->toContain('<Key>QCPH00001004</Key>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<EventType>DIM</EventType>')
+        ->toContain('<EventReference>Quote event</EventReference>')
+        ->toContain('<IsEstimate>true</IsEstimate>');
 });
 
 it('builds a one-off quote document add payload', function () {
@@ -2126,6 +2178,15 @@ it('returns the active schema for a scoped one-off quote document add', function
         ->describe();
 
     expect($description)->toBe(Cord::schema('one_off_quote.document.add'));
+});
+
+it('returns the active schema for a scoped one-off quote event add', function () {
+    $description = Cord::withCompany('CPH')
+        ->oneOffQuote('QCPH00001004')
+        ->addEvent('2026-01-01T00:00:00+00:00', 'DIM', 'Quote event', true)
+        ->describe();
+
+    expect($description)->toBe(Cord::schema('one_off_quote.event.add'));
 });
 
 it('builds a one-off quote query payload with company context', function () {

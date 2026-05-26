@@ -157,6 +157,14 @@ class OperationRegistry
                 contextFields: $universalContext,
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
             ),
+            OperationId::OneOffQuoteEventAdd->value => new OperationDefinition(
+                id: OperationId::OneOffQuoteEventAdd,
+                resource: 'one_off_quote',
+                action: 'event.add',
+                contextFields: $oneOffQuoteCreateContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'oneOffQuote', 'required' => true, 'type' => 'string'],
+            ),
             OperationId::ShipmentDocumentAdd->value => new OperationDefinition(
                 id: OperationId::ShipmentDocumentAdd,
                 resource: 'shipment',
@@ -540,6 +548,10 @@ class OperationRegistry
 
         if ($cord->target === DataTarget::OneOffQuote && $cord->activeOneOffQuoteIntent() === 'document_add') {
             return OperationId::OneOffQuoteDocumentAdd;
+        }
+
+        if ($cord->target === DataTarget::OneOffQuote && $cord->activeOneOffQuoteIntent() === 'event_add') {
+            return OperationId::OneOffQuoteEventAdd;
         }
 
         return match ($cord->requestType) {

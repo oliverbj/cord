@@ -1994,6 +1994,7 @@ class Cord
     #[OperationField(OperationId::ShipmentEventAdd, name: 'event', required: true)]
     #[OperationField(OperationId::BookingEventAdd, name: 'event', required: true)]
     #[OperationField(OperationId::CustomEventAdd, name: 'event', required: true)]
+    #[OperationField(OperationId::OneOffQuoteEventAdd, name: 'event', required: true)]
     public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
     {
         $this->requestType = RequestType::UniversalEvent;
@@ -2009,10 +2010,16 @@ class Cord
             'EventReference' => $reference,
             'IsEstimate' => var_export($isEstimate, true), // cast to string
         ];
+
+        if ($this->target === DataTarget::OneOffQuote) {
+            $this->oneOffQuoteIntent = 'event_add';
+        }
+
         $this->currentOperation = match ($this->target) {
             DataTarget::Shipment => OperationId::ShipmentEventAdd,
             DataTarget::Booking => OperationId::BookingEventAdd,
             DataTarget::Custom => OperationId::CustomEventAdd,
+            DataTarget::OneOffQuote => OperationId::OneOffQuoteEventAdd,
             default => $this->currentOperation,
         };
         $this->markStructuredField('event');
@@ -2367,7 +2374,7 @@ class Cord
         }
 
         if ($this->target === DataTarget::OneOffQuote && is_string($this->targetKey) && trim($this->targetKey) !== '') {
-            if ($this->oneOffQuoteIntent !== 'get' && $this->oneOffQuoteIntent !== 'document_add') {
+            if ($this->oneOffQuoteIntent !== 'get' && $this->oneOffQuoteIntent !== 'document_add' && $this->oneOffQuoteIntent !== 'event_add') {
                 throw new \Exception("oneOffQuote('KEY')->get() must be called before inspect() or run().");
             }
         }

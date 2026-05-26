@@ -962,6 +962,7 @@ $active = Cord::oneOffQuote()->create()->describe();
 $updateSchema = Cord::schema('one_off_quote.update');
 
 $docSchema = Cord::schema('one_off_quote.document.add');
+$eventSchema = Cord::schema('one_off_quote.event.add');
 ```
 
 ### Update One-Off Quote
@@ -1037,6 +1038,37 @@ Cord::fromStructured('one_off_quote.document.add', [
         'type' => 'QUO',
         'description' => 'Signed quote',
         'is_published' => true,
+    ],
+])->run();
+```
+
+### Add Event to One-Off Quote
+
+Add an event to an existing one-off quote with `addEvent()`. This also uses `UniversalEvent`. Call `withCompany()` so Cord can populate `Event > DataContext` with `Company`, `EnterpriseID`, and `ServerID` for the target quote key.
+
+```php
+Cord::withCompany('CPH')
+    ->oneOffQuote('QCPH00001004')
+    ->addEvent(
+        date: now()->toIso8601String(),
+        type: 'DIM',
+        reference: 'Quote milestone',
+        isEstimate: true,
+    )
+    ->run();
+```
+
+Structured equivalent:
+
+```php
+Cord::fromStructured('one_off_quote.event.add', [
+    'company' => 'CPH',
+    'key' => 'QCPH00001004',
+    'event' => [
+        'date' => now()->toIso8601String(),
+        'type' => 'DIM',
+        'reference' => 'Quote milestone',
+        'is_estimate' => true,
     ],
 ])->run();
 ```

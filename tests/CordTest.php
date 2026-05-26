@@ -862,14 +862,14 @@ it('publishes representative operation schemas', function () {
         ->and($docManagerGet['properties']['filter_collections']['type'])->toBe('array')
         ->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($oneOffQuoteGet)->toMatchArray([
-        'type' => 'object',
-        'required' => ['company', 'key'],
-        'x-cord' => [
-            'operation_id' => 'one_off_quote.get',
-            'resource' => 'one_off_quote',
-            'action' => 'get',
-        ],
-    ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server'])
+            'type' => 'object',
+            'required' => ['company', 'key'],
+            'x-cord' => [
+                'operation_id' => 'one_off_quote.get',
+                'resource' => 'one_off_quote',
+                'action' => 'get',
+            ],
+        ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server'])
         ->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($oneOffQuote)->toMatchArray([
             'type' => 'object',

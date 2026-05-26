@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### What's Changed
+
+* Add DocManager document retrieval via `withCompany()->docManager('MODULE', 'JOBNUMBER')`. The new `doc_manager.get` operation builds a `UniversalDocumentRequest` with `Type=DocManager`, composes the CargoWise key as `<MODULE> <JOBNUMBER>`, and places `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
+* Add repeated document `FilterCollection` support via `filterCollection()` and structured `filter_collections` for DocManager and other document retrieval operations. Existing `filter()` remains the single-collection shorthand.
+* Update Boost guidance, the Cord development skill, and README examples to cover the new DocManager and repeated `FilterCollection` flows.
+
 ## v3.2.8 - 2026-04-05
 
 ### What's Changed

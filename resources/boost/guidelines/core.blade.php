@@ -10,7 +10,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 
 ## Preferred request flow
 
-- Start from a target such as `shipment()`, `booking()`, `custom()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
+- Start from a target such as `shipment()`, `booking()`, `custom()`, `docManager()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
 - Call `get()` before `run()` for organization, staff, and one-off quote retrievals.
 - Call `run()` to send the request. Cord returns parsed array data by default.
 - Call `inspect()` while iterating or testing to build XML without sending any HTTP request.
@@ -25,6 +25,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - `Cord::resource()->describe()` lists operations for the selected resource.
 - `Cord::schema('operation.id')` returns the JSON-Schema-like contract for the operation, including required fields, nested objects, and enums.
 - `Cord::fromStructured('operation.id', $payload)` validates input before XML generation. Fix validation errors instead of bypassing the schema.
+- `Cord::schema('doc_manager.get')` documents the DocManager contract for module-code-plus-job-number document lookups.
 - For organization, staff, and one-off quote retrievals, call `get()` before `run()`.
 - For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
 - For `container.query`, use `GlbContainerType` as the native criteria entity, or call `container('20GP')->get()` to preload a key lookup by `Code`.
@@ -54,6 +55,9 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
+- Use `docManager('MODULE', 'JOBNUMBER')` or `fromStructured('doc_manager.get', [...])` for DocManager document lookups. Cord composes `DataTarget > Key` as `<MODULE> <JOBNUMBER>` and sends `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
+- Use `filter()` for a single document `FilterCollection`, or `filterCollection()` / structured `filter_collections` when CargoWise expects multiple distinct `FilterCollection` nodes in the same document request.
+- DocManager requests require `withCompany()` and do not use top-level `sender_id` / `recipient_id`.
 
 - Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update an existing one-off quote with a sparse `UniversalShipment`. Only the fields you set are sent. Requires `withCompany()` and a quote key. All fluent setters available on create (`transportMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, address builders, charge lines, pack lines, containers, attached documents, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`) are also available on the update path.
 
@@ -67,6 +71,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - Use `withCompany()` for operations that depend on company context.
 - For universal requests, `withCompany()` also lets Cord derive `SenderID`. The default `RecipientID` is `Cord`.
 - For document uploads, `withCompany()` populates `Event > DataContext > Company`, `EnterpriseID`, and `ServerID` instead of top-level `SenderID` / `RecipientID` when the request shape supports it.
+- For DocManager requests, `withCompany()` also places `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
 - Override sender and recipient identifiers only when the integration explicitly requires custom values.
 - Do not assume every operation accepts `sender_id` and `recipient_id`; use `schema()` to confirm the supported fields for the selected operation.
 
@@ -74,6 +79,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 
 - Use `rawXml()` only when you already have a complete XML document or need a request shape Cord does not model yet.
 - Do not use `rawXml()` for one-off quote lookups. Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` instead.
+- Do not use `rawXml()` for DocManager lookups. Use `docManager('QU1', 'QHEL00011452')` or `fromStructured('doc_manager.get', ...)` instead.
 - For `rawXml()` requests, `run()` returns the full parsed eAdapter envelope with `Status`, `ProcessingLog`, and `Data`.
 - `rawXml()->toJson()->run()` returns the full response envelope as JSON.
 - `rawXml()->toXml()->run()` returns the full XML response envelope.

@@ -533,6 +533,69 @@ it('supports the receivable alias for document requests', function () {
         ->toContain('<Key>AR INV INV-001</Key>');
 });
 
+it('builds a doc manager document request with company-scoped data context', function () {
+    $fluentXml = Cord::withCompany('QHE')
+        ->docManager('QU1', 'QHEL00011452')
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('doc_manager.get', [
+        'company' => 'QHE',
+        'module' => 'QU1',
+        'key' => 'QHEL00011452',
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml);
+
+    expect($fluentXml)
+        ->toContain('<UniversalDocumentRequest>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->toContain('<Type>DocManager</Type>')
+        ->toContain('<Key>QU1 QHEL00011452</Key>')
+        ->toContain('<Company><Code>QHE</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>');
+});
+
+it('supports multiple filter collections for document requests', function () {
+    $fluentXml = Cord::withCompany('QHE')
+        ->docManager('QU1', 'QHEL00011452')
+        ->filterCollection([
+            ['type' => 'DocumentType', 'value' => 'QUO'],
+            ['type' => 'BranchCode', 'value' => 'QTE'],
+        ])
+        ->filterCollection([
+            ['type' => 'DocumentType', 'value' => 'INV'],
+        ])
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('doc_manager.get', [
+        'company' => 'QHE',
+        'module' => 'QU1',
+        'key' => 'QHEL00011452',
+        'filter_collections' => [
+            [
+                'filters' => [
+                    ['type' => 'DocumentType', 'value' => 'QUO'],
+                    ['type' => 'BranchCode', 'value' => 'QTE'],
+                ],
+            ],
+            [
+                'filters' => [
+                    ['type' => 'DocumentType', 'value' => 'INV'],
+                ],
+            ],
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and(substr_count($fluentXml, '<FilterCollection>'))->toBe(2)
+        ->and(substr_count($fluentXml, '<Type>DocumentType</Type>'))->toBe(2)
+        ->and($fluentXml)->toContain('<Type>BranchCode</Type>')
+        ->toContain('<Value>QTE</Value>')
+        ->toContain('<Value>INV</Value>');
+});
+
 it('builds a native staff creation payload with headers, groups, and working hours', function () {
     $xml = Cord::withCompany('CPH')
         ->staff()
@@ -778,6 +841,7 @@ it('describes staff operations from the registry', function () {
 });
 
 it('publishes representative operation schemas', function () {
+    $docManagerGet = Cord::schema('doc_manager.get');
     $oneOffQuoteGet = Cord::schema('one_off_quote.get');
     $oneOffQuote = Cord::schema('one_off_quote.create');
     $staffQuery = Cord::schema('staff.query');
@@ -786,15 +850,26 @@ it('publishes representative operation schemas', function () {
     $organizationQuery = Cord::schema('organization.query');
     $shipmentGet = Cord::schema('shipment.get');
 
-    expect($oneOffQuoteGet)->toMatchArray([
+    expect($docManagerGet)->toMatchArray([
         'type' => 'object',
-        'required' => ['company', 'key'],
+        'required' => ['company', 'module', 'key'],
         'x-cord' => [
-            'operation_id' => 'one_off_quote.get',
-            'resource' => 'one_off_quote',
+            'operation_id' => 'doc_manager.get',
+            'resource' => 'doc_manager',
             'action' => 'get',
         ],
-    ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server'])
+    ])->and($docManagerGet['properties'])->toHaveKeys(['enterprise', 'server', 'module', 'key', 'filter_collections'])
+        ->and($docManagerGet['properties']['filter_collections']['type'])->toBe('array')
+        ->not->toHaveKeys(['sender_id', 'recipient_id'])
+        ->and($oneOffQuoteGet)->toMatchArray([
+            'type' => 'object',
+            'required' => ['company', 'key'],
+            'x-cord' => [
+                'operation_id' => 'one_off_quote.get',
+                'resource' => 'one_off_quote',
+                'action' => 'get',
+            ],
+        ])->and($oneOffQuoteGet['properties'])->toHaveKeys(['enterprise', 'server'])
         ->not->toHaveKeys(['sender_id', 'recipient_id'])
         ->and($oneOffQuote)->toMatchArray([
             'type' => 'object',
@@ -850,6 +925,7 @@ it('describes published resources from an unscoped builder', function () {
         'booking',
         'company',
         'custom',
+        'doc_manager',
         'one_off_quote',
         'organization',
         'receivable',
@@ -1589,6 +1665,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'receiveable',
         'receivable',
         'shipment',
+        'docManager',
         'oneOffQuote',
         'organization',
         'staff',

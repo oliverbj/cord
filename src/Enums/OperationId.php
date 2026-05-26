@@ -7,6 +7,7 @@ enum OperationId: string
     case ShipmentGet = 'shipment.get';
     case BookingGet = 'booking.get';
     case CustomGet = 'custom.get';
+    case DocManagerGet = 'doc_manager.get';
     case ShipmentDocumentsGet = 'shipment.documents.get';
     case BookingDocumentsGet = 'booking.documents.get';
     case CustomDocumentsGet = 'custom.documents.get';

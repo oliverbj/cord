@@ -68,6 +68,8 @@ class Cord
 
     public array $filters = [];
 
+    public array $filterCollections = [];
+
     public array $event = [];
 
     public array $document = [];
@@ -268,6 +270,24 @@ class Cord
         $this->target = DataTarget::Shipment;
         $this->requestType = RequestType::UniversalShipmentRequest;
         $this->currentOperation = OperationId::ShipmentGet;
+        $this->markStructuredField('key');
+
+        return $this;
+    }
+
+    /**
+     * Determine if the request is for DocManager documents.
+     */
+    public function docManager(string $module, string $key): self
+    {
+        $module = strtoupper(trim($module));
+        $key = trim($key);
+
+        $this->targetKey = $module.' '.$key;
+        $this->target = DataTarget::DocManager;
+        $this->requestType = RequestType::UniversalDocumentRequest;
+        $this->currentOperation = OperationId::DocManagerGet;
+        $this->markStructuredField('module');
         $this->markStructuredField('key');
 
         return $this;
@@ -2004,6 +2024,20 @@ class Cord
      * Add filter(s) to the request.
      */
     #[OperationField(
+        OperationId::DocManagerGet,
+        name: 'filters',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
         OperationId::ShipmentDocumentsGet,
         name: 'filters',
         repeatable: true,
@@ -2061,12 +2095,173 @@ class Cord
     )]
     public function filter(string $type, mixed $value): self
     {
-        // Every time this method is called, it will add a new filter to the filters array.
-        $this->filters[] = [
-            'Type' => $type,
-            'Value' => $value,
-        ];
+        $this->filters[] = $this->buildFilterDefinition($type, $value);
         $this->markStructuredField('filters');
+
+        return $this;
+    }
+
+    #[OperationField(
+        OperationId::DocManagerGet,
+        name: 'filter_collections',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['type', 'value'],
+                    ],
+                ],
+            ],
+            'required' => ['filters'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::ShipmentDocumentsGet,
+        name: 'filter_collections',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['type', 'value'],
+                    ],
+                ],
+            ],
+            'required' => ['filters'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::BookingDocumentsGet,
+        name: 'filter_collections',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['type', 'value'],
+                    ],
+                ],
+            ],
+            'required' => ['filters'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::CustomDocumentsGet,
+        name: 'filter_collections',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['type', 'value'],
+                    ],
+                ],
+            ],
+            'required' => ['filters'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::ReceivableDocumentsGet,
+        name: 'filter_collections',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['type', 'value'],
+                    ],
+                ],
+            ],
+            'required' => ['filters'],
+        ]
+    )]
+    public function filterCollection(array $filters): self
+    {
+        if (array_key_exists('filters', $filters) && is_array($filters['filters'])) {
+            $filters = $filters['filters'];
+        }
+
+        $errors = [];
+        $normalizedFilters = [];
+
+        foreach (array_values($filters) as $index => $filter) {
+            if (! is_array($filter)) {
+                $errors['filters.'.$index] = ['Each filter must be an array with type and value keys.'];
+
+                continue;
+            }
+
+            $type = $filter['type'] ?? $filter['Type'] ?? null;
+            if (! is_string($type) || trim($type) === '') {
+                $errors['filters.'.$index.'.type'] = ['The type field is required.'];
+
+                continue;
+            }
+
+            if (! array_key_exists('value', $filter) && ! array_key_exists('Value', $filter)) {
+                $errors['filters.'.$index.'.value'] = ['The value field is required.'];
+
+                continue;
+            }
+
+            $normalizedFilters[] = $this->buildFilterDefinition(
+                $type,
+                $filter['value'] ?? $filter['Value']
+            );
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $this->filterCollections[] = $normalizedFilters;
+        $this->markStructuredField('filter_collections');
 
         return $this;
     }
@@ -2188,6 +2383,14 @@ class Cord
         if ($this->target === DataTarget::Container && $this->requestType === RequestType::NativeContainerRetrieval) {
             if ($this->containerIntent !== 'get') {
                 throw new \Exception('container()->get() must be called before inspect() or run().');
+            }
+
+            return;
+        }
+
+        if ($this->target === DataTarget::DocManager) {
+            if (! is_string($this->company) || trim($this->company) === '') {
+                throw new \Exception('Company code must be provided for DocManager requests. Call withCompany() before sending the request.');
             }
 
             return;
@@ -3601,6 +3804,7 @@ class Cord
     {
         return match (true) {
             $this->requestType === RequestType::NativeCompanyRetrieval => 'company',
+            $this->target === DataTarget::DocManager => 'doc_manager',
             $this->target === DataTarget::Organization => 'organization',
             $this->target === DataTarget::Container => 'container',
             $this->target === DataTarget::Staff => 'staff',
@@ -3631,17 +3835,40 @@ class Cord
 
         $selector = $definition->selector;
         if ($selector !== null) {
-            $field = $selector['field'];
             $method = $selector['method'];
+            $selectorFields = $selector['fields'] ?? [$selector];
+            $arguments = [];
+            $hasAllRequiredFields = true;
 
-            if (array_key_exists($field, $payload)) {
-                $this->{$method}($payload[$field]);
-            } elseif (! $this->resourceMatches($definition->resource) && (($selector['required'] ?? false) === false)) {
+            foreach ($selectorFields as $selectorField) {
+                $field = $selectorField['field'];
+
+                if (array_key_exists($field, $payload)) {
+                    $arguments[] = $payload[$field];
+
+                    continue;
+                }
+
+                if (($selectorField['required'] ?? false) === false) {
+                    continue;
+                }
+
+                $hasAllRequiredFields = false;
+
+                break;
+            }
+
+            if ($arguments !== [] && $hasAllRequiredFields) {
+                $this->{$method}(...$arguments);
+            } elseif (! isset($selector['fields'])
+                && ! $this->resourceMatches($definition->resource)
+                && (($selector['required'] ?? false) === false)) {
                 $this->{$method}();
             }
         } else {
             $resourceMethod = match ($definition->resource) {
                 'staff' => 'staff',
+                'doc_manager' => null,
                 'one_off_quote' => 'oneOffQuote',
                 'organization' => 'organization',
                 'container' => 'container',
@@ -3814,12 +4041,21 @@ class Cord
         return $value;
     }
 
+    private function buildFilterDefinition(string $type, mixed $value): array
+    {
+        return [
+            'Type' => $type,
+            'Value' => $value,
+        ];
+    }
+
     private function resourceMatches(string $resource): bool
     {
         return match ($resource) {
             'shipment' => $this->target === DataTarget::Shipment,
             'booking' => $this->target === DataTarget::Booking,
             'custom' => $this->target === DataTarget::Custom,
+            'doc_manager' => $this->target === DataTarget::DocManager,
             'receivable' => $this->target === DataTarget::Receiveable,
             'one_off_quote' => $this->target === DataTarget::OneOffQuote,
             'staff' => $this->target === DataTarget::Staff,

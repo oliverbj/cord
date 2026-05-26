@@ -20,6 +20,8 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Documents / eDocs](#documents--edocs)
   - [Upload documents](#upload-documents)
   - [Add events](#add-events)
+- [DocManager](#docmanager)
+    - [Fetch documents](#fetch-documents)
 - [Organizations](#organizations)
   - [Query Organization](#query-organization)
   - [Create Organization](#create-organization)
@@ -155,6 +157,7 @@ Cord currently supports these main targets:
 - Shipments via `shipment()`
 - One-off quotes via `oneOffQuote()`
 - Customs declarations via `custom()`
+- DocManager documents via `docManager()`
 - Organizations via `organization()`
 - Companies via `company()`
 - Containers via `container()`
@@ -182,6 +185,10 @@ Cord::withCompany('CPH')
     ->run();
 
 Cord::custom('BATL12345678')->run();
+
+Cord::withCompany('QHE')
+    ->docManager('QU1', 'QHEL00011452')
+    ->run();
 
 Cord::organization('SAGFURHEL')->get()->run();
 
@@ -239,6 +246,8 @@ Available filters:
 - `BranchCode` retrieves only documents related to the specified branch.
 - `DepartmentCode` retrieves only documents related to the specified department.
 
+For document lookups that are keyed by a CargoWise module code plus job number instead of a first-class Cord target, use [DocManager](#docmanager).
+
 ### Upload documents
 
 You can upload a document to a CargoWise file with `addDocument()`:
@@ -271,6 +280,110 @@ Cord::shipment('SJFK21060014')
     )
     ->run();
 ```
+
+## DocManager
+
+Cord also supports CargoWise DocManager lookups for document collections that are keyed by a module code plus job number.
+
+### Fetch documents
+
+Call `withCompany()` and pass the module code and job number separately. Cord composes the outgoing `DataTarget > Key` as `<MODULE> <JOBNUMBER>` for you and sends a `UniversalDocumentRequest` with `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
+
+```php
+Cord::withCompany('QHE')
+    ->docManager('QU1', 'QHEL00011452')
+    ->run();
+```
+
+Structured equivalent:
+
+```php
+$xml = Cord::fromStructured('doc_manager.get', [
+    'company' => 'QHE',
+    'module' => 'QU1',
+    'key' => 'QHEL00011452',
+])->inspect();
+```
+
+You can chain the same document filters used by `withDocuments()` before `run()` or `inspect()`:
+
+```php
+Cord::withCompany('QHE')
+    ->docManager('QU1', 'QHEL00011452')
+    ->filter('DocumentType', 'QUO')
+    ->filter('IsPublished', true)
+    ->run();
+```
+
+When CargoWise expects multiple distinct `<FilterCollection>` nodes, call `filterCollection()` once per collection:
+
+```php
+Cord::withCompany('QHE')
+    ->docManager('QU1', 'QHEL00011452')
+    ->filterCollection([
+        ['type' => 'DocumentType', 'value' => 'QUO'],
+        ['type' => 'BranchCode', 'value' => 'QTE'],
+    ])
+    ->filterCollection([
+        ['type' => 'DocumentType', 'value' => 'INV'],
+    ])
+    ->run();
+```
+
+Structured equivalent:
+
+```php
+$xml = Cord::fromStructured('doc_manager.get', [
+    'company' => 'QHE',
+    'module' => 'QU1',
+    'key' => 'QHEL00011452',
+    'filter_collections' => [
+        [
+            'filters' => [
+                ['type' => 'DocumentType', 'value' => 'QUO'],
+                ['type' => 'BranchCode', 'value' => 'QTE'],
+            ],
+        ],
+        [
+            'filters' => [
+                ['type' => 'DocumentType', 'value' => 'INV'],
+            ],
+        ],
+    ],
+])->inspect();
+```
+
+Introspection:
+
+```php
+$schema = Cord::schema('doc_manager.get');
+$active = Cord::withCompany('QHE')
+    ->docManager('QU1', 'QHEL00011452')
+    ->describe();
+```
+
+Requirements:
+
+- `withCompany(...)`
+- `docManager($module, $key)` with the CargoWise module code and job number
+- Use `filter()` for a single `FilterCollection`, or `filterCollection()` / structured `filter_collections` when the request needs multiple distinct `FilterCollection` nodes.
+
+### Most used codes
+
+| Code | Module | Sample |
+|---|---|---|
+| `BKG` | Bookings with Quote | `BKG 12345678` |
+| `CIV` | Commercial Invoice | `CIV ....` |
+| `CON` | Consol | `CON ...` |
+| `CPY` | Company | `CPY ....` |
+| `ISF` | Importer Security Filing | `ISF ....` |
+| `ORG` | Organization | `ORG ABCDEFBYX` |
+| `QU1` | One Off Quote | `QU1 12345678` |
+| `RIN` | Receivable Invoice | `RIN ...` |
+| `SHP` | Shipment | `SHP 12345678` |
+| `WKI` | Work Item | `WKI 12345678` |
+| `PIN` | Payables Invoice | `12345678` |
+| `PCR` | Payables Credit Note | `12345667` |
 
 ## Organizations
 

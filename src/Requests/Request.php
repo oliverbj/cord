@@ -85,10 +85,24 @@ abstract class Request implements RequestInterface
         }
 
         // 3. Append any filters to the "FilterCollection" key.
+        $filterCollections = [];
+
         if (! empty($this->cord->filters)) {
-            $DataTargetArray['FilterCollection'] = [
+            $filterCollections[] = [
                 'Filter' => $this->cord->filters,
             ];
+        }
+
+        foreach ($this->cord->filterCollections as $collection) {
+            $filterCollections[] = [
+                'Filter' => $collection,
+            ];
+        }
+
+        if ($filterCollections !== []) {
+            $DataTargetArray['FilterCollection'] = count($filterCollections) === 1
+                ? $filterCollections[0]
+                : $filterCollections;
         }
 
         // 4. (if any), add an event to request.

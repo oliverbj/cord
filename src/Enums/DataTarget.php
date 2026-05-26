@@ -7,6 +7,7 @@ enum DataTarget: string
     case Shipment = 'ForwardingShipment';
     case Booking = 'ForwardingBooking';
     case Custom = 'CustomsDeclaration';
+    case DocManager = 'DocManager';
     case OneOffQuote = 'OneOffQuote';
     case Receiveable = 'AccountingInvoice';
     case Organization = 'Organization';

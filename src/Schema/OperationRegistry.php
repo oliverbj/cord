@@ -81,6 +81,20 @@ class OperationRegistry
                 contextFields: $universalContext,
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
             ),
+            OperationId::DocManagerGet->value => new OperationDefinition(
+                id: OperationId::DocManagerGet,
+                resource: 'doc_manager',
+                action: 'get',
+                contextFields: $oneOffQuoteQueryContext,
+                requiredContextFields: ['company'],
+                selector: [
+                    'fields' => [
+                        ['field' => 'module', 'required' => true, 'type' => 'string'],
+                        ['field' => 'key', 'required' => true, 'type' => 'string'],
+                    ],
+                    'method' => 'docManager',
+                ],
+            ),
             OperationId::OneOffQuoteGet->value => new OperationDefinition(
                 id: OperationId::OneOffQuoteGet,
                 resource: 'one_off_quote',
@@ -325,12 +339,16 @@ class OperationRegistry
         }
 
         if ($definition->selector !== null) {
-            $properties[$definition->selector['field']] = [
-                'type' => $definition->selector['type'] ?? 'string',
-            ];
+            $selectorFields = $definition->selector['fields'] ?? [$definition->selector];
 
-            if (($definition->selector['required'] ?? false) === true) {
-                $required[] = $definition->selector['field'];
+            foreach ($selectorFields as $selectorField) {
+                $properties[$selectorField['field']] = [
+                    'type' => $selectorField['type'] ?? 'string',
+                ];
+
+                if (($selectorField['required'] ?? false) === true) {
+                    $required[] = $selectorField['field'];
+                }
             }
         }
 

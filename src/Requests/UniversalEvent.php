@@ -10,7 +10,7 @@ class UniversalEvent extends Request
     {
         $context = parent::context();
 
-        if (! $this->isDocumentAddRequest()) {
+        if (! $this->usesEmbeddedDataContext()) {
             return $context;
         }
 
@@ -20,9 +20,9 @@ class UniversalEvent extends Request
             return $context;
         }
 
-        if ($this->isOneOffQuoteDocumentAdd()
+        if (($this->isOneOffQuoteDocumentAdd() || $this->isOneOffQuoteEventAdd())
             && (! is_string($this->cord->company) || trim($this->cord->company) === '')) {
-            throw new \Exception('Company code must be provided for one-off quote document add requests. Call withCompany() before sending the request.');
+            throw new \Exception('Company code must be provided for one-off quote event and document add requests. Call withCompany() before sending the request.');
         }
 
         if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
@@ -49,7 +49,7 @@ class UniversalEvent extends Request
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteDocumentAdd()) {
+        if ($this->isOneOffQuoteDocumentAdd() || $this->isOneOffQuoteEventAdd()) {
             return false;
         }
 
@@ -79,8 +79,18 @@ class UniversalEvent extends Request
         ], true);
     }
 
+    private function isOneOffQuoteEventAdd(): bool
+    {
+        return $this->cord->currentOperation === OperationId::OneOffQuoteEventAdd;
+    }
+
     private function isOneOffQuoteDocumentAdd(): bool
     {
         return $this->cord->currentOperation === OperationId::OneOffQuoteDocumentAdd;
+    }
+
+    private function usesEmbeddedDataContext(): bool
+    {
+        return $this->isDocumentAddRequest() || $this->isOneOffQuoteEventAdd();
     }
 }

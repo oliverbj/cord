@@ -885,12 +885,18 @@ it('publishes representative operation schemas', function () {
             'enum' => ['SEA', 'AIR', 'ROA'],
         ])->and($oneOffQuote['properties']['packing_mode'])->toMatchArray([
             'type' => 'string',
+        ])->and($oneOffQuote['properties']['potential_carriers'])->toMatchArray([
+            'type' => 'array',
+            'items' => ['type' => 'string'],
         ]);
 
     $clientAddressTypes = $oneOffQuote['properties']['client_address']['type'];
+    $carrierAddressTypes = $oneOffQuote['properties']['carrier_address']['type'];
     sort($clientAddressTypes);
+    sort($carrierAddressTypes);
 
     expect($clientAddressTypes)->toBe(['object', 'string'])
+        ->and($carrierAddressTypes)->toBe(['object', 'string'])
         ->and($oneOffQuoteEventAdd)->toMatchArray([
             'type' => 'object',
             'required' => ['company', 'key', 'event'],
@@ -1178,6 +1184,7 @@ it('supports organization code only addresses for one-off quote create', functio
         ->clientAddress('ABSDEOSLP')
         ->pickupAddress(fn ($a) => $a->organizationCode('AUSYDPK1'))
         ->deliveryAddress('NZAKLDL1')
+        ->carrierAddress('DHLAIR_WW')
         ->inspect();
 
     $structuredXml = Cord::fromStructured('one_off_quote.create', [
@@ -1190,6 +1197,7 @@ it('supports organization code only addresses for one-off quote create', functio
         'client_address' => 'ABSDEOSLP',
         'pickup_address' => 'AUSYDPK1',
         'delivery_address' => 'NZAKLDL1',
+        'carrier_address' => 'DHLAIR_WW',
     ])->inspect();
 
     expect($structuredXml)->toBe($fluentXml)
@@ -1199,7 +1207,41 @@ it('supports organization code only addresses for one-off quote create', functio
         ->toContain('<OrganizationCode>AUSYDPK1</OrganizationCode>')
         ->toContain('<AddressType>OneOffQuoteDeliveryAddress</AddressType>')
         ->toContain('<OrganizationCode>NZAKLDL1</OrganizationCode>')
+        ->toContain('<AddressType>ShippingLineAddress</AddressType>')
+        ->toContain('<OrganizationCode>DHLAIR_WW</OrganizationCode>')
         ->not->toContain('<Address1>');
+});
+
+it('supports potential carriers for one-off quote create', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->transportMode('AIR')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NLAMS')
+        ->addPotentialCarrier('KLMAIR_WW')
+        ->addPotentialCarrier('LUFAIR_WW')
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'AIR',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NLAMS',
+        'potential_carriers' => ['KLMAIR_WW', 'LUFAIR_WW'],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($structuredXml)
+        ->toContain('<PotentialCarrierCollection>')
+        ->toContain('<PotentialCarrier><Code>KLMAIR_WW</Code></PotentialCarrier>')
+        ->toContain('<PotentialCarrier><Code>LUFAIR_WW</Code></PotentialCarrier>');
+
+    expect(substr_count($structuredXml, '<PotentialCarrier>'))->toBe(2);
 });
 
 it('keeps structured address object validation when organization code shortcuts are enabled', function () {

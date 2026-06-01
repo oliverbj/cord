@@ -1056,6 +1056,33 @@ class Cord
     }
 
     /**
+     * Set one-off quote carrier address or organization code.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'carrier_address', builder: OneOffQuoteAddressBuilder::class)]
+    public function carrierAddress(Closure|string $address): self
+    {
+        return $this->setOneOffQuoteTypedAddress('carrier', $address);
+    }
+
+    /**
+     * Add a single potential carrier organization code to the one-off quote.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'potential_carriers', repeatable: true)]
+    public function addPotentialCarrier(string $organizationCode): self
+    {
+        $this->assertOneOffQuoteBuilderContext('addPotentialCarrier');
+
+        if (! isset($this->oneOffQuoteDraft['potentialCarriers']) || ! is_array($this->oneOffQuoteDraft['potentialCarriers'])) {
+            $this->oneOffQuoteDraft['potentialCarriers'] = [];
+        }
+
+        $this->oneOffQuoteDraft['potentialCarriers'][] = $organizationCode;
+        $this->markStructuredField('potential_carriers');
+
+        return $this;
+    }
+
+    /**
      * Add a single charge line to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'charge_lines', repeatable: true, builder: OneOffQuoteChargeLineBuilder::class)]
@@ -3039,6 +3066,7 @@ class Cord
             'client' => 'addresses.client',
             'pickup' => 'addresses.pickup',
             'delivery' => 'addresses.delivery',
+            'carrier' => 'addresses.carrier',
         ];
 
         foreach ($addressLabels as $addressKey => $errorPrefix) {
@@ -3272,10 +3300,24 @@ class Cord
             ];
         }
 
+        if (isset($quoteDetails['potentialCarriers']) && is_array($quoteDetails['potentialCarriers']) && $quoteDetails['potentialCarriers'] !== []) {
+            $potentialCarriers = array_map(
+                static fn (string $organizationCode) => [
+                    'Code' => $organizationCode,
+                ],
+                $quoteDetails['potentialCarriers']
+            );
+
+            $payload['PotentialCarrierCollection'] = [
+                'PotentialCarrier' => count($potentialCarriers) === 1 ? $potentialCarriers[0] : $potentialCarriers,
+            ];
+        }
+
         $addressTypeMap = [
             'client' => 'QuotationClientAddress',
             'pickup' => 'OneOffQuotePickupAddress',
             'delivery' => 'OneOffQuoteDeliveryAddress',
+            'carrier' => 'ShippingLineAddress',
         ];
 
         $addresses = [];

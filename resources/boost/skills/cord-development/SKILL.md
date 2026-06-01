@@ -78,6 +78,8 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `packing_mode` populates `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
+- For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.
+- Use `addPotentialCarrier()` or structured `potential_carriers` on `one_off_quote.create` to populate `PotentialCarrierCollection > PotentialCarrier > Code` with one or more carrier organization codes such as `KLMAIR_WW` and `LUFAIR_WW`.
 - `client_address`, `pickup_address`, and `delivery_address` on `one_off_quote.create` accept either structured address objects or plain organization code strings.
 - When using an address object, `address_line_1` is required unless `address_override: true` is also set. With `address_override: true`, only `city` and `country` are required.
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.

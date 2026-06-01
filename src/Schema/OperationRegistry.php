@@ -746,7 +746,7 @@ class OperationRegistry
     private function resolveBuilderClassFromMethod(ReflectionMethod $method): string
     {
         return match ($method->getName()) {
-            'clientAddress', 'pickupAddress', 'deliveryAddress' => OneOffQuoteAddressBuilder::class,
+            'clientAddress', 'pickupAddress', 'deliveryAddress', 'carrierAddress' => OneOffQuoteAddressBuilder::class,
             'addChargeLine' => OneOffQuoteChargeLineBuilder::class,
             'addPackLine' => OneOffQuotePackLineBuilder::class,
             'addAttachedDocument' => OneOffQuoteAttachedDocumentBuilder::class,

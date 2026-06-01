@@ -918,6 +918,23 @@ class Cord
     }
 
     /**
+     * Set one-off quote packing mode.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'packing_mode')]
+    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'packing_mode')]
+    public function packingMode(string $code): self
+    {
+        $this->assertOneOffQuoteBuilderContext('packingMode');
+
+        $this->oneOffQuoteDraft['packingMode'] = [
+            'code' => $code,
+        ];
+        $this->markStructuredField('packing_mode');
+
+        return $this;
+    }
+
+    /**
      * Set one-off quote incoterm.
      */
     #[OperationField(OperationId::OneOffQuoteCreate)]
@@ -3149,6 +3166,12 @@ class Cord
         if (isset($quoteDetails['serviceLevel'])) {
             $payload['ServiceLevel'] = [
                 'Code' => $quoteDetails['serviceLevel']['code'],
+            ];
+        }
+
+        if (isset($quoteDetails['packingMode'])) {
+            $payload['PackingMode'] = [
+                'Code' => $quoteDetails['packingMode']['code'],
             ];
         }
 

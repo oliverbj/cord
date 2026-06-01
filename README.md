@@ -136,6 +136,7 @@ $response = Cord::fromStructured('one_off_quote.create', [
     'event_branch' => 'QTE',
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
+    'packing_mode' => 'LCL',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
     'client_address' => 'ABSDEOSLP',
@@ -846,6 +847,7 @@ Cord::withCompany('CPH')
     ->eventBranch('QTE')
     ->eventDepartment('PRC')
     ->transportMode('SEA')
+    ->packingMode('LCL')
     ->portOfOrigin('AUSYD')
     ->portOfDestination('NZAKL')
     ->serviceLevel('STD')
@@ -905,6 +907,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'event_branch' => 'QTE',
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
+    'packing_mode' => 'LCL',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
     'client_address' => 'ABSDEOSLP',
@@ -938,11 +941,12 @@ Optional one-off quote create helpers:
 
 - `branch(...)` maps to both `Shipment > DataContext > Branch > Code` and `Shipment > JobCosting > Branch > Code`.
 - `orgRole(...)` maps to `Shipment > DataContext > OrgRole`; use `LOC` for Local Client or `OAG` for Overseas Agent.
+- `packingMode(...)` maps to `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
 - `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
 - When passing an address object, `address_line_1` is required unless `address_override` is set to `true`. With `address_override: true`, only `city` and `country` are required — useful for sending a partial address without a street line.
-- In structured payloads, use `org_role`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
+- In structured payloads, use `org_role`, `packing_mode`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
 - `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.
 - `addContainer(...)` adds individual containers with `type` (required, e.g. `20GP`), optional `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`). Maps to `ContainerCollection > Container` in XML. Use this for FCL shipments.
@@ -976,13 +980,14 @@ Cord::withCompany('CPH')
     ->oneOffQuote('QCPH00001004')
     ->update()
     ->transportMode('AIR')
+    ->packingMode('FCL')
     ->portOfOrigin('AUSYD')
     ->portOfDestination('GBLON')
     ->serviceLevel('EXP')
     ->run();
 ```
 
-Exact same fluent setters as create are available — `transportMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, `clientAddress`, `pickupAddress`, `deliveryAddress`, `addChargeLine`, `addPackLine`, `addContainer`, `addAttachedDocument`, and `withPayload`. Only the setters you call will appear in the outgoing XML.
+Exact same fluent setters as create are available — `transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, `clientAddress`, `pickupAddress`, `deliveryAddress`, `addChargeLine`, `addPackLine`, `addContainer`, `addAttachedDocument`, and `withPayload`. Only the setters you call will appear in the outgoing XML.
 
 Structured equivalent:
 
@@ -991,6 +996,7 @@ Cord::fromStructured('one_off_quote.update', [
     'company' => 'CPH',
     'key' => 'QCPH00001004',
     'transport_mode' => 'AIR',
+    'packing_mode' => 'FCL',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'GBLON',
     'service_level' => 'EXP',

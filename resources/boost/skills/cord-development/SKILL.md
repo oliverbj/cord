@@ -76,6 +76,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
+- For `one_off_quote.create`, `packing_mode` populates `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - `client_address`, `pickup_address`, and `delivery_address` on `one_off_quote.create` accept either structured address objects or plain organization code strings.
 - When using an address object, `address_line_1` is required unless `address_override: true` is also set. With `address_override: true`, only `city` and `country` are required.
@@ -86,7 +87,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Use `docManager('MODULE', 'JOBNUMBER')` or `fromStructured('doc_manager.get', [...])` for DocManager document lookups. Cord composes `DataTarget > Key` as `<MODULE> <JOBNUMBER>` and sends `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
 - Use `filter()` for a single document `FilterCollection`, or `filterCollection()` / structured `filter_collections` when CargoWise expects multiple distinct `FilterCollection` nodes in the same document request.
 - DocManager requests require `withCompany()` and do not support top-level `sender_id` / `recipient_id`.
-- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update fields on an existing quote. The operation is sparse — only the setters you call are included in the outgoing `UniversalShipment`. `key` and `company` are the only requirements. All fluent setters available on `one_off_quote.create` are also available on the update path. The `DataTarget > Key` is automatically populated from the key passed to `oneOffQuote()`.
+- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update fields on an existing quote. The operation is sparse — only the setters you call are included in the outgoing `UniversalShipment`. `key` and `company` are the only requirements. All fluent setters available on `one_off_quote.create`, including `packingMode` / structured `packing_mode`, are also available on the update path. The `DataTarget > Key` is automatically populated from the key passed to `oneOffQuote()`.
 - Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, `container(...)->get()` for container type lookups, `oneOffQuote(...)->get()` for quote lookups, and `oneOffQuote('KEY')->update()` for sparse quote updates so retrieval and write flows stay explicit.
 - Use `docManager('QU1', 'QHEL00011452')` for DocManager lookups instead of falling back to `rawXml()`.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.

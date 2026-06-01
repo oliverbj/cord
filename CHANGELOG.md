@@ -17,6 +17,7 @@ All notable changes to `cord` will be documented in this file.
 * Add DocManager document retrieval via `withCompany()->docManager('MODULE', 'JOBNUMBER')`. The new `doc_manager.get` operation builds a `UniversalDocumentRequest` with `Type=DocManager`, composes the CargoWise key as `<MODULE> <JOBNUMBER>`, and places `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
 * Add repeated document `FilterCollection` support via `filterCollection()` and structured `filter_collections` for DocManager and other document retrieval operations. Existing `filter()` remains the single-collection shorthand.
 * Add one-off quote event support via `withCompany()->oneOffQuote('KEY')->addEvent(...)` and `fromStructured('one_off_quote.event.add', [...])`. This runs as a `UniversalEvent` request and places `Company`, `EnterpriseID`, and `ServerID` inside `Event > DataContext` for the target quote key.
+* Add one-off quote `packing_mode` support via `packingMode()` and structured `packing_mode` on create and update. This serializes as `Shipment > PackingMode > Code`, enabling modes such as `FCL`, `LCL`, `FTL`, and `LSE`.
 * Update Boost guidance, the Cord development skill, and README examples to cover the new DocManager and repeated `FilterCollection` flows.
 
 ## v3.2.8 - 2026-04-05

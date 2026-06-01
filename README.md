@@ -864,6 +864,9 @@ Cord::withCompany('CPH')
         ->country('AU')
     )
     ->deliveryAddress('NZAKLDL1')
+    ->carrierAddress('DHLAIR_WW')
+    ->addPotentialCarrier('KLMAIR_WW')
+    ->addPotentialCarrier('LUFAIR_WW')
     ->addChargeLine(fn ($c) => $c
         ->chargeCode('FRT')
         ->description('International Freight')
@@ -917,6 +920,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
         'country' => 'AU',
     ],
     'delivery_address' => 'NZAKLDL1',
+    'carrier_address' => 'DHLAIR_WW',
+    'potential_carriers' => ['KLMAIR_WW', 'LUFAIR_WW'],
     'pack_lines' => [
         [
             'pack_type' => 'BOX',
@@ -944,9 +949,11 @@ Optional one-off quote create helpers:
 - `packingMode(...)` maps to `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
+- `carrierAddress(...)` adds an organization address with `AddressType` set to `ShippingLineAddress`; passing a string such as `DHLAIR_WW` sets `OrganizationCode` to that carrier.
+- `addPotentialCarrier(...)` appends a `PotentialCarrier` row under `PotentialCarrierCollection`; passing `KLMAIR_WW` or `LUFAIR_WW` sets `PotentialCarrier > Code` to that organization code.
 - `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
 - When passing an address object, `address_line_1` is required unless `address_override` is set to `true`. With `address_override: true`, only `city` and `country` are required — useful for sending a partial address without a street line.
-- In structured payloads, use `org_role`, `packing_mode`, `event_branch`, `event_department`, and either an address object or a plain string for the address fields.
+- In structured payloads, use `org_role`, `packing_mode`, `event_branch`, `event_department`, `carrier_address`, `potential_carriers`, and either an address object or a plain string for the address fields.
 - `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.
 - `addContainer(...)` adds individual containers with `type` (required, e.g. `20GP`), optional `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`). Maps to `ContainerCollection > Container` in XML. Use this for FCL shipments.

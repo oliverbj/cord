@@ -46,6 +46,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
     'client_address' => 'ABSDEOSLP',
+    'carrier_address' => 'DHLAIR_WW',
+    'potential_carriers' => ['KLMAIR_WW', 'LUFAIR_WW'],
 ])->inspect();
 ```
 
@@ -53,6 +55,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `packing_mode` populates `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
+- For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.
+- Use `addPotentialCarrier()` or structured `potential_carriers` on `one_off_quote.create` to populate `PotentialCarrierCollection > PotentialCarrier > Code` with one or more carrier organization codes such as `KLMAIR_WW` and `LUFAIR_WW`.
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string. When using an address object, `address_line_1` is required unless `address_override: true` is also set — with override enabled, only `city` and `country` are required.
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.

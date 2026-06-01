@@ -883,6 +883,8 @@ it('publishes representative operation schemas', function () {
         ])->and($oneOffQuote['properties']['transport_mode'])->toMatchArray([
             'type' => 'string',
             'enum' => ['SEA', 'AIR', 'ROA'],
+        ])->and($oneOffQuote['properties']['packing_mode'])->toMatchArray([
+            'type' => 'string',
         ]);
 
     $clientAddressTypes = $oneOffQuote['properties']['client_address']['type'];
@@ -991,6 +993,7 @@ it('builds the same one-off quote xml from structured input', function () {
         ->portOfOrigin('AUSYD')
         ->portOfDestination('NZAKL')
         ->serviceLevel('STD')
+        ->packingMode('LCL')
         ->incoterm('DAP')
         ->additionalTerms('Export Only')
         ->isDomesticFreight(false)
@@ -1032,6 +1035,7 @@ it('builds the same one-off quote xml from structured input', function () {
         'port_of_origin' => 'AUSYD',
         'port_of_destination' => 'NZAKL',
         'service_level' => 'STD',
+        'packing_mode' => 'LCL',
         'incoterm' => 'DAP',
         'additional_terms' => 'Export Only',
         'is_domestic_freight' => false,
@@ -1087,6 +1091,7 @@ it('builds the same one-off quote xml from structured input', function () {
         ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
         ->toContain('<ServerID>TRN</ServerID>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<PackingMode><Code>LCL</Code></PackingMode>')
         ->not->toContain('<Key>')
         ->toContain('<Type>OneOffQuote</Type>');
 
@@ -2560,6 +2565,7 @@ it('builds the same one-off quote update xml from structured input', function ()
         ->oneOffQuote('QCPH00001004')
         ->update()
         ->transportMode('SEA')
+        ->packingMode('FCL')
         ->portOfOrigin('AUSYD')
         ->portOfDestination('NZAKL')
         ->totalWeight(5000, 'KG')
@@ -2570,6 +2576,7 @@ it('builds the same one-off quote update xml from structured input', function ()
         'company' => 'CPH',
         'key' => 'QCPH00001004',
         'transport_mode' => 'SEA',
+        'packing_mode' => 'FCL',
         'port_of_origin' => 'AUSYD',
         'port_of_destination' => 'NZAKL',
         'total_weight' => ['value' => 5000, 'unit_code' => 'KG'],
@@ -2585,6 +2592,7 @@ it('builds the same one-off quote update xml from structured input', function ()
         ->toContain('<Key>QCPH00001004</Key>')
         ->toContain('<Company><Code>CPH</Code></Company>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<PackingMode><Code>FCL</Code></PackingMode>')
         ->toContain('<GoodsValue>15000</GoodsValue>');
 });
 
@@ -2606,9 +2614,10 @@ it('includes the one_off_quote.update schema', function () {
         ],
     ]);
 
-    expect($schema['properties'])->toHaveKeys(['key', 'transport_mode', 'port_of_origin', 'port_of_destination']);
+    expect($schema['properties'])->toHaveKeys(['key', 'transport_mode', 'packing_mode', 'port_of_origin', 'port_of_destination']);
     expect(in_array('key', $schema['required'] ?? []))->toBeTrue();
     expect(in_array('transport_mode', $schema['required'] ?? []))->toBeFalse();
+    expect(in_array('packing_mode', $schema['required'] ?? []))->toBeFalse();
 });
 
 it('builds a one-off quote update xml without no-op keys from create', function () {

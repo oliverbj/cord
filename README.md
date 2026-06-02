@@ -848,6 +848,8 @@ Cord::withCompany('CPH')
     ->eventDepartment('PRC')
     ->transportMode('SEA')
     ->packingMode('LCL')
+    ->quoteKpi('PEN')
+    ->commodity('GEN')
     ->portOfOrigin('AUSYD')
     ->portOfDestination('NZAKL')
     ->serviceLevel('STD')
@@ -911,6 +913,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
     'packing_mode' => 'LCL',
+    'quote_kpi' => 'PEN',
+    'commodity' => 'GEN',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
     'client_address' => 'ABSDEOSLP',
@@ -947,13 +951,15 @@ Optional one-off quote create helpers:
 - `branch(...)` maps to both `Shipment > DataContext > Branch > Code` and `Shipment > JobCosting > Branch > Code`.
 - `orgRole(...)` maps to `Shipment > DataContext > OrgRole`; use `LOC` for Local Client or `OAG` for Overseas Agent.
 - `packingMode(...)` maps to `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
+- `quoteKpi(...)` maps to `Shipment > QuoteKPI > Code`; passing a code such as `PEN` is sufficient.
+- `commodity(...)` maps to `Shipment > LocalProcessing > Commodity > Code`; passing a code such as `GEN` is sufficient.
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
 - `carrierAddress(...)` adds an organization address with `AddressType` set to `ShippingLineAddress`; passing a string such as `DHLAIR_WW` sets `OrganizationCode` to that carrier.
 - `addPotentialCarrier(...)` appends a `PotentialCarrier` row under `PotentialCarrierCollection`; passing `KLMAIR_WW` or `LUFAIR_WW` sets `PotentialCarrier > Code` to that organization code.
 - `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
 - When passing an address object, `address_line_1` is required unless `address_override` is set to `true`. With `address_override: true`, only `city` and `country` are required — useful for sending a partial address without a street line.
-- In structured payloads, use `org_role`, `packing_mode`, `event_branch`, `event_department`, `carrier_address`, `potential_carriers`, and either an address object or a plain string for the address fields.
+- In structured payloads, use `org_role`, `packing_mode`, `quote_kpi`, `commodity`, `event_branch`, `event_department`, `carrier_address`, `potential_carriers`, and either an address object or a plain string for the address fields.
 - `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.
 - `addContainer(...)` adds individual containers with `type` (required, e.g. `20GP`), optional `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`). Maps to `ContainerCollection > Container` in XML. Use this for FCL shipments.
@@ -994,7 +1000,7 @@ Cord::withCompany('CPH')
     ->run();
 ```
 
-Exact same fluent setters as create are available — `transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, `clientAddress`, `pickupAddress`, `deliveryAddress`, `addChargeLine`, `addPackLine`, `addContainer`, `addAttachedDocument`, and `withPayload`. Only the setters you call will appear in the outgoing XML.
+The shared fluent setters from create are available here too — `transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, `clientAddress`, `pickupAddress`, `deliveryAddress`, `addChargeLine`, `addPackLine`, `addContainer`, `addAttachedDocument`, and `withPayload`. `quoteKpi()` and `commodity()` are create-only. Only the setters you call will appear in the outgoing XML.
 
 Structured equivalent:
 

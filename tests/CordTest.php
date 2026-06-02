@@ -885,6 +885,10 @@ it('publishes representative operation schemas', function () {
             'enum' => ['SEA', 'AIR', 'ROA'],
         ])->and($oneOffQuote['properties']['packing_mode'])->toMatchArray([
             'type' => 'string',
+        ])->and($oneOffQuote['properties']['quote_kpi'])->toMatchArray([
+            'type' => 'string',
+        ])->and($oneOffQuote['properties']['commodity'])->toMatchArray([
+            'type' => 'string',
         ])->and($oneOffQuote['properties']['potential_carriers'])->toMatchArray([
             'type' => 'array',
             'items' => ['type' => 'string'],
@@ -1000,6 +1004,8 @@ it('builds the same one-off quote xml from structured input', function () {
         ->portOfDestination('NZAKL')
         ->serviceLevel('STD')
         ->packingMode('LCL')
+        ->quoteKpi('PEN')
+        ->commodity('GEN')
         ->incoterm('DAP')
         ->additionalTerms('Export Only')
         ->isDomesticFreight(false)
@@ -1042,6 +1048,8 @@ it('builds the same one-off quote xml from structured input', function () {
         'port_of_destination' => 'NZAKL',
         'service_level' => 'STD',
         'packing_mode' => 'LCL',
+        'quote_kpi' => 'PEN',
+        'commodity' => 'GEN',
         'incoterm' => 'DAP',
         'additional_terms' => 'Export Only',
         'is_domestic_freight' => false,
@@ -1097,6 +1105,8 @@ it('builds the same one-off quote xml from structured input', function () {
         ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
         ->toContain('<ServerID>TRN</ServerID>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
+        ->toContain('<QuoteKPI><Code>PEN</Code></QuoteKPI>')
+        ->toContain('<LocalProcessing><Commodity><Code>GEN</Code></Commodity></LocalProcessing>')
         ->toContain('<PackingMode><Code>LCL</Code></PackingMode>')
         ->not->toContain('<Key>')
         ->toContain('<Type>OneOffQuote</Type>');

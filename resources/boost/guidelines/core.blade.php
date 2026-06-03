@@ -43,7 +43,6 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'event_department' => 'PRC',
     'transport_mode' => 'SEA',
     'packing_mode' => 'LCL',
-    'quote_kpi' => 'PEN',
     'commodity' => 'GEN',
     'port_of_origin' => 'AUSYD',
     'port_of_destination' => 'NZAKL',
@@ -54,9 +53,8 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 ```
 
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
-- For `one_off_quote.create`, `org_role` populates `Shipment > DataContext > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
+- For `one_off_quote.create`, `org_role` populates `Shipment > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `packing_mode` populates `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
-- For `one_off_quote.create`, `quote_kpi` populates `Shipment > QuoteKPI > Code`; passing a code like `PEN` is sufficient.
 - For `one_off_quote.create`, `commodity` populates `Shipment > LocalProcessing > Commodity > Code`; passing a code like `GEN` is sufficient.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.
@@ -70,7 +68,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - Use `filter()` for a single document `FilterCollection`, or `filterCollection()` / structured `filter_collections` when CargoWise expects multiple distinct `FilterCollection` nodes in the same document request.
 - DocManager requests require `withCompany()` and do not use top-level `sender_id` / `recipient_id`.
 
-- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update an existing one-off quote with a sparse `UniversalShipment`. Only the fields you set are sent. Requires `withCompany()` and a quote key. The shared fluent setters from create (`transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, address builders, charge lines, pack lines, containers, attached documents, `branch`, `department`, `orgRole`, `eventBranch`, and `eventDepartment`) are also available on the update path. `quoteKpi()` and `commodity()` are create-only.
+- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update an existing one-off quote with a sparse `UniversalShipment`. Only the fields you set are sent. Requires `withCompany()` and a quote key. The shared fluent setters from create (`transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, address builders, charge lines, pack lines, containers, attached documents, `branch`, `department`, `orgRole`, `eventBranch`, and `eventDepartment`) are also available on the update path. `commodity()` is create-only.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.

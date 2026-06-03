@@ -885,8 +885,6 @@ it('publishes representative operation schemas', function () {
             'enum' => ['SEA', 'AIR', 'ROA'],
         ])->and($oneOffQuote['properties']['packing_mode'])->toMatchArray([
             'type' => 'string',
-        ])->and($oneOffQuote['properties']['quote_kpi'])->toMatchArray([
-            'type' => 'string',
         ])->and($oneOffQuote['properties']['commodity'])->toMatchArray([
             'type' => 'string',
         ])->and($oneOffQuote['properties']['potential_carriers'])->toMatchArray([
@@ -1004,7 +1002,6 @@ it('builds the same one-off quote xml from structured input', function () {
         ->portOfDestination('NZAKL')
         ->serviceLevel('STD')
         ->packingMode('LCL')
-        ->quoteKpi('PEN')
         ->commodity('GEN')
         ->incoterm('DAP')
         ->additionalTerms('Export Only')
@@ -1048,7 +1045,6 @@ it('builds the same one-off quote xml from structured input', function () {
         'port_of_destination' => 'NZAKL',
         'service_level' => 'STD',
         'packing_mode' => 'LCL',
-        'quote_kpi' => 'PEN',
         'commodity' => 'GEN',
         'incoterm' => 'DAP',
         'additional_terms' => 'Export Only',
@@ -1105,16 +1101,16 @@ it('builds the same one-off quote xml from structured input', function () {
         ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
         ->toContain('<ServerID>TRN</ServerID>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
-        ->toContain('<QuoteKPI><Code>PEN</Code></QuoteKPI>')
         ->toContain('<LocalProcessing><Commodity><Code>GEN</Code></Commodity></LocalProcessing>')
         ->toContain('<PackingMode><Code>LCL</Code></PackingMode>')
         ->not->toContain('<Key>')
         ->toContain('<Type>OneOffQuote</Type>');
 
-    expect((bool) preg_match('/<DataContext>.*<Branch><Code>A01<\/Code><\/Branch>.*<OrgRole>LOC<\/OrgRole>.*<\/DataContext>/s', $structuredXml))->toBeTrue();
+    expect((bool) preg_match('/<DataContext>.*<OrgRole>LOC<\/OrgRole>.*<\/DataContext>/s', $structuredXml))->toBeFalse();
+    expect((bool) preg_match('/<Shipment>.*<OrgRole>LOC<\/OrgRole>.*<LocalProcessing>/s', $structuredXml))->toBeTrue();
 });
 
-it('supports org role in one-off quote create data context', function () {
+it('supports org role at the shipment level for one-off quote create', function () {
     $fluentXml = Cord::withCompany('CPH')
         ->oneOffQuote()
         ->create()
@@ -1142,7 +1138,8 @@ it('supports org role in one-off quote create data context', function () {
         ->toContain('<OrgRole>OAG</OrgRole>')
         ->toContain('<Company><Code>CPH</Code></Company>');
 
-    expect((bool) preg_match('/<DataContext>.*<Branch><Code>A01<\/Code><\/Branch>.*<OrgRole>OAG<\/OrgRole>.*<\/DataContext>/s', $structuredXml))->toBeTrue();
+    expect((bool) preg_match('/<DataContext>.*<OrgRole>OAG<\/OrgRole>.*<\/DataContext>/s', $structuredXml))->toBeFalse();
+    expect((bool) preg_match('/<Shipment>.*<OrgRole>OAG<\/OrgRole>.*<TransportMode>/s', $structuredXml))->toBeTrue();
 });
 
 it('supports event branch and department in one-off quote create data context', function () {
@@ -1179,7 +1176,8 @@ it('supports event branch and department in one-off quote create data context', 
         ->toContain('<EventDepartment><Code>PRC</Code></EventDepartment>')
         ->toContain('<Company><Code>CPH</Code></Company>');
 
-    expect((bool) preg_match('/<DataContext>.*<Branch><Code>A01<\/Code><\/Branch>.*<OrgRole>LOC<\/OrgRole>.*<EventBranch><Code>QTE<\/Code><\/EventBranch>.*<EventDepartment><Code>PRC<\/Code><\/EventDepartment>.*<\/DataContext>/s', $structuredXml))->toBeTrue();
+    expect((bool) preg_match('/<DataContext>.*<OrgRole>LOC<\/OrgRole>.*<\/DataContext>/s', $structuredXml))->toBeFalse();
+    expect((bool) preg_match('/<DataContext>.*<Branch><Code>A01<\/Code><\/Branch>.*<EventBranch><Code>QTE<\/Code><\/EventBranch>.*<EventDepartment><Code>PRC<\/Code><\/EventDepartment>.*<\/DataContext>/s', $structuredXml))->toBeTrue();
 });
 
 it('supports organization code only addresses for one-off quote create', function () {
@@ -1831,7 +1829,8 @@ it('builds a one-off quote create payload without a key', function () {
         ->toContain('<IsDomesticFreight>false</IsDomesticFreight>')
         ->toContain('<GoodsValue>15000</GoodsValue>');
 
-    expect((bool) preg_match('/<DataContext>.*<Branch><Code>A01<\/Code><\/Branch>.*<OrgRole>LOC<\/OrgRole>.*<\/DataContext>/s', $xml))->toBeTrue();
+    expect((bool) preg_match('/<DataContext>.*<OrgRole>LOC<\/OrgRole>.*<\/DataContext>/s', $xml))->toBeFalse();
+    expect((bool) preg_match('/<Shipment>.*<OrgRole>LOC<\/OrgRole>.*<TransportMode>/s', $xml))->toBeTrue();
     expect($xml)->not->toContain('<Key>');
 });
 

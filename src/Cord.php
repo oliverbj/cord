@@ -935,22 +935,6 @@ class Cord
     }
 
     /**
-     * Set one-off quote KPI.
-     */
-    #[OperationField(OperationId::OneOffQuoteCreate, name: 'quote_kpi')]
-    public function quoteKpi(string $code): self
-    {
-        $this->assertOneOffQuoteBuilderContext('quoteKpi');
-
-        $this->oneOffQuoteDraft['quoteKpi'] = [
-            'code' => $code,
-        ];
-        $this->markStructuredField('quote_kpi');
-
-        return $this;
-    }
-
-    /**
      * Set one-off quote commodity.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'commodity')]
@@ -3232,12 +3216,6 @@ class Cord
         if (isset($quoteDetails['packingMode'])) {
             $payload['PackingMode'] = [
                 'Code' => $quoteDetails['packingMode']['code'],
-            ];
-        }
-
-        if (isset($quoteDetails['quoteKpi'])) {
-            $payload['QuoteKPI'] = [
-                'Code' => $quoteDetails['quoteKpi']['code'],
             ];
         }
 

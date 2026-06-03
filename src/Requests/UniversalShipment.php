@@ -55,7 +55,7 @@ class UniversalShipment extends Request
         }
 
         if (is_string($quoteDraft['orgRole'] ?? null) && trim($quoteDraft['orgRole']) !== '') {
-            $context['Shipment']['DataContext']['OrgRole'] = $quoteDraft['orgRole'];
+            $context['Shipment']['OrgRole'] = $quoteDraft['orgRole'];
         }
 
         if (is_string($quoteDraft['eventBranch'] ?? null) && trim($quoteDraft['eventBranch']) !== '') {

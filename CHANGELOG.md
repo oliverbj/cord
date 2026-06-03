@@ -45,6 +45,7 @@ All notable changes to `cord` will be documented in this file.
 * Add one-off quote `commodity` support on create via `commodity()` and structured `commodity`. This serializes as `Shipment > LocalProcessing > Commodity > Code`; passing the commodity code alone is sufficient.
 * Add one-off quote `carrier_address` support on create via `carrierAddress()` and structured `carrier_address`. This writes an `OrganizationAddress` with `AddressType=ShippingLineAddress`, allowing carrier organization codes such as `DHLAIR_WW`.
 * Add one-off quote `potential_carriers` support on create via `addPotentialCarrier()` and structured `potential_carriers`. This writes `PotentialCarrierCollection > PotentialCarrier > Code` rows for carrier organization codes such as `KLMAIR_WW` and `LUFAIR_WW`.
+* Add one-off quote `notes` support on create via `addNote()` and structured `notes`. This writes `Shipment > NoteCollection > Note`, maps `key` to `Description` and `text` to `NoteText`, and keeps `IsCustomDescription=false` with the fixed `AAA` note context.
 * Fix one-off quote `org_role` to serialize at `Shipment > OrgRole` instead of `Shipment > DataContext > OrgRole`.
 * Update Boost guidance, the Cord development skill, and README examples to cover the new DocManager and repeated `FilterCollection` flows.
 

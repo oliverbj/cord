@@ -7,6 +7,7 @@ use Oliverbj\Cord\Attributes\StructuredField;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteNoteBuilder;
 use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Facades\Cord;
 
@@ -887,6 +888,8 @@ it('publishes representative operation schemas', function () {
             'type' => 'string',
         ])->and($oneOffQuote['properties']['commodity'])->toMatchArray([
             'type' => 'string',
+        ])->and($oneOffQuote['properties']['notes'])->toMatchArray([
+            'type' => 'array',
         ])->and($oneOffQuote['properties']['potential_carriers'])->toMatchArray([
             'type' => 'array',
             'items' => ['type' => 'string'],
@@ -1023,6 +1026,9 @@ it('builds the same one-off quote xml from structured input', function () {
             ->addressLine1('10 TEST ROAD')
             ->city('AUCKLAND')
             ->country('NZ'))
+        ->addNote(fn ($n) => $n
+            ->key('One Off Quote Notes')
+            ->text('Please ensure delivery on Monday morning. Handle as fragile.'))
         ->addChargeLine(fn ($c) => $c
             ->chargeCode('FRT')
             ->description('International Freight')
@@ -1069,6 +1075,12 @@ it('builds the same one-off quote xml from structured input', function () {
             'city' => 'AUCKLAND',
             'country' => 'NZ',
         ],
+        'notes' => [
+            [
+                'key' => 'One Off Quote Notes',
+                'text' => 'Please ensure delivery on Monday morning. Handle as fragile.',
+            ],
+        ],
         'charge_lines' => [
             [
                 'charge_code' => 'FRT',
@@ -1103,6 +1115,11 @@ it('builds the same one-off quote xml from structured input', function () {
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
         ->toContain('<LocalProcessing><Commodity><Code>GEN</Code></Commodity></LocalProcessing>')
         ->toContain('<PackingMode><Code>LCL</Code></PackingMode>')
+        ->toContain('<NoteCollection>')
+        ->toContain('<Description>One Off Quote Notes</Description>')
+        ->toContain('<IsCustomDescription>false</IsCustomDescription>')
+        ->toContain('<NoteText>Please ensure delivery on Monday morning. Handle as fragile.</NoteText>')
+        ->toContain('<NoteContext><Code>AAA</Code><Description>Module: A - All; Direction: A - All; Freight: A - All</Description></NoteContext>')
         ->not->toContain('<Key>')
         ->toContain('<Type>OneOffQuote</Type>');
 
@@ -1778,6 +1795,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         OneOffQuoteAddressBuilder::class,
         OneOffQuoteChargeLineBuilder::class,
         OneOffQuoteAttachedDocumentBuilder::class,
+        OneOffQuoteNoteBuilder::class,
         OneOffQuotePackLineBuilder::class,
     ] as $builderClass) {
         $reflection = new ReflectionClass($builderClass);

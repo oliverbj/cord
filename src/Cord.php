@@ -15,6 +15,7 @@ use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteContainerBuilder;
+use Oliverbj\Cord\Builders\OneOffQuoteNoteBuilder;
 use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
 use Oliverbj\Cord\Builders\OrganizationContactBuilder;
@@ -1094,6 +1095,27 @@ class Cord
 
         $this->oneOffQuoteDraft['potentialCarriers'][] = $organizationCode;
         $this->markStructuredField('potential_carriers');
+
+        return $this;
+    }
+
+    /**
+     * Add a single note to the one-off quote.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'notes', repeatable: true, builder: OneOffQuoteNoteBuilder::class)]
+    public function addNote(Closure $builder): self
+    {
+        $this->assertOneOffQuoteBuilderContext('addNote');
+
+        $noteBuilder = new OneOffQuoteNoteBuilder;
+        $builder($noteBuilder);
+
+        if (! isset($this->oneOffQuoteDraft['notes']) || ! is_array($this->oneOffQuoteDraft['notes'])) {
+            $this->oneOffQuoteDraft['notes'] = [];
+        }
+
+        $this->oneOffQuoteDraft['notes'][] = $noteBuilder->toArray();
+        $this->markStructuredField('notes');
 
         return $this;
     }
@@ -3180,6 +3202,17 @@ class Cord
             }
         }
 
+        if (isset($payload['notes']) && is_array($payload['notes'])) {
+            foreach ($payload['notes'] as $index => $note) {
+                foreach (['key', 'text'] as $requiredField) {
+                    $value = $note[$requiredField] ?? null;
+                    if (! is_string($value) || trim($value) === '') {
+                        $errors['notes.'.$index.'.'.$requiredField] = ['The '.$requiredField.' field is required.'];
+                    }
+                }
+            }
+        }
+
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
@@ -3286,6 +3319,17 @@ class Cord
 
             $payload['JobCosting']['ChargeLineCollection'] = [
                 'ChargeLine' => count($chargeLines) === 1 ? $chargeLines[0] : $chargeLines,
+            ];
+        }
+
+        if (isset($quoteDetails['notes']) && is_array($quoteDetails['notes']) && $quoteDetails['notes'] !== []) {
+            $notes = array_map(
+                fn (array $note) => $this->buildOneOffQuoteNotePayload($note),
+                $quoteDetails['notes']
+            );
+
+            $payload['NoteCollection'] = [
+                'Note' => count($notes) === 1 ? $notes[0] : $notes,
             ];
         }
 
@@ -3481,6 +3525,19 @@ class Cord
         }
 
         return array_replace_recursive($payload, $packLine['attributes'] ?? []);
+    }
+
+    private function buildOneOffQuoteNotePayload(array $note): array
+    {
+        return [
+            'Description' => $note['key'],
+            'IsCustomDescription' => $this->normalizeBoolean(false),
+            'NoteText' => $note['text'],
+            'NoteContext' => [
+                'Code' => 'AAA',
+                'Description' => 'Module: A - All; Direction: A - All; Freight: A - All',
+            ],
+        ];
     }
 
     private function buildOneOffQuoteContainerPayload(array $container): array

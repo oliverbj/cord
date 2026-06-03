@@ -49,6 +49,12 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'client_address' => 'ABSDEOSLP',
     'carrier_address' => 'DHLAIR_WW',
     'potential_carriers' => ['KLMAIR_WW', 'LUFAIR_WW'],
+    'notes' => [
+        [
+            'key' => 'One Off Quote Notes',
+            'text' => 'Handle as fragile. Deliver before noon if possible.',
+        ],
+    ],
 ])->inspect();
 ```
 
@@ -59,6 +65,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.
 - Use `addPotentialCarrier()` or structured `potential_carriers` on `one_off_quote.create` to populate `PotentialCarrierCollection > PotentialCarrier > Code` with one or more carrier organization codes such as `KLMAIR_WW` and `LUFAIR_WW`.
+- Use `addNote()` or structured `notes` on `one_off_quote.create` to populate `Shipment > NoteCollection > Note`. `key` becomes `Description`, `text` becomes `NoteText`, `IsCustomDescription` is always `false`, and `NoteContext` is fixed to `AAA / Module: A - All; Direction: A - All; Freight: A - All`.
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string. When using an address object, `address_line_1` is required unless `address_override: true` is also set — with override enabled, only `city` and `country` are required.
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
@@ -68,7 +75,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - Use `filter()` for a single document `FilterCollection`, or `filterCollection()` / structured `filter_collections` when CargoWise expects multiple distinct `FilterCollection` nodes in the same document request.
 - DocManager requests require `withCompany()` and do not use top-level `sender_id` / `recipient_id`.
 
-- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update an existing one-off quote with a sparse `UniversalShipment`. Only the fields you set are sent. Requires `withCompany()` and a quote key. The shared fluent setters from create (`transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, address builders, charge lines, pack lines, containers, attached documents, `branch`, `department`, `orgRole`, `eventBranch`, and `eventDepartment`) are also available on the update path. `commodity()` is create-only.
+- Use `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', [...])` to update an existing one-off quote with a sparse `UniversalShipment`. Only the fields you set are sent. Requires `withCompany()` and a quote key. The shared fluent setters from create (`transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, address builders, charge lines, pack lines, containers, attached documents, `branch`, `department`, `orgRole`, `eventBranch`, and `eventDepartment`) are also available on the update path. `commodity()` and `addNote()` are create-only.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
 - Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.

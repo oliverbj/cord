@@ -2624,4 +2624,3 @@ it('requires a code when calling organization create', function () {
     expect(fn () => Cord::organization()->create())
         ->toThrow(Exception::class, 'organization() requires a code for create().');
 });
-

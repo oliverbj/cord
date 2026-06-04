@@ -843,6 +843,7 @@ it('describes staff operations from the registry', function () {
 
 it('publishes representative operation schemas', function () {
     $docManagerGet = Cord::schema('doc_manager.get');
+    $shipmentEventAdd = Cord::schema('shipment.event.add');
     $oneOffQuoteEventAdd = Cord::schema('one_off_quote.event.add');
     $oneOffQuoteGet = Cord::schema('one_off_quote.get');
     $oneOffQuote = Cord::schema('one_off_quote.create');
@@ -911,9 +912,14 @@ it('publishes representative operation schemas', function () {
                 'action' => 'event.add',
             ],
         ])
-        ->and($oneOffQuoteEventAdd['properties'])->toHaveKeys(['company', 'enterprise', 'server', 'key', 'event'])
+        ->and($oneOffQuoteEventAdd['properties'])->toHaveKeys(['company', 'enterprise', 'server', 'key', 'event', 'event_contexts'])
         ->and($oneOffQuoteEventAdd['properties']['event']['type'])->toBe('object')
+        ->and($oneOffQuoteEventAdd['properties']['event_contexts']['type'])->toBe('array')
+        ->and($oneOffQuoteEventAdd['properties']['event_contexts']['items']['type'])->toBe('object')
+        ->and($oneOffQuoteEventAdd['properties']['event_contexts']['items']['required'])->toBe(['type', 'value'])
         ->and($oneOffQuoteEventAdd['properties'])->not->toHaveKeys(['sender_id', 'recipient_id'])
+        ->and($shipmentEventAdd['properties'])->toHaveKeys(['sender_id', 'recipient_id', 'key', 'event', 'event_contexts'])
+        ->and($shipmentEventAdd['properties']['event_contexts']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
         ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server', 'org_role', 'event_branch', 'event_department'])
@@ -1595,6 +1601,16 @@ it('builds the same shipment helper xml from structured input', function () {
             'reference' => 'My Reference',
             'is_estimate' => true,
         ],
+        'event_contexts' => [
+            [
+                'type' => 'MBLNumber',
+                'value' => 'HBL85161TRN',
+            ],
+            [
+                'type' => 'BOLNumber',
+                'value' => '423908',
+            ],
+        ],
     ])->inspect();
 
     expect($eventXml)->toBe(
@@ -1605,8 +1621,13 @@ it('builds the same shipment helper xml from structured input', function () {
                 reference: 'My Reference',
                 isEstimate: true,
             )
+            ->addEventContext('MBLNumber', 'HBL85161TRN')
+            ->addEventContext('BOLNumber', '423908')
             ->inspect()
-    );
+    )->and($eventXml)
+        ->toContain('<ContextCollection>')
+        ->toContain('<Type>MBLNumber</Type>')
+        ->toContain('<Value>423908</Value>');
 
     $structuredDocumentXml = Cord::fromStructured('shipment.document.add', [
         'key' => 'SJFK21060014',
@@ -2159,7 +2180,6 @@ it('describes one-off quote operations from the registry', function () {
             ['id' => 'one_off_quote.document.add', 'action' => 'document.add'],
             ['id' => 'one_off_quote.event.add', 'action' => 'event.add'],
             ['id' => 'one_off_quote.get', 'action' => 'get'],
-            ['id' => 'one_off_quote.update', 'action' => 'update'],
         ]);
 });
 
@@ -2172,6 +2192,8 @@ it('builds a one-off quote event add payload', function () {
             reference: 'Quote event',
             isEstimate: true,
         )
+        ->addEventContext('MBLNumber', 'HBL85161TRN')
+        ->addEventContext('BOLNumber', '423908')
         ->inspect();
 
     $structuredXml = Cord::fromStructured('one_off_quote.event.add', [
@@ -2182,6 +2204,16 @@ it('builds a one-off quote event add payload', function () {
             'type' => 'DIM',
             'reference' => 'Quote event',
             'is_estimate' => true,
+        ],
+        'event_contexts' => [
+            [
+                'type' => 'MBLNumber',
+                'value' => 'HBL85161TRN',
+            ],
+            [
+                'type' => 'BOLNumber',
+                'value' => '423908',
+            ],
         ],
     ])->inspect();
 
@@ -2198,7 +2230,10 @@ it('builds a one-off quote event add payload', function () {
         ->toContain('<ServerID>TRN</ServerID>')
         ->toContain('<EventType>DIM</EventType>')
         ->toContain('<EventReference>Quote event</EventReference>')
-        ->toContain('<IsEstimate>true</IsEstimate>');
+        ->toContain('<IsEstimate>true</IsEstimate>')
+        ->toContain('<ContextCollection>')
+        ->toContain('<Type>MBLNumber</Type>')
+        ->toContain('<Value>423908</Value>');
 });
 
 it('builds a one-off quote document add payload', function () {
@@ -2473,17 +2508,9 @@ it('requires company context for one-off quote create', function () {
     ]);
 });
 
-it('supports one-off quote update', function () {
-    $xml = Cord::withCompany('CPH')
-        ->oneOffQuote('00001063')
-        ->update()
-        ->transportMode('SEA')
-        ->inspect();
-
-    expect($xml)
-        ->toContain('<Key>00001063</Key>')
-        ->toContain('<Type>OneOffQuote</Type>')
-        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>');
+it('throws when calling oneOffQuote update', function () {
+    expect(fn () => Cord::oneOffQuote('00001063')->update())
+        ->toThrow(Exception::class, 'one-off quote update() is not supported by CargoWise.');
 });
 
 it('builds an organization create payload with INSERT action', function () {
@@ -2596,110 +2623,4 @@ it('validates fullName is required for organization create', function () {
 it('requires a code when calling organization create', function () {
     expect(fn () => Cord::organization()->create())
         ->toThrow(Exception::class, 'organization() requires a code for create().');
-});
-
-// One-off quote update tests
-
-it('throws when calling oneOffQuote update without a key', function () {
-    expect(fn () => Cord::oneOffQuote()->update())
-        ->toThrow(Exception::class, "oneOffQuote('KEY')->update() requires a quote key.");
-});
-
-it('throws when calling oneOffQuote update without a company', function () {
-    expect(fn () => Cord::oneOffQuote('QCPH00001004')->update()->transportMode('SEA')->inspect())
-        ->toThrow(Exception::class, 'Company code must be provided for one-off quote update requests.');
-});
-
-it('builds a one-off quote update xml with a key and transport mode only', function () {
-    $xml = Cord::withCompany('CPH')
-        ->oneOffQuote('QCPH00001004')
-        ->update()
-        ->transportMode('SEA')
-        ->inspect();
-
-    expect($xml)
-        ->toContain('<UniversalShipment>')
-        ->not->toContain('<SenderID>')
-        ->not->toContain('<RecipientID>')
-        ->toContain('<Type>OneOffQuote</Type>')
-        ->toContain('<Key>QCPH00001004</Key>')
-        ->toContain('<Company><Code>CPH</Code></Company>')
-        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
-        ->toContain('<ServerID>TRN</ServerID>')
-        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>');
-});
-
-it('builds the same one-off quote update xml from structured input', function () {
-    $fluentXml = Cord::withCompany('CPH')
-        ->oneOffQuote('QCPH00001004')
-        ->update()
-        ->transportMode('SEA')
-        ->packingMode('FCL')
-        ->portOfOrigin('AUSYD')
-        ->portOfDestination('NZAKL')
-        ->totalWeight(5000, 'KG')
-        ->goodsValue(15000, 'AUD')
-        ->inspect();
-
-    $structuredXml = Cord::fromStructured('one_off_quote.update', [
-        'company' => 'CPH',
-        'key' => 'QCPH00001004',
-        'transport_mode' => 'SEA',
-        'packing_mode' => 'FCL',
-        'port_of_origin' => 'AUSYD',
-        'port_of_destination' => 'NZAKL',
-        'total_weight' => ['value' => 5000, 'unit_code' => 'KG'],
-        'goods_value' => ['amount' => 15000, 'currency_code' => 'AUD'],
-    ])->inspect();
-
-    expect($structuredXml)->toBe($fluentXml)
-        ->and($structuredXml)
-        ->toContain('<UniversalShipment>')
-        ->not->toContain('<SenderID>')
-        ->not->toContain('<RecipientID>')
-        ->toContain('<Type>OneOffQuote</Type>')
-        ->toContain('<Key>QCPH00001004</Key>')
-        ->toContain('<Company><Code>CPH</Code></Company>')
-        ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
-        ->toContain('<PackingMode><Code>FCL</Code></PackingMode>')
-        ->toContain('<GoodsValue>15000</GoodsValue>');
-});
-
-it('returns the active schema for a one-off quote update context', function () {
-    $description = Cord::oneOffQuote('QCPH00001004')->update()->describe();
-
-    expect($description)->toBe(Cord::schema('one_off_quote.update'));
-});
-
-it('includes the one_off_quote.update schema', function () {
-    $schema = Cord::schema('one_off_quote.update');
-
-    expect($schema)->toMatchArray([
-        'type' => 'object',
-        'x-cord' => [
-            'operation_id' => 'one_off_quote.update',
-            'resource' => 'one_off_quote',
-            'action' => 'update',
-        ],
-    ]);
-
-    expect($schema['properties'])->toHaveKeys(['key', 'transport_mode', 'packing_mode', 'port_of_origin', 'port_of_destination']);
-    expect(in_array('key', $schema['required'] ?? []))->toBeTrue();
-    expect(in_array('transport_mode', $schema['required'] ?? []))->toBeFalse();
-    expect(in_array('packing_mode', $schema['required'] ?? []))->toBeFalse();
-});
-
-it('builds a one-off quote update xml without no-op keys from create', function () {
-    $xml = Cord::withCompany('CPH')
-        ->oneOffQuote('QCPH00001004')
-        ->update()
-        ->serviceLevel('EXP')
-        ->inspect();
-
-    expect($xml)
-        ->toContain('<Key>QCPH00001004</Key>')
-        ->toContain('<Type>OneOffQuote</Type>')
-        ->toContain('<ServiceLevel><Code>EXP</Code></ServiceLevel>')
-        ->not->toContain('<SenderID>')
-        ->not->toContain('<RecipientID>');
 });

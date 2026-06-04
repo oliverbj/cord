@@ -39,7 +39,6 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [One Off Quotes](#one-off-quotes)
     - [Query One-Off Quote](#query-one-off-quote)
   - [Create One-Off Quote](#create-one-off-quote)
-  - [Update One-Off Quote](#update-one-off-quote)
 - [Multiple Connections](#multiple-connections)
 - [Raw XML](#raw-xml)
 - [Response as JSON](#response-as-json)
@@ -279,7 +278,29 @@ Cord::shipment('SJFK21060014')
         reference: 'My Reference',
         isEstimate: true,
     )
+    ->addEventContext('MBLNumber', 'HBL85161TRN')
+    ->addEventContext('BOLNumber', '423908')
     ->run();
+```
+
+`addEventContext()` appends `Event > ContextCollection > Context` rows.
+
+Structured equivalent:
+
+```php
+Cord::fromStructured('shipment.event.add', [
+    'key' => 'SJFK21060014',
+    'event' => [
+        'date' => now()->toIso8601String(),
+        'type' => 'DIM',
+        'reference' => 'My Reference',
+        'is_estimate' => true,
+    ],
+    'event_contexts' => [
+        ['type' => 'MBLNumber', 'value' => 'HBL85161TRN'],
+        ['type' => 'BOLNumber', 'value' => '423908'],
+    ],
+])->run();
 ```
 
 ## DocManager
@@ -985,57 +1006,11 @@ $query = Cord::oneOffQuote('QCPH00001004')->get()->describe();
 $schema = Cord::schema('one_off_quote.create');
 $active = Cord::oneOffQuote()->create()->describe();
 
-$updateSchema = Cord::schema('one_off_quote.update');
-
 $docSchema = Cord::schema('one_off_quote.document.add');
 $eventSchema = Cord::schema('one_off_quote.event.add');
 ```
 
-### Update One-Off Quote
-
-One-off quote updates are sent as a sparse `UniversalShipment` request. Only the fields you set are included — all setters are optional.
-
-Call `withCompany()` before `run()` so Cord can populate the update `DataContext` with the company, `EnterpriseID`, and `ServerID`. The quote key passed to `oneOffQuote()` is written into `DataTargetCollection > DataTarget > Key`.
-
-```php
-Cord::withCompany('CPH')
-    ->oneOffQuote('QCPH00001004')
-    ->update()
-    ->transportMode('AIR')
-    ->packingMode('FCL')
-    ->portOfOrigin('AUSYD')
-    ->portOfDestination('GBLON')
-    ->serviceLevel('EXP')
-    ->run();
-```
-
-The shared fluent setters from create are available here too — `transportMode`, `packingMode`, `portOfOrigin`, `portOfDestination`, `serviceLevel`, `incoterm`, `totalWeight`, `totalVolume`, `goodsValue`, `additionalTerms`, `isDomesticFreight`, `branch`, `department`, `orgRole`, `eventBranch`, `eventDepartment`, `clientAddress`, `pickupAddress`, `deliveryAddress`, `addChargeLine`, `addPackLine`, `addContainer`, `addAttachedDocument`, and `withPayload`. `commodity()` and `addNote()` are create-only. Only the setters you call will appear in the outgoing XML.
-
-Structured equivalent:
-
-```php
-Cord::fromStructured('one_off_quote.update', [
-    'company' => 'CPH',
-    'key' => 'QCPH00001004',
-    'transport_mode' => 'AIR',
-    'packing_mode' => 'FCL',
-    'port_of_origin' => 'AUSYD',
-    'port_of_destination' => 'GBLON',
-    'service_level' => 'EXP',
-])->run();
-```
-
-Requirements:
-
-- `withCompany(...)` — required.
-- A quote key passed to `oneOffQuote('KEY')` — required.
-
-Introspection:
-
-```php
-$schema = Cord::schema('one_off_quote.update');
-$active = Cord::oneOffQuote('QCPH00001004')->update()->describe();
-```
+CargoWise does not support one-off quote updates through eAdapter, so Cord does not publish a `one_off_quote.update` operation.
 
 ### Add Document to One-Off Quote
 
@@ -1083,6 +1058,8 @@ Cord::withCompany('CPH')
         reference: 'Quote milestone',
         isEstimate: true,
     )
+    ->addEventContext('MBLNumber', 'HBL85161TRN')
+    ->addEventContext('BOLNumber', '423908')
     ->run();
 ```
 
@@ -1097,6 +1074,10 @@ Cord::fromStructured('one_off_quote.event.add', [
         'type' => 'DIM',
         'reference' => 'Quote milestone',
         'is_estimate' => true,
+    ],
+    'event_contexts' => [
+        ['type' => 'MBLNumber', 'value' => 'HBL85161TRN'],
+        ['type' => 'BOLNumber', 'value' => '423908'],
     ],
 ])->run();
 ```

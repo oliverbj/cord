@@ -27,10 +27,6 @@ class UniversalShipment extends Request
             'Type' => $this->cord->target->value,
         ];
 
-        if ($this->isOneOffQuoteUpdate()) {
-            $dataTarget['Key'] = $this->cord->targetKey;
-        }
-
         $context = [
             'Shipment' => [
                 'DataContext' => [
@@ -94,12 +90,6 @@ class UniversalShipment extends Request
     private function isOneOffQuoteWriteIntent(): bool
     {
         return $this->cord->target === DataTarget::OneOffQuote
-            && in_array($this->cord->activeOneOffQuoteIntent(), ['create', 'update'], true);
-    }
-
-    private function isOneOffQuoteUpdate(): bool
-    {
-        return $this->cord->target === DataTarget::OneOffQuote
-            && $this->cord->activeOneOffQuoteIntent() === 'update';
+            && $this->cord->activeOneOffQuoteIntent() === 'create';
     }
 }

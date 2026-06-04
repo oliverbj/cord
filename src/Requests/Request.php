@@ -111,6 +111,14 @@ abstract class Request implements RequestInterface
             $DataTargetArray['EventType'] = $this->cord->event['EventType'];
             $DataTargetArray['EventReference'] = $this->cord->event['EventReference'];
             $DataTargetArray['IsEstimate'] = $this->cord->event['IsEstimate'];
+
+            if ($this->cord->eventContexts !== []) {
+                $DataTargetArray['ContextCollection'] = [
+                    'Context' => count($this->cord->eventContexts) === 1
+                        ? $this->cord->eventContexts[0]
+                        : $this->cord->eventContexts,
+                ];
+            }
         }
 
         // 5. Add the schema defined by the XXXRequest class if any.

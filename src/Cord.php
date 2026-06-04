@@ -73,6 +73,8 @@ class Cord
 
     public array $event = [];
 
+    public array $eventContexts = [];
+
     public array $document = [];
 
     public array $address = [];
@@ -506,19 +508,10 @@ class Cord
         }
 
         if ($this->target === DataTarget::OneOffQuote) {
-            if (! is_string($this->targetKey) || trim($this->targetKey) === '') {
-                throw new \Exception("oneOffQuote('KEY')->update() requires a quote key.");
-            }
-
-            $this->oneOffQuoteIntent = 'update';
-            $this->requestType = RequestType::UniversalShipment;
-            $this->currentOperation = OperationId::OneOffQuoteUpdate;
-            $this->oneOffQuoteDraft['key'] = $this->targetKey;
-
-            return $this;
+            throw new \Exception('one-off quote update() is not supported by CargoWise.');
         }
 
-        throw new \Exception('update() is currently implemented for staff, organization and oneOffQuote only.');
+        throw new \Exception('update() is currently implemented for staff and organization only.');
     }
 
     /**
@@ -746,7 +739,6 @@ class Cord
     #[OperationField(OperationId::StaffCreate, required: true)]
     #[OperationField(OperationId::StaffUpdate)]
     #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
-    #[OperationField(OperationId::OneOffQuoteUpdate)]
     public function branch(string $branch): self
     {
         if ($this->target === DataTarget::OneOffQuote) {
@@ -767,7 +759,6 @@ class Cord
     #[OperationField(OperationId::StaffCreate, required: true)]
     #[OperationField(OperationId::StaffUpdate)]
     #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
-    #[OperationField(OperationId::OneOffQuoteUpdate)]
     public function department(string $department): self
     {
         if ($this->target === DataTarget::OneOffQuote) {
@@ -781,7 +772,6 @@ class Cord
      * Set the one-off quote event branch code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'event_branch')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'event_branch')]
     public function eventBranch(string $branch): self
     {
         return $this->setOneOffQuoteDraftValue('eventBranch', $branch);
@@ -791,7 +781,6 @@ class Cord
      * Set the one-off quote event department code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'event_department')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'event_department')]
     public function eventDepartment(string $department): self
     {
         return $this->setOneOffQuoteDraftValue('eventDepartment', $department);
@@ -801,7 +790,6 @@ class Cord
      * Set the one-off quote organization role.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'org_role', enum: ['LOC', 'OAG'])]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'org_role', enum: ['LOC', 'OAG'])]
     public function orgRole(string $role): self
     {
         return $this->setOneOffQuoteDraftValue('orgRole', $role);
@@ -854,7 +842,6 @@ class Cord
      * Set one-off quote transport mode.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'transport_mode', required: true, enum: ['SEA', 'AIR', 'ROA'])]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'transport_mode', enum: ['SEA', 'AIR', 'ROA'])]
     public function transportMode(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('transportMode');
@@ -871,7 +858,6 @@ class Cord
      * Set one-off quote origin port.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_origin', required: true)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'port_of_origin')]
     public function portOfOrigin(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('portOfOrigin');
@@ -888,7 +874,6 @@ class Cord
      * Set one-off quote destination port.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_destination', required: true)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'port_of_destination')]
     public function portOfDestination(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('portOfDestination');
@@ -905,7 +890,6 @@ class Cord
      * Set one-off quote service level.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'service_level')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'service_level')]
     public function serviceLevel(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('serviceLevel');
@@ -922,7 +906,6 @@ class Cord
      * Set one-off quote packing mode.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'packing_mode')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'packing_mode')]
     public function packingMode(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('packingMode');
@@ -955,7 +938,6 @@ class Cord
      * Set one-off quote incoterm.
      */
     #[OperationField(OperationId::OneOffQuoteCreate)]
-    #[OperationField(OperationId::OneOffQuoteUpdate)]
     public function incoterm(string $code): self
     {
         $this->assertOneOffQuoteBuilderContext('incoterm');
@@ -972,7 +954,6 @@ class Cord
      * Set one-off quote total weight.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'total_weight')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'total_weight')]
     public function totalWeight(float|int|string $value, string $unitCode): self
     {
         $this->assertOneOffQuoteBuilderContext('totalWeight');
@@ -990,7 +971,6 @@ class Cord
      * Set one-off quote total volume.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'total_volume')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'total_volume')]
     public function totalVolume(float|int|string $value, string $unitCode): self
     {
         $this->assertOneOffQuoteBuilderContext('totalVolume');
@@ -1008,7 +988,6 @@ class Cord
      * Set one-off quote goods value.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'goods_value')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'goods_value')]
     public function goodsValue(float|int|string $amount, string $currencyCode): self
     {
         $this->assertOneOffQuoteBuilderContext('goodsValue');
@@ -1026,7 +1005,6 @@ class Cord
      * Set one-off quote additional terms.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'additional_terms')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'additional_terms')]
     public function additionalTerms(string $value): self
     {
         return $this->setOneOffQuoteDraftValue('additionalTerms', $value);
@@ -1036,7 +1014,6 @@ class Cord
      * Set one-off quote domestic freight flag.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'is_domestic_freight')]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'is_domestic_freight')]
     public function isDomesticFreight(bool $value): self
     {
         return $this->setOneOffQuoteDraftValue('isDomesticFreight', $value);
@@ -1046,7 +1023,6 @@ class Cord
      * Set one-off quote client address or organization code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'client_address', builder: OneOffQuoteAddressBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'client_address', builder: OneOffQuoteAddressBuilder::class)]
     public function clientAddress(Closure|string $address): self
     {
         return $this->setOneOffQuoteTypedAddress('client', $address);
@@ -1056,7 +1032,6 @@ class Cord
      * Set one-off quote pickup address or organization code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'pickup_address', builder: OneOffQuoteAddressBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'pickup_address', builder: OneOffQuoteAddressBuilder::class)]
     public function pickupAddress(Closure|string $address): self
     {
         return $this->setOneOffQuoteTypedAddress('pickup', $address);
@@ -1066,7 +1041,6 @@ class Cord
      * Set one-off quote delivery address or organization code.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'delivery_address', builder: OneOffQuoteAddressBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'delivery_address', builder: OneOffQuoteAddressBuilder::class)]
     public function deliveryAddress(Closure|string $address): self
     {
         return $this->setOneOffQuoteTypedAddress('delivery', $address);
@@ -1124,7 +1098,6 @@ class Cord
      * Add a single charge line to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'charge_lines', repeatable: true, builder: OneOffQuoteChargeLineBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'charge_lines', repeatable: true, builder: OneOffQuoteChargeLineBuilder::class)]
     public function addChargeLine(Closure $builder): self
     {
         $this->assertOneOffQuoteBuilderContext('addChargeLine');
@@ -1146,7 +1119,6 @@ class Cord
      * Add a single pack line to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'pack_lines', repeatable: true, builder: OneOffQuotePackLineBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'pack_lines', repeatable: true, builder: OneOffQuotePackLineBuilder::class)]
     public function addPackLine(Closure $builder): self
     {
         $this->assertOneOffQuoteBuilderContext('addPackLine');
@@ -1168,7 +1140,6 @@ class Cord
      * Add a single container to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'containers', repeatable: true, builder: OneOffQuoteContainerBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'containers', repeatable: true, builder: OneOffQuoteContainerBuilder::class)]
     public function addContainer(Closure $builder): self
     {
         $this->assertOneOffQuoteBuilderContext('addContainer');
@@ -1193,7 +1164,6 @@ class Cord
      * `->addAttachedDocument(fn ($d) => $d->fileName('quote.pdf')->imageData($base64)->type('QUO'))`
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'attached_documents', repeatable: true, builder: OneOffQuoteAttachedDocumentBuilder::class)]
-    #[OperationField(OperationId::OneOffQuoteUpdate, name: 'attached_documents', repeatable: true, builder: OneOffQuoteAttachedDocumentBuilder::class)]
     public function addAttachedDocument(Closure $builder): self
     {
         $this->assertOneOffQuoteBuilderContext('addAttachedDocument');
@@ -2081,6 +2051,8 @@ class Cord
     {
         $this->requestType = RequestType::UniversalEvent;
 
+        $this->eventContexts = [];
+
         if (! $date) {
             $date = date('c');
         }
@@ -2105,6 +2077,82 @@ class Cord
             default => $this->currentOperation,
         };
         $this->markStructuredField('event');
+
+        return $this;
+    }
+
+    /**
+     * Add a context row to the current event.
+     *
+     * Call this after addEvent() or addDocument().
+     */
+    #[OperationField(
+        OperationId::ShipmentEventAdd,
+        name: 'event_contexts',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::BookingEventAdd,
+        name: 'event_contexts',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::CustomEventAdd,
+        name: 'event_contexts',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::OneOffQuoteEventAdd,
+        name: 'event_contexts',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    public function addEventContext(string $type, mixed $value): self
+    {
+        if ($this->requestType !== RequestType::UniversalEvent || $this->event === []) {
+            throw new \Exception('addEventContext() requires an active event request. Call addEvent() or addDocument() first.');
+        }
+
+        $this->eventContexts[] = [
+            'Type' => $type,
+            'Value' => $value,
+        ];
+        $this->markStructuredField('event_contexts');
 
         return $this;
     }
@@ -2444,14 +2492,6 @@ class Cord
         }
 
         if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
-            return;
-        }
-
-        if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'update') {
-            if (! is_string($this->company) || trim($this->company) === '') {
-                throw new \Exception('Company code must be provided for one-off quote update requests. Call withCompany() before sending the request.');
-            }
-
             return;
         }
 
@@ -3069,11 +3109,6 @@ class Cord
             return;
         }
 
-        if ($this->oneOffQuoteIntent === 'update') {
-            $this->requestType = RequestType::UniversalShipment;
-            $this->target = DataTarget::OneOffQuote;
-            $this->oneOffQuote = $this->buildOneOffQuotePayload($this->oneOffQuoteDraft);
-        }
     }
 
     private function validateFluentOneOffQuoteCreatePayload(array $payload): void

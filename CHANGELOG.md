@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.3.6 - 2026-06-04
+
+### What's Changed
+
+* Obj/enrich notes by @oliverbj in https://github.com/oliverbj/cord/pull/53
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.3.5...3.3.6
+
 ## v3.3.4 - 2026-06-03
 
 ### What's Changed
@@ -340,6 +348,7 @@ Cord::fromStructured('one_off_quote.create', [
 
 
 
+
 ```
 - If you were sending sender_id, recipient_id, enterprise, or server in structured one_off_quote.create payloads, remove them. They are not valid for this CargoWise request scope.
 
@@ -391,6 +400,7 @@ Cord `3.0.5` is a patch release that fixes the One-Off Quote retrieval envelope 
       ->oneOffQuote('QCPH00001004')
       ->get()
       ->run();
+  
   
   
   
@@ -481,6 +491,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   
   
   
+  
   ```
 - Organization queries built with criteria groups should now use:
   
@@ -489,6 +500,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
       ->criteriaGroup([...], type: 'Key')
       ->get()
       ->run();
+  
   
   
   
@@ -547,6 +559,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   
   
   
+  
   ```
 - Structured organization queries via `Cord::fromStructured('organization.query', [...])` continue to work and now bootstrap the explicit `get()` step automatically.
   
@@ -558,6 +571,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.3...3.0.4
 
 ```
+
 
 
 
@@ -738,6 +752,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 
 

@@ -898,11 +898,14 @@ it('publishes representative operation schemas', function () {
 
     $clientAddressTypes = $oneOffQuote['properties']['client_address']['type'];
     $carrierAddressTypes = $oneOffQuote['properties']['carrier_address']['type'];
+    $overseasAgentAddressTypes = $oneOffQuote['properties']['overseas_agent_address']['type'];
     sort($clientAddressTypes);
     sort($carrierAddressTypes);
+    sort($overseasAgentAddressTypes);
 
     expect($clientAddressTypes)->toBe(['object', 'string'])
         ->and($carrierAddressTypes)->toBe(['object', 'string'])
+        ->and($overseasAgentAddressTypes)->toBe(['object', 'string'])
         ->and($oneOffQuoteEventAdd)->toMatchArray([
             'type' => 'object',
             'required' => ['company', 'key', 'event'],
@@ -922,7 +925,7 @@ it('publishes representative operation schemas', function () {
         ->and($shipmentEventAdd['properties']['event_contexts']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['charge_lines']['type'])->toBe('array')
         ->and($oneOffQuote['properties']['attached_documents']['type'])->toBe('array')
-        ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server', 'org_role', 'event_branch', 'event_department'])
+        ->and($oneOffQuote['properties'])->toHaveKeys(['enterprise', 'server', 'org_role', 'event_branch', 'event_department', 'overseas_agent_address'])
         ->and($oneOffQuote['properties']['org_role'])->toMatchArray([
             'type' => 'string',
             'enum' => ['LOC', 'OAG'],
@@ -1216,6 +1219,7 @@ it('supports organization code only addresses for one-off quote create', functio
         ->pickupAddress(fn ($a) => $a->organizationCode('AUSYDPK1'))
         ->deliveryAddress('NZAKLDL1')
         ->carrierAddress('DHLAIR_WW')
+        ->overseasAgentAddress('MAIATLSAV')
         ->inspect();
 
     $structuredXml = Cord::fromStructured('one_off_quote.create', [
@@ -1229,6 +1233,7 @@ it('supports organization code only addresses for one-off quote create', functio
         'pickup_address' => 'AUSYDPK1',
         'delivery_address' => 'NZAKLDL1',
         'carrier_address' => 'DHLAIR_WW',
+        'overseas_agent_address' => 'MAIATLSAV',
     ])->inspect();
 
     expect($structuredXml)->toBe($fluentXml)
@@ -1240,6 +1245,8 @@ it('supports organization code only addresses for one-off quote create', functio
         ->toContain('<OrganizationCode>NZAKLDL1</OrganizationCode>')
         ->toContain('<AddressType>ShippingLineAddress</AddressType>')
         ->toContain('<OrganizationCode>DHLAIR_WW</OrganizationCode>')
+        ->toContain('<AddressType>SendersOverseasAgent</AddressType>')
+        ->toContain('<OrganizationCode>MAIATLSAV</OrganizationCode>')
         ->not->toContain('<Address1>');
 });
 

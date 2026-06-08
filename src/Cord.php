@@ -1056,6 +1056,15 @@ class Cord
     }
 
     /**
+     * Set one-off quote overseas agent address or organization code.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'overseas_agent_address', builder: OneOffQuoteAddressBuilder::class)]
+    public function overseasAgentAddress(Closure|string $address): self
+    {
+        return $this->setOneOffQuoteTypedAddress('overseasAgent', $address);
+    }
+
+    /**
      * Add a single potential carrier organization code to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'potential_carriers', repeatable: true)]
@@ -1282,7 +1291,7 @@ class Cord
             return $this;
         }
 
-        if ($this->target === DataTarget::OneOffQuote && in_array($this->oneOffQuoteIntent, ['create', 'update'], true)) {
+        if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
             $this->oneOffQuoteDraft['attributes'] = array_replace_recursive(
                 $this->oneOffQuoteDraft['attributes'] ?? [],
                 $payload
@@ -3087,6 +3096,7 @@ class Cord
             'client' => 'client_address',
             'pickup' => 'pickup_address',
             'delivery' => 'delivery_address',
+            'overseasAgent' => 'overseas_agent_address',
             default => $type.'_address',
         });
 
@@ -3140,6 +3150,7 @@ class Cord
             'pickup' => 'addresses.pickup',
             'delivery' => 'addresses.delivery',
             'carrier' => 'addresses.carrier',
+            'overseasAgent' => 'addresses.overseas_agent',
         ];
 
         foreach ($addressLabels as $addressKey => $errorPrefix) {
@@ -3419,6 +3430,7 @@ class Cord
             'pickup' => 'OneOffQuotePickupAddress',
             'delivery' => 'OneOffQuoteDeliveryAddress',
             'carrier' => 'ShippingLineAddress',
+            'overseasAgent' => 'SendersOverseasAgent',
         ];
 
         $addresses = [];
@@ -3825,8 +3837,8 @@ class Cord
 
     private function assertOneOffQuoteBuilderContext(string $method): void
     {
-        if ($this->target !== DataTarget::OneOffQuote || ! in_array($this->oneOffQuoteIntent, ['create', 'update'], true)) {
-            throw new \Exception("{$method}() requires oneOffQuote()->create() or oneOffQuote('KEY')->update() context.");
+        if ($this->target !== DataTarget::OneOffQuote || $this->oneOffQuoteIntent !== 'create') {
+            throw new \Exception("{$method}() requires oneOffQuote()->create() context.");
         }
     }
 

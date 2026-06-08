@@ -887,6 +887,7 @@ Cord::withCompany('CPH')
     )
     ->deliveryAddress('NZAKLDL1')
     ->carrierAddress('DHLAIR_WW')
+    ->overseasAgentAddress('MAIATLSAV')
     ->addPotentialCarrier('KLMAIR_WW')
     ->addPotentialCarrier('LUFAIR_WW')
     ->addNote(fn ($n) => $n
@@ -948,6 +949,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     ],
     'delivery_address' => 'NZAKLDL1',
     'carrier_address' => 'DHLAIR_WW',
+    'overseas_agent_address' => 'MAIATLSAV',
     'potential_carriers' => ['KLMAIR_WW', 'LUFAIR_WW'],
     'notes' => [
         [
@@ -984,11 +986,12 @@ Optional one-off quote create helpers:
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.
 - `carrierAddress(...)` adds an organization address with `AddressType` set to `ShippingLineAddress`; passing a string such as `DHLAIR_WW` sets `OrganizationCode` to that carrier.
+- `overseasAgentAddress(...)` adds an organization address with `AddressType` set to `SendersOverseasAgent`; passing a string such as `MAIATLSAV` sets `OrganizationCode` to that overseas agent.
 - `addPotentialCarrier(...)` appends a `PotentialCarrier` row under `PotentialCarrierCollection`; passing `KLMAIR_WW` or `LUFAIR_WW` sets `PotentialCarrier > Code` to that organization code.
 - `addNote(...)` appends a `Note` row under `Shipment > NoteCollection`; `key(...)` becomes `Description`, `text(...)` becomes `NoteText`, `IsCustomDescription` is always `false`, and `NoteContext` is fixed to `AAA / Module: A - All; Direction: A - All; Freight: A - All`.
-- `clientAddress(...)`, `pickupAddress(...)`, and `deliveryAddress(...)` accept either an address object or a plain organization code string.
+- `clientAddress(...)`, `pickupAddress(...)`, `deliveryAddress(...)`, `carrierAddress(...)`, and `overseasAgentAddress(...)` accept either an address object or a plain organization code string.
 - When passing an address object, `address_line_1` is required unless `address_override` is set to `true`. With `address_override: true`, only `city` and `country` are required — useful for sending a partial address without a street line.
-- In structured payloads, use `org_role`, `packing_mode`, `commodity`, `event_branch`, `event_department`, `carrier_address`, `potential_carriers`, `notes`, and either an address object or a plain string for the address fields.
+- In structured payloads, use `org_role`, `packing_mode`, `commodity`, `event_branch`, `event_department`, `carrier_address`, `overseas_agent_address`, `potential_carriers`, `notes`, and either an address object or a plain string for the address fields.
 - `addPackLine(...)` adds individual packing lines with `pack_type` (required), `quantity` (required), and optional `weight`, `volume`, `length`, `width`, `height`, and `description`.
 - In structured payloads, use `notes` as an array of objects with required `key` and `text` fields.
 - In structured payloads, use `pack_lines` as an array of objects with `pack_type`, `quantity`, and dimension sub-objects such as `weight => ['value' => 500, 'unit_code' => 'KG']`.

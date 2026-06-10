@@ -83,7 +83,7 @@ XML, 200, ['Content-Type' => 'application/xml']),
     Http::assertSent(function ($request) {
         $body = $request->body();
 
-        return str_starts_with($body, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+        return str_starts_with($body, '<?xml version="1.0" encoding="UTF-8"?>')
             && str_contains($body, '<AdditionalTerms>Alajärvi 62900</AdditionalTerms>')
             && $request->hasHeader('Content-Type', 'application/xml; charset=UTF-8');
     });
@@ -118,7 +118,7 @@ XML, 200, ['Content-Type' => 'application/xml']),
         $body = $request->body();
 
         return $body === $xml
-            && str_starts_with($body, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+            && str_starts_with($body, '<?xml version="1.0" encoding="UTF-8"?>')
             && str_contains($body, 'Alajärvi%')
             && $request->hasHeader('Content-Type', 'application/xml; charset=UTF-8');
     });

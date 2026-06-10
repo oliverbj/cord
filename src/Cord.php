@@ -131,7 +131,7 @@ class Cord
             $this->config['password']
         )->withHeaders([
             'Accept' => 'application/xml',
-            'Content-Type' => 'application/xml',
+            'Content-Type' => 'application/xml; charset=UTF-8',
         ]);
     }
 

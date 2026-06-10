@@ -14,14 +14,11 @@ abstract class NativeRequest implements RequestInterface
 
     public function xml(): string
     {
-        $xml = ArrayToXml::convert($this->schema(), [
+        return ArrayToXml::convert($this->schema(), [
             'rootElementName' => $this->rootElement,
             '_attributes' => [
                 'xmlns' => 'http://www.cargowise.com/Schemas/Native',
             ],
-        ]);
-
-        // Remove the "<?xml version="1.0".. " tag from the XML string.
-        return preg_replace('!^[^>]+>(\r\n|\n)!', '', $xml);
+        ], true, 'UTF-8');
     }
 }

@@ -46,6 +46,84 @@ it('includes explicit sender and recipient ids in universal payloads', function 
         ->toContain('<RecipientID>PartnerB</RecipientID>');
 });
 
+it('sends generated universal xml with utf-8 declaration and charset header', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response>
+    <Status>PRS</Status>
+    <Data>
+        <UniversalShipment>
+            <Shipment>
+                <DataContext>
+                    <DataTargetCollection>
+                        <DataTarget>
+                            <Type>OneOffQuote</Type>
+                        </DataTarget>
+                    </DataTargetCollection>
+                </DataContext>
+            </Shipment>
+        </UniversalShipment>
+    </Data>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    Cord::withCompany('HEL')
+        ->oneOffQuote()
+        ->create()
+        ->branch('HEL')
+        ->department('AIR')
+        ->transportMode('SEA')
+        ->portOfOrigin('FIALA')
+        ->portOfDestination('INNSA')
+        ->serviceLevel('STD')
+        ->additionalTerms('Alajärvi 62900')
+        ->run();
+
+    Http::assertSent(function ($request) {
+        $body = $request->body();
+
+        return str_starts_with($body, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+            && str_contains($body, '<AdditionalTerms>Alajärvi 62900</AdditionalTerms>')
+            && $request->hasHeader('Content-Type', 'application/xml; charset=UTF-8');
+    });
+});
+
+it('sends generated native xml with utf-8 declaration and charset header', function () {
+    Http::fake([
+        '*' => Http::response(<<<'XML'
+<Response version="1.1">
+    <Status>PRS</Status>
+    <Data />
+    <ProcessingLog>Information - 0 matches found.</ProcessingLog>
+</Response>
+XML, 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $query = Cord::organization()
+        ->criteriaGroup([
+            [
+                'Entity' => 'OrgHeader',
+                'FieldName' => 'FullName',
+                'Value' => 'Alajärvi%',
+            ],
+        ], type: 'Partial')
+        ->get();
+
+    $xml = $query->inspect();
+
+    $query->run();
+
+    Http::assertSent(function ($request) use ($xml) {
+        $body = $request->body();
+
+        return $body === $xml
+            && str_starts_with($body, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+            && str_contains($body, 'Alajärvi%')
+            && $request->hasHeader('Content-Type', 'application/xml; charset=UTF-8');
+    });
+});
+
 it('inspects a raw xml payload without sending it', function () {
     Http::fake();
 
@@ -102,7 +180,7 @@ XML;
             && $request->method() === 'POST'
             && $request->body() === $payload
             && $request->hasHeader('Accept', 'application/xml')
-            && $request->hasHeader('Content-Type', 'application/xml');
+            && $request->hasHeader('Content-Type', 'application/xml; charset=UTF-8');
     });
 
     expect($response)->toMatchArray([
@@ -1109,7 +1187,7 @@ it('builds the same one-off quote xml from structured input', function () {
     ])->inspect();
 
     expect($structuredXml)->toBe($fluentXml)
-        ->and(str_starts_with($structuredXml, '<UniversalShipment><Shipment><DataContext>'))->toBeTrue();
+        ->and((bool) preg_match('/^<\?xml version="1\.0" encoding="UTF-8"\?>\s*<UniversalShipment><Shipment><DataContext>/', $structuredXml))->toBeTrue();
 
     expect($structuredXml)
         ->toContain('<UniversalShipment>')
@@ -1674,7 +1752,7 @@ it('builds shipment document add payloads as universal events with company data 
         )
         ->inspect();
 
-    expect(str_starts_with($xml, '<UniversalEvent><Event><DataContext>'))->toBeTrue();
+    expect((bool) preg_match('/^<\?xml version="1\.0" encoding="UTF-8"\?>\s*<UniversalEvent><Event><DataContext>/', $xml))->toBeTrue();
 
     expect($xml)
         ->not->toContain('<SenderID>')
@@ -1858,7 +1936,7 @@ it('builds a one-off quote create payload without a key', function () {
         ->goodsValue(15000, 'AUD')
         ->inspect();
 
-    expect(str_starts_with($xml, '<UniversalShipment><Shipment><DataContext>'))->toBeTrue();
+    expect((bool) preg_match('/^<\?xml version="1\.0" encoding="UTF-8"\?>\s*<UniversalShipment><Shipment><DataContext>/', $xml))->toBeTrue();
 
     expect($xml)
         ->toContain('<UniversalShipment>')
@@ -2311,7 +2389,7 @@ it('builds a one-off quote query payload with company context', function () {
         ->get()
         ->inspect();
 
-    expect(str_starts_with($xml, '<UniversalShipmentRequest><ShipmentRequest>'))->toBeTrue();
+    expect((bool) preg_match('/^<\?xml version="1\.0" encoding="UTF-8"\?>\s*<UniversalShipmentRequest><ShipmentRequest>/', $xml))->toBeTrue();
 
     expect($xml)
         ->toContain('<UniversalShipmentRequest>')

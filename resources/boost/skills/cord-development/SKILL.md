@@ -79,7 +79,7 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
 - For `one_off_quote.create`, `org_role` populates `Shipment > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
-- For `one_off_quote.create`, `packing_mode` populates `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
+- For `one_off_quote.create`, `packing_mode` populates `Shipment > ContainerMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - For `one_off_quote.create`, `commodity` populates `Shipment > LocalProcessing > Commodity > Code`; passing a code like `GEN` is sufficient.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.

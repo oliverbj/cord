@@ -981,7 +981,7 @@ Optional one-off quote create helpers:
 
 - `branch(...)` maps to both `Shipment > DataContext > Branch > Code` and `Shipment > JobCosting > Branch > Code`.
 - `orgRole(...)` maps to `Shipment > OrgRole`; use `LOC` for Local Client or `OAG` for Overseas Agent.
-- `packingMode(...)` maps to `Shipment > PackingMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
+- `packingMode(...)` maps to `Shipment > ContainerMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - `commodity(...)` maps to `Shipment > LocalProcessing > Commodity > Code`; passing a code such as `GEN` is sufficient.
 - `eventBranch(...)` maps to `Shipment > DataContext > EventBranch > Code`.
 - `eventDepartment(...)` maps to `Shipment > DataContext > EventDepartment > Code`.

@@ -1201,7 +1201,7 @@ it('builds the same one-off quote xml from structured input', function () {
         ->toContain('<ServerID>TRN</ServerID>')
         ->toContain('<TransportMode><Code>SEA</Code></TransportMode>')
         ->toContain('<LocalProcessing><Commodity><Code>GEN</Code></Commodity></LocalProcessing>')
-        ->toContain('<PackingMode><Code>LCL</Code></PackingMode>')
+        ->toContain('<ContainerMode><Code>LCL</Code></ContainerMode>')
         ->toContain('<NoteCollection>')
         ->toContain('<Description>One Off Quote Notes</Description>')
         ->toContain('<IsCustomDescription>false</IsCustomDescription>')

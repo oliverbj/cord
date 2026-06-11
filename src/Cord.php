@@ -3293,7 +3293,7 @@ class Cord
         }
 
         if (isset($quoteDetails['packingMode'])) {
-            $payload['PackingMode'] = [
+            $payload['ContainerMode'] = [
                 'Code' => $quoteDetails['packingMode']['code'],
             ];
         }

@@ -3559,12 +3559,10 @@ class Cord
 
         if (isset($packLine['widthValue'])) {
             $payload['Width'] = (string) $packLine['widthValue'];
-            $payload['WidthUnit'] = ['Code' => $packLine['widthUnitCode']];
         }
 
         if (isset($packLine['heightValue'])) {
             $payload['Height'] = (string) $packLine['heightValue'];
-            $payload['HeightUnit'] = ['Code' => $packLine['heightUnitCode']];
         }
 
         if (is_string($packLine['description'] ?? null) && $packLine['description'] !== '') {

@@ -2115,9 +2115,9 @@ it('supports pack lines for one-off quote create', function () {
         ->toContain('<Length>1.2</Length>')
         ->toContain('<LengthUnit><Code>M</Code></LengthUnit>')
         ->toContain('<Width>0.8</Width>')
-        ->toContain('<WidthUnit><Code>M</Code></WidthUnit>')
         ->toContain('<Height>1</Height>')
-        ->toContain('<HeightUnit><Code>M</Code></HeightUnit>');
+        ->not->toContain('<WidthUnit>')
+        ->not->toContain('<HeightUnit>');
 
     expect(substr_count($fluentXml, '<PackingLine>'))->toBe(2);
 });

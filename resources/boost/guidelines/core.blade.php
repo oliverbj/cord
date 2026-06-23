@@ -41,6 +41,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
     'org_role' => 'LOC',
     'event_branch' => 'QTE',
     'event_department' => 'PRC',
+    'data_provider' => 'PORTAL',
     'transport_mode' => 'SEA',
     'packing_mode' => 'LCL',
     'commodity' => 'GEN',
@@ -63,11 +64,12 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - For `one_off_quote.create`, `packing_mode` populates `Shipment > ContainerMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
 - For `one_off_quote.create`, `commodity` populates `Shipment > LocalProcessing > Commodity > Code`; passing a code like `GEN` is sufficient.
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
+- For `one_off_quote.create`, `data_provider` populates `Shipment > DataContext > DataProvider`.
 - For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.
 - Use `addPotentialCarrier()` or structured `potential_carriers` on `one_off_quote.create` to populate `PotentialCarrierCollection > PotentialCarrier > Code` with one or more carrier organization codes such as `KLMAIR_WW` and `LUFAIR_WW`.
 - Use `addNote()` or structured `notes` on `one_off_quote.create` to populate `Shipment > NoteCollection > Note`. `key` becomes `Description`, `text` becomes `NoteText`, `IsCustomDescription` is always `false`, and `NoteContext` is fixed to `AAA / Module: A - All; Direction: A - All; Freight: A - All`.
 - `client_address`, `pickup_address`, and `delivery_address` can be full address objects or a CargoWise organization code string. When using an address object, `address_line_1` is required unless `address_override: true` is also set — with override enabled, only `city` and `country` are required.
-- Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, `height`, and `description` are optional. CargoWise uses the shared `LengthUnit` element for dimensions, so Cord omits `WidthUnit` and `HeightUnit` from outbound pack line XML.
+- Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, and `height` are optional. CargoWise uses the shared `LengthUnit` element for dimensions, so Cord omits `WidthUnit` and `HeightUnit` from outbound pack line XML.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
 - Use `addEvent()` or structured `one_off_quote.event.add` to push an event to an existing one-off quote. This also runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`.

@@ -1284,6 +1284,37 @@ it('supports event branch and department in one-off quote create data context', 
     expect((bool) preg_match('/<DataContext>.*<Branch><Code>A01<\/Code><\/Branch>.*<EventBranch><Code>QTE<\/Code><\/EventBranch>.*<EventDepartment><Code>PRC<\/Code><\/EventDepartment>.*<\/DataContext>/s', $structuredXml))->toBeTrue();
 });
 
+it('supports data provider in one-off quote create data context', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->dataProvider('PORTAL')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'data_provider' => 'PORTAL',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($structuredXml)->toContain('<DataProvider>PORTAL</DataProvider>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<Branch><Code>A01</Code></Branch>');
+
+    expect((bool) preg_match('/<DataContext>.*<DataProvider>PORTAL<\/DataProvider>.*<\/DataContext>/s', $structuredXml))->toBeTrue();
+    expect((bool) preg_match('/<\/DataContext>.*<DataProvider>PORTAL<\/DataProvider>/s', $structuredXml))->toBeFalse();
+});
+
 it('supports organization code only addresses for one-off quote create', function () {
     $fluentXml = Cord::withCompany('CPH')
         ->oneOffQuote()
@@ -2060,8 +2091,7 @@ it('supports pack lines for one-off quote create', function () {
             ->packageType('BOX')
             ->quantity(2)
             ->weight(100, 'KG')
-            ->volume(0.5, 'M3')
-            ->description('Fragile goods'))
+            ->volume(0.5, 'M3'))
         ->addPackLine(fn ($p) => $p
             ->packageType('PLT')
             ->quantity(1)
@@ -2085,7 +2115,6 @@ it('supports pack lines for one-off quote create', function () {
                 'quantity' => 2,
                 'weight' => ['value' => 100, 'unit_code' => 'KG'],
                 'volume' => ['value' => 0.5, 'unit_code' => 'M3'],
-                'description' => 'Fragile goods',
             ],
             [
                 'pack_type' => 'PLT',
@@ -2109,7 +2138,6 @@ it('supports pack lines for one-off quote create', function () {
         ->toContain('<WeightUnit><Code>KG</Code></WeightUnit>')
         ->toContain('<Volume>0.5</Volume>')
         ->toContain('<VolumeUnit><Code>M3</Code></VolumeUnit>')
-        ->toContain('<Description>Fragile goods</Description>')
         ->toContain('<PackType><Code>PLT</Code></PackType>')
         ->toContain('<PackQty>1</PackQty>')
         ->toContain('<Length>1.2</Length>')
@@ -2120,6 +2148,36 @@ it('supports pack lines for one-off quote create', function () {
         ->not->toContain('<HeightUnit>');
 
     expect(substr_count($fluentXml, '<PackingLine>'))->toBe(2);
+});
+
+it('does not expose or accept one-off quote pack line descriptions', function () {
+    expect(method_exists(OneOffQuotePackLineBuilder::class, 'description'))->toBeFalse();
+
+    try {
+        Cord::fromStructured('one_off_quote.create', [
+            'company' => 'CPH',
+            'branch' => 'A01',
+            'department' => 'FES',
+            'transport_mode' => 'SEA',
+            'port_of_origin' => 'AUSYD',
+            'port_of_destination' => 'NZAKL',
+            'pack_lines' => [
+                [
+                    'pack_type' => 'BOX',
+                    'quantity' => 2,
+                    'description' => 'Fragile goods',
+                ],
+            ],
+        ]);
+
+        $errors = [];
+    } catch (ValidationException $e) {
+        $errors = $e->errors();
+    }
+
+    expect($errors)->toMatchArray([
+        'pack_lines.0.description' => ['The field is not supported.'],
+    ]);
 });
 
 it('validates required pack line fields', function () {

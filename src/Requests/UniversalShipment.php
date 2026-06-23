@@ -44,6 +44,10 @@ class UniversalShipment extends Request
 
         $quoteDraft = $this->cord->currentOneOffQuoteDraft();
 
+        if (is_string($quoteDraft['dataProvider'] ?? null) && trim($quoteDraft['dataProvider']) !== '') {
+            $context['Shipment']['DataContext']['DataProvider'] = $quoteDraft['dataProvider'];
+        }
+
         if (is_string($quoteDraft['branch'] ?? null) && trim($quoteDraft['branch']) !== '') {
             $context['Shipment']['DataContext']['Branch'] = [
                 'Code' => $quoteDraft['branch'],

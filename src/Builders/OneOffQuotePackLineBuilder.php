@@ -69,14 +69,6 @@ class OneOffQuotePackLineBuilder
         return $this;
     }
 
-    #[StructuredField]
-    public function description(string $value): self
-    {
-        $this->payload['description'] = $value;
-
-        return $this;
-    }
-
     public function withPayload(array $payload): self
     {
         $this->payload['attributes'] = array_replace_recursive(

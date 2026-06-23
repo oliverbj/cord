@@ -787,6 +787,15 @@ class Cord
     }
 
     /**
+     * Set the one-off quote data provider.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'data_provider')]
+    public function dataProvider(string $provider): self
+    {
+        return $this->setOneOffQuoteDraftValue('dataProvider', $provider);
+    }
+
+    /**
      * Set the one-off quote organization role.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'org_role', enum: ['LOC', 'OAG'])]
@@ -3563,10 +3572,6 @@ class Cord
 
         if (isset($packLine['heightValue'])) {
             $payload['Height'] = (string) $packLine['heightValue'];
-        }
-
-        if (is_string($packLine['description'] ?? null) && $packLine['description'] !== '') {
-            $payload['Description'] = $packLine['description'];
         }
 
         return array_replace_recursive($payload, $packLine['attributes'] ?? []);

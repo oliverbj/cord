@@ -125,7 +125,7 @@ XML, 200, ['Content-Type' => 'application/xml']),
 });
 
 it('applies default and configured eadapter timeout options to the http client', function () {
-    $defaultCord = new \Oliverbj\Cord\Cord;
+    $defaultCord = new Oliverbj\Cord\Cord;
 
     (fn () => $this->setClient())->call($defaultCord);
 

@@ -129,10 +129,13 @@ class Cord
         $this->client = Http::withBasicAuth(
             $this->config['username'],
             $this->config['password']
-        )->withHeaders([
-            'Accept' => 'application/xml',
-            'Content-Type' => 'application/xml; charset=UTF-8',
-        ]);
+        )
+            ->timeout($this->config['timeout'] ?? 120)
+            ->connectTimeout($this->config['connect_timeout'] ?? 10)
+            ->withHeaders([
+                'Accept' => 'application/xml',
+                'Content-Type' => 'application/xml; charset=UTF-8',
+            ]);
     }
 
     public function withCompany(string $company): self

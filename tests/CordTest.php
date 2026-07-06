@@ -124,6 +124,41 @@ XML, 200, ['Content-Type' => 'application/xml']),
     });
 });
 
+it('applies default and configured eadapter timeout options to the http client', function () {
+    $defaultCord = new \Oliverbj\Cord\Cord;
+
+    (fn () => $this->setClient())->call($defaultCord);
+
+    $defaultClient = (fn () => $this->client)->call($defaultCord);
+    $defaultOptions = (fn () => $this->options)->call($defaultClient);
+
+    expect($defaultOptions)->toMatchArray([
+        'timeout' => 120,
+        'connect_timeout' => 10,
+    ]);
+
+    config()->set('cord.archive.eadapter_connection', [
+        'url' => 'https://demo1prdservices.example.invalid/eadapter',
+        'username' => 'archive-user',
+        'password' => 'archive-password',
+        'timeout' => 240,
+        'connect_timeout' => 25,
+    ]);
+
+    $configuredCord = $defaultCord->withConfig('archive');
+
+    (fn () => $this->setClient())->call($configuredCord);
+
+    $configuredClient = (fn () => $this->client)->call($configuredCord);
+    $configuredOptions = (fn () => $this->options)->call($configuredClient);
+
+    expect($configuredOptions)->toMatchArray([
+        'timeout' => 240,
+        'connect_timeout' => 25,
+        'auth' => ['archive-user', 'archive-password'],
+    ]);
+});
+
 it('inspects a raw xml payload without sending it', function () {
     Http::fake();
 

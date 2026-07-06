@@ -17,6 +17,8 @@ return [
             'url' => env('CORD_URL', ''),
             'username' => env('CORD_USERNAME', ''),
             'password' => env('CORD_PASSWORD', ''),
+            'timeout' => env('CORD_TIMEOUT', 120),
+            'connect_timeout' => env('CORD_CONNECT_TIMEOUT', 10),
         ],
     ],
 
@@ -25,6 +27,8 @@ return [
             'url' => env('CORD_URL', ''),
             'username' => env('CORD_USERNAME', ''),
             'password' => env('CORD_PASSWORD', ''),
+            'timeout' => env('CORD_TIMEOUT', 120),
+            'connect_timeout' => env('CORD_CONNECT_TIMEOUT', 10),
         ],
     ],
 

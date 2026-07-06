@@ -101,6 +101,8 @@ return [
             'url' => env('CORD_URL', ''),
             'username' => env('CORD_USERNAME', ''),
             'password' => env('CORD_PASSWORD', ''),
+            'timeout' => env('CORD_TIMEOUT', 120),
+            'connect_timeout' => env('CORD_CONNECT_TIMEOUT', 10),
         ],
     ],
 ];
@@ -112,6 +114,8 @@ Set your CargoWise eAdapter credentials in `.env`:
 CORD_URL=
 CORD_USERNAME=
 CORD_PASSWORD=
+CORD_TIMEOUT=120
+CORD_CONNECT_TIMEOUT=10
 ```
 
 ## Usage
@@ -1107,6 +1111,8 @@ return [
             'url' => env('CORD_URL', ''),
             'username' => env('CORD_USERNAME', ''),
             'password' => env('CORD_PASSWORD', ''),
+            'timeout' => env('CORD_TIMEOUT', 120),
+            'connect_timeout' => env('CORD_CONNECT_TIMEOUT', 10),
         ],
     ],
 
@@ -1115,6 +1121,8 @@ return [
             'url' => env('CORD_ARCHIVE_URL', ''),
             'username' => env('CORD_ARCHIVE_USERNAME', ''),
             'password' => env('CORD_ARCHIVE_PASSWORD', ''),
+            'timeout' => env('CORD_ARCHIVE_TIMEOUT', 120),
+            'connect_timeout' => env('CORD_ARCHIVE_CONNECT_TIMEOUT', 10),
         ],
     ],
 ];
@@ -1272,6 +1280,8 @@ Example local `.env`:
 CORD_URL=https://demo1trnservices.example.invalid/eAdaptor
 CORD_USERNAME=your-eadapter-user
 CORD_PASSWORD=xxxx
+CORD_TIMEOUT=120
+CORD_CONNECT_TIMEOUT=10
 ```
 
 The runner derives `EnterpriseID=XXX` and `ServerID=TRN` from that URL and uses them in the native `DataContext`.

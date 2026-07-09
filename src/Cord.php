@@ -75,6 +75,8 @@ class Cord
 
     public array $eventContexts = [];
 
+    public array $additionalFieldsToUpdate = [];
+
     public array $document = [];
 
     public array $address = [];
@@ -2073,6 +2075,7 @@ class Cord
         $this->requestType = RequestType::UniversalEvent;
 
         $this->eventContexts = [];
+        $this->additionalFieldsToUpdate = [];
 
         if (! $date) {
             $date = date('c');
@@ -2082,9 +2085,15 @@ class Cord
         $this->event = [
             'EventTime' => $date,
             'EventType' => $type,
-            'EventReference' => $reference,
-            'IsEstimate' => var_export($isEstimate, true), // cast to string
         ];
+
+        if (func_num_args() >= 3) {
+            $this->event['EventReference'] = $reference;
+        }
+
+        if (func_num_args() >= 4) {
+            $this->event['IsEstimate'] = var_export($isEstimate, true); // cast to string
+        }
 
         if ($this->target === DataTarget::OneOffQuote) {
             $this->oneOffQuoteIntent = 'event_add';
@@ -2174,6 +2183,37 @@ class Cord
             'Value' => $value,
         ];
         $this->markStructuredField('event_contexts');
+
+        return $this;
+    }
+
+    #[OperationField(
+        OperationId::ShipmentEventAdd,
+        name: 'additional_fields_to_update',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    public function addAdditionalFieldUpdate(string $type, mixed $value): self
+    {
+        if ($this->currentOperation !== OperationId::ShipmentEventAdd
+            || $this->requestType !== RequestType::UniversalEvent
+            || $this->event === []) {
+            throw new \Exception('addAdditionalFieldUpdate() requires an active shipment event request. Call shipment(...)->addEvent() first.');
+        }
+
+        $this->additionalFieldsToUpdate[] = [
+            'Type' => $type,
+            'Value' => $value,
+        ];
+        $this->markStructuredField('additional_fields_to_update');
 
         return $this;
     }
@@ -4144,8 +4184,22 @@ class Cord
 
         $value = is_array($value) ? $value : [];
         $arguments = [];
+        $parameters = $reflection->getParameters();
+        $lastArgumentIndex = -1;
 
-        foreach ($reflection->getParameters() as $parameter) {
+        foreach ($parameters as $index => $parameter) {
+            $key = Str::snake($parameter->getName());
+
+            if (array_key_exists($key, $value) || ! $parameter->isOptional()) {
+                $lastArgumentIndex = $index;
+            }
+        }
+
+        foreach ($parameters as $index => $parameter) {
+            if ($index > $lastArgumentIndex) {
+                break;
+            }
+
             $key = Str::snake($parameter->getName());
 
             if (array_key_exists($key, $value)) {

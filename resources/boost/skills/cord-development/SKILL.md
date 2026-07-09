@@ -70,6 +70,17 @@ $xml = Cord::fromStructured('shipment.event.add', [
 ])->inspect();
 ```
 
+For shipment event updates that change additional CargoWise fields, use `withCompany()` and repeatable `additional_fields_to_update` rows or fluent `addAdditionalFieldUpdate()` calls:
+
+```php
+$xml = Cord::withCompany('FRA')
+    ->shipment('SNTG26000600')
+    ->addEvent('2016-12-05T12:12:00', 'DCF')
+    ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_GS_NKRepOps', 'LS0')
+    ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
+    ->inspect();
+```
+
 ## Guardrails
 
 - Set `withCompany()` whenever the operation depends on company context. For universal requests this also affects derived `SenderID`.
@@ -94,6 +105,9 @@ $xml = Cord::fromStructured('shipment.event.add', [
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
 - Use `addEvent()` or structured `one_off_quote.event.add` to push an event to an existing one-off quote. This also runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`.
 - Use `addEventContext('Type', 'Value')` (repeatable) or structured `event_contexts` on event add operations to populate `Event > ContextCollection > Context` rows.
+- Use `addAdditionalFieldUpdate('ForwardingShipment.JobHeader.Field', 'Value')` (repeatable) or structured `additional_fields_to_update` on `shipment.event.add` when CargoWise expects field updates inside a `UniversalEvent` payload.
+- Shipment event additional field updates require `withCompany()` and switch `shipment.event.add` to embedded `Event > DataContext` with `Company`, `EnterpriseID`, and `ServerID`, omitting top-level `SenderID` / `RecipientID`.
+- When `reference` and `is_estimate` are omitted from `shipment.event.add`, Cord leaves `EventReference` and `IsEstimate` out of the XML.
 - Use `docManager('MODULE', 'JOBNUMBER')` or `fromStructured('doc_manager.get', [...])` for DocManager document lookups. Cord composes `DataTarget > Key` as `<MODULE> <JOBNUMBER>` and sends `Company`, `EnterpriseID`, and `ServerID` inside `DocumentRequest > DataContext`.
 - Use `filter()` for a single document `FilterCollection`, or `filterCollection()` / structured `filter_collections` when CargoWise expects multiple distinct `FilterCollection` nodes in the same document request.
 - DocManager requests require `withCompany()` and do not support top-level `sender_id` / `recipient_id`.

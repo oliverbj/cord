@@ -1806,6 +1806,54 @@ it('builds the same shipment helper xml from structured input', function () {
     expect($normalizeEventTime($structuredDocumentXml))->toBe($normalizeEventTime($fluentDocumentXml));
 });
 
+it('builds shipment additional field updates on event payloads', function () {
+    $structuredXml = Cord::withCompany('FRA')
+        ->fromStructured('shipment.event.add', [
+            'key' => 'SNTG26000600',
+            'event' => [
+                'date' => '2016-12-05T12:12:00',
+                'type' => 'DCF',
+            ],
+            'additional_fields_to_update' => [
+                [
+                    'type' => 'ForwardingShipment.JobHeader.JH_GS_NKRepOps',
+                    'value' => 'LS0',
+                ],
+                [
+                    'type' => 'ForwardingShipment.JobHeader.JH_Status',
+                    'value' => 'CMP',
+                ],
+            ],
+        ])
+        ->inspect();
+
+    $fluentXml = Cord::withCompany('FRA')
+        ->shipment('SNTG26000600')
+        ->addEvent('2016-12-05T12:12:00', 'DCF')
+        ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_GS_NKRepOps', 'LS0')
+        ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($fluentXml)
+        ->toContain('<UniversalEvent>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->not->toContain('<EventReference>')
+        ->not->toContain('<IsEstimate>')
+        ->toContain('<Company><Code>FRA</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<Type>ForwardingShipment</Type>')
+        ->toContain('<Key>SNTG26000600</Key>')
+        ->toContain('<EventType>DCF</EventType>')
+        ->toContain('<AdditionalFieldsToUpdateCollection>')
+        ->toContain('<Type>ForwardingShipment.JobHeader.JH_GS_NKRepOps</Type>')
+        ->toContain('<Value>LS0</Value>')
+        ->toContain('<Type>ForwardingShipment.JobHeader.JH_Status</Type>')
+        ->toContain('<Value>CMP</Value>');
+});
+
 it('builds shipment document add payloads as universal events with company data context', function () {
     $xml = Cord::withCompany('CPH')
         ->shipment('SJFK21060014')

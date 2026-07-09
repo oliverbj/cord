@@ -290,6 +290,19 @@ Cord::shipment('SJFK21060014')
 
 `addEventContext()` appends `Event > ContextCollection > Context` rows.
 
+For shipment events that update additional CargoWise fields, call `withCompany()` and append one or more `addAdditionalFieldUpdate()` rows. In this mode Cord emits `Company`, `EnterpriseID`, and `ServerID` inside `Event > DataContext` and omits top-level `SenderID` / `RecipientID` so the XML matches CargoWise's embedded update shape.
+
+```php
+Cord::withCompany('FRA')
+    ->shipment('SNTG26000600')
+    ->addEvent('2016-12-05T12:12:00', 'DCF')
+    ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_GS_NKRepOps', 'LS0')
+    ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
+    ->run();
+```
+
+When you omit `reference` and `isEstimate`, Cord leaves `EventReference` and `IsEstimate` out of the payload.
+
 Structured equivalent:
 
 ```php
@@ -304,6 +317,23 @@ Cord::fromStructured('shipment.event.add', [
     'event_contexts' => [
         ['type' => 'MBLNumber', 'value' => 'HBL85161TRN'],
         ['type' => 'BOLNumber', 'value' => '423908'],
+    ],
+])->run();
+```
+
+Structured additional field updates use `additional_fields_to_update`:
+
+```php
+Cord::fromStructured('shipment.event.add', [
+    'company' => 'FRA',
+    'key' => 'SNTG26000600',
+    'event' => [
+        'date' => '2016-12-05T12:12:00',
+        'type' => 'DCF',
+    ],
+    'additional_fields_to_update' => [
+        ['type' => 'ForwardingShipment.JobHeader.JH_GS_NKRepOps', 'value' => 'LS0'],
+        ['type' => 'ForwardingShipment.JobHeader.JH_Status', 'value' => 'CMP'],
     ],
 ])->run();
 ```

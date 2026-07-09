@@ -25,6 +25,11 @@ class UniversalEvent extends Request
             throw new \Exception('Company code must be provided for one-off quote event and document add requests. Call withCompany() before sending the request.');
         }
 
+        if ($this->isShipmentAdditionalFieldUpdateRequest()
+            && (! is_string($this->cord->company) || trim($this->cord->company) === '')) {
+            throw new \Exception('Company code must be provided for shipment additional field updates. Call withCompany() before sending the request.');
+        }
+
         if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
             return $context;
         }
@@ -49,7 +54,7 @@ class UniversalEvent extends Request
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteDocumentAdd() || $this->isOneOffQuoteEventAdd()) {
+        if ($this->isOneOffQuoteDocumentAdd() || $this->isOneOffQuoteEventAdd() || $this->isShipmentAdditionalFieldUpdateRequest()) {
             return false;
         }
 
@@ -91,6 +96,14 @@ class UniversalEvent extends Request
 
     private function usesEmbeddedDataContext(): bool
     {
-        return $this->isDocumentAddRequest() || $this->isOneOffQuoteEventAdd();
+        return $this->isDocumentAddRequest()
+            || $this->isOneOffQuoteEventAdd()
+            || $this->isShipmentAdditionalFieldUpdateRequest();
+    }
+
+    private function isShipmentAdditionalFieldUpdateRequest(): bool
+    {
+        return $this->cord->currentOperation === OperationId::ShipmentEventAdd
+            && $this->cord->additionalFieldsToUpdate !== [];
     }
 }

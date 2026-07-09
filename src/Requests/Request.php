@@ -109,14 +109,28 @@ abstract class Request implements RequestInterface
         if (! empty($this->cord->event)) {
             $DataTargetArray['EventTime'] = $this->cord->event['EventTime'];
             $DataTargetArray['EventType'] = $this->cord->event['EventType'];
-            $DataTargetArray['EventReference'] = $this->cord->event['EventReference'];
-            $DataTargetArray['IsEstimate'] = $this->cord->event['IsEstimate'];
+
+            if (array_key_exists('EventReference', $this->cord->event)) {
+                $DataTargetArray['EventReference'] = $this->cord->event['EventReference'];
+            }
+
+            if (array_key_exists('IsEstimate', $this->cord->event)) {
+                $DataTargetArray['IsEstimate'] = $this->cord->event['IsEstimate'];
+            }
 
             if ($this->cord->eventContexts !== []) {
                 $DataTargetArray['ContextCollection'] = [
                     'Context' => count($this->cord->eventContexts) === 1
                         ? $this->cord->eventContexts[0]
                         : $this->cord->eventContexts,
+                ];
+            }
+
+            if ($this->cord->additionalFieldsToUpdate !== []) {
+                $DataTargetArray['AdditionalFieldsToUpdateCollection'] = [
+                    'AdditionalFieldsToUpdate' => count($this->cord->additionalFieldsToUpdate) === 1
+                        ? $this->cord->additionalFieldsToUpdate[0]
+                        : $this->cord->additionalFieldsToUpdate,
                 ];
             }
         }

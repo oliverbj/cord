@@ -53,7 +53,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 Cord currently targets:
 
 - PHP `8.2+`
-- Laravel `11` and `12`
+- Laravel `11`, `12`, and `13`
 
 ## Installation
 

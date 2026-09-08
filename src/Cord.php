@@ -901,6 +901,33 @@ class Cord
     }
 
     /**
+     * Set one-off quote start date.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'start_date')]
+    public function startDate(string $date): self
+    {
+        return $this->setOneOffQuoteDraftValue('startDate', $date);
+    }
+
+    /**
+     * Set one-off quote end date.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'end_date')]
+    public function endDate(string $date): self
+    {
+        return $this->setOneOffQuoteDraftValue('endDate', $date);
+    }
+
+    /**
+     * Set one-off quote follow-up date.
+     */
+    #[OperationField(OperationId::OneOffQuoteCreate, name: 'follow_up_date')]
+    public function followUpDate(string $date): self
+    {
+        return $this->setOneOffQuoteDraftValue('followUpDate', $date);
+    }
+
+    /**
      * Set one-off quote service level.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'service_level')]
@@ -3319,6 +3346,29 @@ class Cord
     private function buildOneOffQuotePayload(array $quoteDetails): array
     {
         $payload = [];
+
+        $dateTypes = [
+            'startDate' => 'Start',
+            'endDate' => 'End',
+            'followUpDate' => 'FollowUp',
+        ];
+
+        $dates = [];
+        foreach ($dateTypes as $field => $type) {
+            if (isset($quoteDetails[$field])) {
+                $dates[] = [
+                    'Type' => $type,
+                    'IsEstimate' => false,
+                    'Value' => $quoteDetails[$field],
+                ];
+            }
+        }
+
+        if ($dates !== []) {
+            $payload['DateCollection'] = [
+                'Date' => count($dates) === 1 ? $dates[0] : $dates,
+            ];
+        }
 
         if (isset($quoteDetails['transportMode'])) {
             $payload['TransportMode'] = [

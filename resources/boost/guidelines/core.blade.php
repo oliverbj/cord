@@ -30,6 +30,8 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
 - For `container.query`, use `GlbContainerType` as the native criteria entity, or call `container('20GP')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
+- For `organization.create`, call `organization('CODE')->create()` to provide an explicit organization code, or `organization()->create()` to omit `OrgHeader > Code` and let CargoWise generate it. The generated code is returned in the response context as `EntityLocalCode`.
+- For `organization.create`, `full_name` is required; `is_consignor` represents a shipper, `is_consignee` represents a consignee, and `is_forwarder` marks a freight forwarder.
 
 ```php
 $schema = Cord::schema('one_off_quote.create');
@@ -80,6 +82,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - DocManager requests require `withCompany()` and do not use top-level `sender_id` / `recipient_id`.
 
 - Organization retrieval is supported through `organization('SAGFURHEL')->get()` and `schema('organization.query')`.
+- Organization creation supports `organization('CODE')->create()` for an explicit code or `organization()->create()` when CargoWise should generate the code. The generated value is returned as `EntityLocalCode` in the response context.
 - Staff retrieval is supported through `staff('BVO')->get()` and `schema('staff.query')`.
 - One-off quote retrieval is supported through `oneOffQuote('QCPH00001004')->get()` and `schema('one_off_quote.get')`.
 - CargoWise does not support one-off quote updates through eAdapter, so Cord does not publish a `one_off_quote.update` operation.

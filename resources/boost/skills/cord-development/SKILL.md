@@ -88,6 +88,8 @@ $xml = Cord::withCompany('FRA')
 - For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
 - For `container.query`, use `GlbContainerType` as the native criteria entity, or call `container('20GP')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
+- For `organization.create`, call `organization('CODE')->create()` to provide an explicit organization code, or `organization()->create()` to omit `OrgHeader > Code` and let CargoWise generate it. The generated code is returned in the response context as `EntityLocalCode`.
+- For `organization.create`, `full_name` is required; `is_consignor` represents a shipper, `is_consignee` represents a consignee, and `is_forwarder` marks a freight forwarder.
 - For `one_off_quote.create`, `branch` populates both `Shipment > DataContext > Branch` and `Shipment > JobCosting > Branch`.
 - For `one_off_quote.create`, `org_role` populates `Shipment > OrgRole`; use `LOC` for Local Client and `OAG` for Overseas Agent.
 - For `one_off_quote.create`, `packing_mode` populates `Shipment > ContainerMode > Code`; use values such as `FCL`, `LCL`, `FTL`, or `LSE`.
@@ -114,6 +116,7 @@ $xml = Cord::withCompany('FRA')
 - DocManager requests require `withCompany()` and do not support top-level `sender_id` / `recipient_id`.
 - CargoWise does not support one-off quote updates through eAdapter, so Cord does not publish a `one_off_quote.update` operation. Do not generate `oneOffQuote('KEY')->update()` or `fromStructured('one_off_quote.update', ...)` flows.
 - Use `organization(...)->get()` for organization lookups, `staff(...)->get()` for staff lookups, `container(...)->get()` for container type lookups, and `oneOffQuote(...)->get()` for quote lookups so retrieval and write flows stay explicit.
+- Use `organization()->create()` when CargoWise should generate the organization code, or `organization('CODE')->create()` when the application must provide it. CargoWise returns a generated code as `EntityLocalCode` in the response context.
 - Use `docManager('QU1', 'QHEL00011452')` for DocManager lookups instead of falling back to `rawXml()`.
 - Use `oneOffQuote('QCPH00001004')->get()` or `fromStructured('one_off_quote.get', ...)` for quote lookups instead of falling back to `rawXml()`.
 - Reach for `rawXml()` only when Cord does not already expose the request shape through fluent or structured APIs.

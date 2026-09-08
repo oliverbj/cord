@@ -22,9 +22,12 @@ class NativeOrganizationCreation extends NativeRequest
 
         $header = [
             '_attributes' => ['Action' => 'INSERT'],
-            'Code' => $this->cord->targetKey,
             'IsActive' => isset($draft['isActive']) ? ($draft['isActive'] ? 'true' : 'false') : 'true',
         ];
+
+        if (is_string($this->cord->targetKey) && trim($this->cord->targetKey) !== '') {
+            $header['Code'] = $this->cord->targetKey;
+        }
 
         if (isset($draft['fullName'])) {
             $header['FullName'] = $draft['fullName'];

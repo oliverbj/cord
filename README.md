@@ -549,7 +549,7 @@ Cord::organization()
 
 ### Create Organization
 
-New organizations are created with `organization('CODE')->create()`. Supply at least `fullName()` — all other setters are optional. Multiple addresses and contacts can be chained.
+New organizations are created with `organization('CODE')->create()`. Supply at least `fullName()` — all other setters are optional. If you omit the code by calling `organization()->create()`, CargoWise generates the organization code and returns it in the response context as `EntityLocalCode`. Multiple addresses and contacts can be chained.
 
 ```php
 Cord::withCompany('CPH')
@@ -575,6 +575,20 @@ Cord::withCompany('CPH')
     )
     ->run();
 ```
+
+To let CargoWise generate the organization code, omit the selector code:
+
+```php
+$response = Cord::withCompany('CPH')
+    ->organization()
+    ->create()
+    ->fullName('New Organization Ltd')
+    ->isConsignor(true)
+    ->isConsignee(true)
+    ->run();
+```
+
+The generated code is returned by CargoWise in the response `ContextCollection` as `EntityLocalCode`.
 
 | Method | Required | Description |
 |---|---|---|

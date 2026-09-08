@@ -466,9 +466,6 @@ class Cord
         }
 
         if ($this->target === DataTarget::Organization) {
-            if (! $this->targetKey) {
-                throw new \Exception('organization() requires a code for create(). Use organization(\'CODE\')->create().');
-            }
             $this->organizationIntent = 'create';
             $this->requestType = RequestType::NativeOrganizationCreation;
             $this->currentOperation = OperationId::OrganizationCreate;
@@ -2643,10 +2640,6 @@ class Cord
     private function validateOrganizationCreateDraft(): void
     {
         $errors = [];
-
-        if (! $this->targetKey || trim($this->targetKey) === '') {
-            $errors['code'] = ['The code field is required.'];
-        }
 
         if (! isset($this->organizationDraft['fullName']) || trim($this->organizationDraft['fullName']) === '') {
             $errors['full_name'] = ['The full_name field is required.'];

@@ -282,7 +282,7 @@ class OperationRegistry
                 action: 'create',
                 contextFields: $nativeWriteContext,
                 requiredContextFields: ['company'],
-                selector: ['field' => 'code', 'method' => 'organization', 'required' => true, 'type' => 'string'],
+                selector: ['field' => 'code', 'method' => 'organization', 'required' => false, 'type' => 'string'],
                 bootstrapMethods: ['create'],
             ),
             OperationId::StaffCreate->value => new OperationDefinition(

@@ -2829,6 +2829,25 @@ it('builds the same organization create xml from structured input', function () 
     expect($structuredXml)->toBe($fluentXml);
 });
 
+it('allows CargoWise to generate an organization code when omitted', function () {
+    $xml = Cord::withCompany('CPH')
+        ->organization()
+        ->create()
+        ->fullName('Generated Organization Ltd')
+        ->isActive(false)
+        ->isConsignee(true)
+        ->isConsignor(true)
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<OrgHeader Action="INSERT">')
+        ->not->toContain('<OrgHeader Action="INSERT"><Code>')
+        ->toContain('<IsActive>false</IsActive>')
+        ->toContain('<FullName>Generated Organization Ltd</FullName>')
+        ->toContain('<IsConsignee>true</IsConsignee>')
+        ->toContain('<IsConsignor>true</IsConsignor>');
+});
+
 it('validates fullName is required for organization create', function () {
     $errors = null;
 
@@ -2846,7 +2865,11 @@ it('validates fullName is required for organization create', function () {
     ]);
 });
 
-it('requires a code when calling organization create', function () {
-    expect(fn () => Cord::organization()->create())
-        ->toThrow(Exception::class, 'organization() requires a code for create().');
+it('allows structured organization create input to omit the code', function () {
+    $xml = Cord::fromStructured('organization.create', [
+        'company' => 'CPH',
+        'full_name' => 'Generated Organization Ltd',
+    ])->inspect();
+
+    expect($xml)->not->toContain('<OrgHeader Action="INSERT"><Code>');
 });

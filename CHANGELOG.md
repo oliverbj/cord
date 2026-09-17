@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.4.6 - 2026-09-08
+
+### What's Changed
+
+* Obj/fix org creation by @oliverbj in https://github.com/oliverbj/cord/pull/64
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.4.5...3.4.6
+
 ## v3.4.5 - 2026-09-08
 
 ### What's Changed
@@ -127,6 +135,7 @@ All notable changes to `cord` will be documented in this file.
 * Add one-off quote `start_date`, `end_date`, and `follow_up_date` support on create via `startDate()`, `endDate()`, `followUpDate()`, and structured fields. These write `Start`, `End`, and `FollowUp` rows under `Shipment > DateCollection > Date` with `IsEstimate=false`.
 * Fix one-off quote pack line dimension serialization to keep the shared `LengthUnit` element and omit unsupported `WidthUnit` and `HeightUnit` elements from outbound `PackingLine` XML.
 * Fix one-off quote `org_role` to serialize at `Shipment > OrgRole` instead of `Shipment > DataContext > OrgRole`.
+* Fix one-off quote charge-line amounts so currency-bearing `cost_amount` and `sell_amount` values populate OS amounts without also populating local amounts. Add `costLocalAmount()` and `sellLocalAmount()` for explicit local figures in fluent builders.
 * Update Boost guidance, the Cord development skill, and README examples to cover the new DocManager and repeated `FilterCollection` flows.
 
 ## v3.2.8 - 2026-04-05
@@ -427,6 +436,7 @@ Cord::fromStructured('one_off_quote.create', [
 
 
 
+
 ```
 - If you were sending sender_id, recipient_id, enterprise, or server in structured one_off_quote.create payloads, remove them. They are not valid for this CargoWise request scope.
 
@@ -478,6 +488,7 @@ Cord `3.0.5` is a patch release that fixes the One-Off Quote retrieval envelope 
       ->oneOffQuote('QCPH00001004')
       ->get()
       ->run();
+  
   
   
   
@@ -586,6 +597,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   
   
   
+  
   ```
 - Organization queries built with criteria groups should now use:
   
@@ -594,6 +606,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
       ->criteriaGroup([...], type: 'Key')
       ->get()
       ->run();
+  
   
   
   
@@ -670,6 +683,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   
   
   
+  
   ```
 - Structured organization queries via `Cord::fromStructured('organization.query', [...])` continue to work and now bootstrap the explicit `get()` step automatically.
   
@@ -681,6 +695,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.3...3.0.4
 
 ```
+
 
 
 
@@ -870,6 +885,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 
 

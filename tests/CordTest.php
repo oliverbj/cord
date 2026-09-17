@@ -2123,7 +2123,9 @@ it('supports typed addresses and charge lines for one-off quote create', functio
         ->toContain('<CostOSCurrency><Code>NZD</Code></CostOSCurrency>')
         ->toContain('<SellOSCurrency><Code>NZD</Code></SellOSCurrency>')
         ->toContain('<Branch><Code>B01</Code><Name>Branch 2</Name></Branch>')
-        ->toContain('<Department><Code>OPS</Code><Name>Operations</Name></Department>');
+        ->toContain('<Department><Code>OPS</Code><Name>Operations</Name></Department>')
+        ->not->toContain('<CostLocalAmount>')
+        ->not->toContain('<SellLocalAmount>');
 
     expect(substr_count($xml, '<ChargeLine>'))->toBe(2);
     expect((bool) preg_match('/<JobCosting>.*<Branch><Code>A01<\/Code><\/Branch>.*<Department><Code>FES<\/Code><\/Department>/s', $xml))->toBeTrue();

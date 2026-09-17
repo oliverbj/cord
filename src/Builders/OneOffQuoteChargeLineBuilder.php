@@ -44,30 +44,12 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
-    public function costLocalAmount(float|int|string $value): self
-    {
-        $this->payload['costAmount'] = [
-            'value' => $value,
-        ];
-
-        return $this;
-    }
-
     #[StructuredField(name: 'sell_amount')]
     public function sellAmount(float|int|string $value, string $currencyCode): self
     {
         $this->payload['sellAmount'] = [
             'value' => $value,
             'currencyCode' => $currencyCode,
-        ];
-
-        return $this;
-    }
-
-    public function sellLocalAmount(float|int|string $value): self
-    {
-        $this->payload['sellAmount'] = [
-            'value' => $value,
         ];
 
         return $this;

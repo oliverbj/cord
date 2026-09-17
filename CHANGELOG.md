@@ -135,7 +135,6 @@ All notable changes to `cord` will be documented in this file.
 * Add one-off quote `start_date`, `end_date`, and `follow_up_date` support on create via `startDate()`, `endDate()`, `followUpDate()`, and structured fields. These write `Start`, `End`, and `FollowUp` rows under `Shipment > DateCollection > Date` with `IsEstimate=false`.
 * Fix one-off quote pack line dimension serialization to keep the shared `LengthUnit` element and omit unsupported `WidthUnit` and `HeightUnit` elements from outbound `PackingLine` XML.
 * Fix one-off quote `org_role` to serialize at `Shipment > OrgRole` instead of `Shipment > DataContext > OrgRole`.
-* Fix one-off quote charge-line amounts so currency-bearing `cost_amount` and `sell_amount` values populate OS amounts without also populating local amounts. Add `costLocalAmount()` and `sellLocalAmount()` for explicit local figures in fluent builders.
 * Update Boost guidance, the Cord development skill, and README examples to cover the new DocManager and repeated `FilterCollection` flows.
 
 ## v3.2.8 - 2026-04-05

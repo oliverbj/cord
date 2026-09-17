@@ -3731,15 +3731,23 @@ class Cord
         ];
 
         if (isset($chargeLine['costAmount']['value'])) {
-            $costLocalAmount = (string) $chargeLine['costAmount']['value'];
-            $payload['CostLocalAmount'] = $costLocalAmount;
-            $payload['CostOSAmount'] = $costLocalAmount;
+            $costAmount = (string) $chargeLine['costAmount']['value'];
+            $costCurrencyCode = $chargeLine['costAmount']['currencyCode'] ?? $lineDefaults['currencyCode'] ?? null;
+            $payload['CostOSAmount'] = $costAmount;
+
+            if ($costCurrencyCode === null) {
+                $payload['CostLocalAmount'] = $costAmount;
+            }
         }
 
         if (isset($chargeLine['sellAmount']['value'])) {
-            $sellLocalAmount = (string) $chargeLine['sellAmount']['value'];
-            $payload['SellLocalAmount'] = $sellLocalAmount;
-            $payload['SellOSAmount'] = $sellLocalAmount;
+            $sellAmount = (string) $chargeLine['sellAmount']['value'];
+            $sellCurrencyCode = $chargeLine['sellAmount']['currencyCode'] ?? $lineDefaults['currencyCode'] ?? null;
+            $payload['SellOSAmount'] = $sellAmount;
+
+            if ($sellCurrencyCode === null) {
+                $payload['SellLocalAmount'] = $sellAmount;
+            }
         }
 
         if (is_string($chargeLine['chargeCodeGroup'] ?? null) && $chargeLine['chargeCodeGroup'] !== '') {

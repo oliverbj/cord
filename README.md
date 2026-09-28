@@ -816,10 +816,15 @@ Cord::withCompany('CPH')
     ->phone('+111')
     ->isActive(true)
     ->country('FR')
+    ->title('Operations Specialist')
+    ->addressLine1('Main Street 1')
+    ->addressLine2('Suite 2')
+    ->city('Copenhagen')
+    ->state('Capital Region')
+    ->postcode('2100')
     ->replaceGroups(['ORGALL', 'OPSALL'])
     ->withPayload([
         'FriendlyName' => 'User Test',
-        'Title' => 'Operations Specialist',
         'GlbWorkTime' => [
             '_attributes' => ['Action' => 'Insert'],
             'MondayWorkingHours' => '*******************',
@@ -835,6 +840,7 @@ Common fluent setters:
 - `withCompany('CPH')` is required for native staff create/update requests.
 - `password(...)` automatically sets `ChangePasswordAtNextLogin` to `true`.
 - `canLogin(...)` maps to CargoWise `CanLogin`. Create payloads default to `true` when omitted; update payloads only include it when you set it.
+- `title(...)`, `addressLine1(...)`, `addressLine2(...)`, `city(...)`, `state(...)`, and `postcode(...)` map to `Title`, `UserAddress1`, `UserAddress2`, `City`, `State`, and `Postcode`. Structured staff input uses `title`, `address_line_1`, `address_line_2`, `city`, `state`, and `postcode`.
 - new staff create payloads automatically include `IsOperational=true`.
 - `replaceGroups([...])`, `addGroup(...)`, and `removeGroup(...)` are available for explicit group semantics.
 - `withPayload([...])` can be used as a passthrough for CargoWise fields not yet wrapped by dedicated methods.
@@ -866,9 +872,14 @@ Cord::withCompany('CPH')
     ->addGroup('NEWOPS')
     ->phone('+4511223344')
     ->country('DK')
+    ->title('Branch Manager')
+    ->addressLine1('Main Street 1')
+    ->addressLine2('Floor 3')
+    ->city('Copenhagen')
+    ->state('Capital Region')
+    ->postcode('2100')
     ->withPayload([
         'FriendlyName' => 'Updated',
-        'Title' => 'Branch Manager',
         'GlbWorkTime' => [
             '_attributes' => ['Action' => 'Update'],
             'MondayWorkingHours' => '********',

@@ -30,6 +30,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 - For `staff.query`, use `GlbStaff` as the native criteria entity, or call `staff('CODE')->get()` to preload a key lookup by `Code`.
 - For `container.query`, use `GlbContainerType` as the native criteria entity, or call `container('20GP')->get()` to preload a key lookup by `Code`.
 - For `staff.create` and `staff.update`, `can_login` maps to CargoWise `CanLogin`; create defaults to `true` when omitted, and update only sends the field when explicitly provided.
+- Staff create and update support `title`, `address_line_1`, `address_line_2`, `city`, `state`, and `postcode` (fluent methods: `title()`, `addressLine1()`, `addressLine2()`, `city()`, `state()`, and `postcode()`). These map to `Title`, `UserAddress1`, `UserAddress2`, `City`, `State`, and `Postcode` in CargoWise XML.
 - For `organization.create`, call `organization('CODE')->create()` to provide an explicit organization code, or `organization()->create()` to omit `OrgHeader > Code` and let CargoWise generate it. The generated code is returned in the response context as `EntityLocalCode`.
 - For `organization.create`, `full_name` is required; `is_consignor` represents a shipper, `is_consignee` represents a consignee, and `is_forwarder` marks a freight forwarder.
 

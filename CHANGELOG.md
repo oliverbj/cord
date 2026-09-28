@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### Added
+
+* Add staff create and update support for job title and address fields: address lines, city, state, and postcode.
+
 ## v3.4.7 - 2026-09-17
 
 ### What's Changed

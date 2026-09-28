@@ -850,6 +850,56 @@ class Cord
     }
 
     /**
+     * Set the second staff address line.
+     */
+    #[OperationField(OperationId::StaffCreate, name: 'address_line_2')]
+    #[OperationField(OperationId::StaffUpdate, name: 'address_line_2')]
+    public function addressLine2(string $addressLine2): self
+    {
+        return $this->setStaffDraftValue('addressTwo', $addressLine2);
+    }
+
+    /**
+     * Set the staff city.
+     */
+    #[OperationField(OperationId::StaffCreate)]
+    #[OperationField(OperationId::StaffUpdate)]
+    public function city(string $city): self
+    {
+        return $this->setStaffDraftValue('city', $city);
+    }
+
+    /**
+     * Set the staff state or region.
+     */
+    #[OperationField(OperationId::StaffCreate)]
+    #[OperationField(OperationId::StaffUpdate)]
+    public function state(string $state): self
+    {
+        return $this->setStaffDraftValue('state', $state);
+    }
+
+    /**
+     * Set the staff postcode.
+     */
+    #[OperationField(OperationId::StaffCreate)]
+    #[OperationField(OperationId::StaffUpdate)]
+    public function postcode(string $postcode): self
+    {
+        return $this->setStaffDraftValue('postcode', $postcode);
+    }
+
+    /**
+     * Set the staff job title.
+     */
+    #[OperationField(OperationId::StaffCreate)]
+    #[OperationField(OperationId::StaffUpdate)]
+    public function title(string $title): self
+    {
+        return $this->setStaffDraftValue('title', $title);
+    }
+
+    /**
      * Set one-off quote transport mode.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'transport_mode', required: true, enum: ['SEA', 'AIR', 'ROA'])]
@@ -2970,6 +3020,7 @@ class Cord
             'UserAddress1' => $staffDetails['addressOne'] ?? '',
             'UserAddress2' => $staffDetails['addressTwo'] ?? '',
             'City' => $staffDetails['city'] ?? '',
+            'State' => $staffDetails['state'] ?? '',
             'Postcode' => $staffDetails['postcode'] ?? '',
             'Title' => $staffDetails['title'] ?? '',
             'WorkPhone' => $staffDetails['workPhone'] ?? '',
@@ -3062,6 +3113,7 @@ class Cord
         $this->setStaffValueIfProvided($payload, $staffDetails, 'addressOne', 'UserAddress1');
         $this->setStaffValueIfProvided($payload, $staffDetails, 'addressTwo', 'UserAddress2');
         $this->setStaffValueIfProvided($payload, $staffDetails, 'city', 'City');
+        $this->setStaffValueIfProvided($payload, $staffDetails, 'state', 'State');
         $this->setStaffValueIfProvided($payload, $staffDetails, 'postcode', 'Postcode');
         $this->setStaffValueIfProvided($payload, $staffDetails, 'title', 'Title');
         $this->setStaffValueIfProvided($payload, $staffDetails, 'workPhone', 'WorkPhone');

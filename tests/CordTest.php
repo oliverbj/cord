@@ -724,6 +724,12 @@ it('builds a native staff creation payload with headers, groups, and working hou
         ->phone('+111')
         ->isActive(true)
         ->country('FR')
+        ->title('Operations Manager')
+        ->addressLine1('Main Street 1')
+        ->addressLine2('Suite 2')
+        ->city('Copenhagen')
+        ->state('Capital Region')
+        ->postcode('2100')
         ->replaceGroups(['ORGALL', 'OPSALL'])
         ->withPayload([
             'GlbWorkTime' => [
@@ -743,6 +749,12 @@ it('builds a native staff creation payload with headers, groups, and working hou
         ->toContain('<Code>BVO</Code>')
         ->toContain('<IsOperational>true</IsOperational>')
         ->toContain('<CanLogin>true</CanLogin>')
+        ->toContain('<Title>Operations Manager</Title>')
+        ->toContain('<UserAddress1>Main Street 1</UserAddress1>')
+        ->toContain('<UserAddress2>Suite 2</UserAddress2>')
+        ->toContain('<City>Copenhagen</City>')
+        ->toContain('<State>Capital Region</State>')
+        ->toContain('<Postcode>2100</Postcode>')
         ->toContain('<GlbGroupLink Action="MERGE">')
         ->toContain('<Code>ORGALL</Code>')
         ->toContain('<WorkPhone>+111</WorkPhone>')
@@ -780,9 +792,14 @@ it('builds a native staff update payload for non-collection fields', function ()
         ->branch('CPH')
         ->department('OPS')
         ->country('DK')
+        ->title('Branch Manager')
+        ->addressLine1('Test Street 1')
+        ->addressLine2('Floor 3')
+        ->city('Aarhus')
+        ->state('Midtjylland')
+        ->postcode('8000')
         ->withPayload([
             'FriendlyName' => 'Updated',
-            'Title' => 'Branch Manager',
             'GlbWorkTime' => [
                 '_attributes' => ['Action' => 'Update'],
                 'MondayWorkingHours' => '********',
@@ -797,6 +814,11 @@ it('builds a native staff update payload for non-collection fields', function ()
         ->toContain('<CanLogin>false</CanLogin>')
         ->toContain('<FriendlyName>Updated</FriendlyName>')
         ->toContain('<Title>Branch Manager</Title>')
+        ->toContain('<UserAddress1>Test Street 1</UserAddress1>')
+        ->toContain('<UserAddress2>Floor 3</UserAddress2>')
+        ->toContain('<City>Aarhus</City>')
+        ->toContain('<State>Midtjylland</State>')
+        ->toContain('<Postcode>8000</Postcode>')
         ->toContain('<EmailAddress>updated@example.com</EmailAddress>')
         ->toContain('<GlbWorkTime Action="Update">')
         ->toContain('<MondayWorkingHours>********</MondayWorkingHours>')
@@ -1510,6 +1532,12 @@ it('builds the same staff xml from structured create and update input', function
         'phone' => '+111',
         'is_active' => true,
         'country' => 'FR',
+        'title' => 'Operations Manager',
+        'address_line_1' => 'Main Street 1',
+        'address_line_2' => 'Suite 2',
+        'city' => 'Copenhagen',
+        'state' => 'Capital Region',
+        'postcode' => '2100',
         'groups' => ['ORGALL', 'OPSALL'],
     ])->inspect();
 
@@ -1528,6 +1556,12 @@ it('builds the same staff xml from structured create and update input', function
             ->phone('+111')
             ->isActive(true)
             ->country('FR')
+            ->title('Operations Manager')
+            ->addressLine1('Main Street 1')
+            ->addressLine2('Suite 2')
+            ->city('Copenhagen')
+            ->state('Capital Region')
+            ->postcode('2100')
             ->replaceGroups(['ORGALL', 'OPSALL'])
             ->inspect()
     );
@@ -1541,6 +1575,12 @@ it('builds the same staff xml from structured create and update input', function
         'branch' => 'CPH',
         'department' => 'OPS',
         'country' => 'DK',
+        'title' => 'Branch Manager',
+        'address_line_1' => 'Test Street 1',
+        'address_line_2' => 'Floor 3',
+        'city' => 'Aarhus',
+        'state' => 'Midtjylland',
+        'postcode' => '8000',
         'groups_to_add' => ['NEWOPS'],
         'groups_to_remove' => ['OLDOPS'],
     ])->inspect();
@@ -1555,6 +1595,12 @@ it('builds the same staff xml from structured create and update input', function
             ->branch('CPH')
             ->department('OPS')
             ->country('DK')
+            ->title('Branch Manager')
+            ->addressLine1('Test Street 1')
+            ->addressLine2('Floor 3')
+            ->city('Aarhus')
+            ->state('Midtjylland')
+            ->postcode('8000')
             ->addGroup('NEWOPS')
             ->removeGroup('OLDOPS')
             ->inspect()

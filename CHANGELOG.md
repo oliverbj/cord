@@ -2,6 +2,14 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## v3.4.9 - 2026-10-05
+
+### What's Changed
+
+* Add support for additional fields in one-off quote event updates by @oliverbj in https://github.com/oliverbj/cord/pull/67
+
+**Full Changelog**: https://github.com/oliverbj/cord/compare/3.4.8...3.4.9
+
 ## v3.4.8 - 2026-09-28
 
 ### What's Changed
@@ -16,7 +24,7 @@ All notable changes to `cord` will be documented in this file.
 
 * Add staff create and update support for job title and address fields: address lines, city, state, and postcode.
 * Support `addAdditionalFieldUpdate()` / `additional_fields_to_update` on
-one-off quote event add requests.
+  one-off quote event add requests.
 
 ## v3.4.7 - 2026-09-17
 
@@ -463,6 +471,7 @@ Cord::fromStructured('one_off_quote.create', [
 
 
 
+
 ```
 - If you were sending sender_id, recipient_id, enterprise, or server in structured one_off_quote.create payloads, remove them. They are not valid for this CargoWise request scope.
 
@@ -514,6 +523,7 @@ Cord `3.0.5` is a patch release that fixes the One-Off Quote retrieval envelope 
       ->oneOffQuote('QCPH00001004')
       ->get()
       ->run();
+  
   
   
   
@@ -628,6 +638,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   
   
   
+  
   ```
 - Organization queries built with criteria groups should now use:
   
@@ -636,6 +647,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
       ->criteriaGroup([...], type: 'Key')
       ->get()
       ->run();
+  
   
   
   
@@ -718,6 +730,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
   
   
   
+  
   ```
 - Structured organization queries via `Cord::fromStructured('organization.query', [...])` continue to work and now bootstrap the explicit `get()` step automatically.
   
@@ -729,6 +742,7 @@ Cord `3.0.4` is a patch release that standardizes retrieval flows so organizatio
 **Full Changelog**: https://github.com/oliverbj/cord/compare/3.0.3...3.0.4
 
 ```
+
 
 
 
@@ -921,6 +935,7 @@ Cord `3.0.1` is a patch release focused on installation stability and package re
 
 ```bash
 php artisan vendor:publish --tag="cord-config"
+
 
 
 

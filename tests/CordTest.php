@@ -1900,6 +1900,35 @@ it('builds shipment additional field updates on event payloads', function () {
         ->toContain('<Value>CMP</Value>');
 });
 
+it('builds one-off quote additional field updates on event payloads', function () {
+    $structuredXml = Cord::withCompany('FRA')
+        ->fromStructured('one_off_quote.event.add', [
+            'key' => 'QUOTE123',
+            'event' => [
+                'date' => '2016-12-05T12:12:00',
+                'type' => 'DCF',
+            ],
+            'additional_fields_to_update' => [
+                ['type' => 'ForwardingShipment.JobHeader.JH_Status', 'value' => 'CMP'],
+            ],
+        ])
+        ->inspect();
+
+    $fluentXml = Cord::withCompany('FRA')
+        ->oneOffQuote('QUOTE123')
+        ->addEvent('2016-12-05T12:12:00', 'DCF')
+        ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
+        ->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($fluentXml)
+        ->toContain('<AdditionalFieldsToUpdateCollection>')
+        ->toContain('<Type>ForwardingShipment.JobHeader.JH_Status</Type>')
+        ->toContain('<Value>CMP</Value>')
+        ->toContain('<Company><Code>FRA</Code></Company>')
+        ->not->toContain('<SenderID>');
+});
+
 it('builds shipment document add payloads as universal events with company data context', function () {
     $xml = Cord::withCompany('CPH')
         ->shipment('SJFK21060014')

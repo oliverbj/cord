@@ -15,6 +15,8 @@ All notable changes to `cord` will be documented in this file.
 ### Added
 
 * Add staff create and update support for job title and address fields: address lines, city, state, and postcode.
+* Support `addAdditionalFieldUpdate()` / `additional_fields_to_update` on
+one-off quote event add requests.
 
 ## v3.4.7 - 2026-09-17
 

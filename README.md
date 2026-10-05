@@ -290,7 +290,7 @@ Cord::shipment('SJFK21060014')
 
 `addEventContext()` appends `Event > ContextCollection > Context` rows.
 
-For shipment events that update additional CargoWise fields, call `withCompany()` and append one or more `addAdditionalFieldUpdate()` rows. In this mode Cord emits `Company`, `EnterpriseID`, and `ServerID` inside `Event > DataContext` and omits top-level `SenderID` / `RecipientID` so the XML matches CargoWise's embedded update shape.
+For shipment (and one-off quote) events that update additional CargoWise fields, call `withCompany()` and append one or more `addAdditionalFieldUpdate()` rows. In this mode Cord emits `Company`, `EnterpriseID`, and `ServerID` inside `Event > DataContext` and omits top-level `SenderID` / `RecipientID` so the XML matches CargoWise's embedded update shape.
 
 ```php
 Cord::withCompany('FRA')
@@ -1153,6 +1153,16 @@ Cord::fromStructured('one_off_quote.event.add', [
         ['type' => 'BOLNumber', 'value' => '423908'],
     ],
 ])->run();
+```
+
+One-off quote events also support `addAdditionalFieldUpdate()` (structured: `additional_fields_to_update`), which emits `Event > AdditionalFieldsToUpdateCollection` rows:
+
+```php
+Cord::withCompany('CPH')
+    ->oneOffQuote('QCPH00001004')
+    ->addEvent(now()->toIso8601String(), 'DIM')
+    ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
+    ->run();
 ```
 
 ## Multiple Connections

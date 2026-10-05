@@ -2275,12 +2275,26 @@ class Cord
             'required' => ['type', 'value'],
         ]
     )]
+    #[OperationField(
+        OperationId::OneOffQuoteEventAdd,
+        name: 'additional_fields_to_update',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
     public function addAdditionalFieldUpdate(string $type, mixed $value): self
     {
-        if ($this->currentOperation !== OperationId::ShipmentEventAdd
+        if (! in_array($this->currentOperation, [OperationId::ShipmentEventAdd, OperationId::OneOffQuoteEventAdd], true)
             || $this->requestType !== RequestType::UniversalEvent
             || $this->event === []) {
-            throw new \Exception('addAdditionalFieldUpdate() requires an active shipment event request. Call shipment(...)->addEvent() first.');
+            throw new \Exception('addAdditionalFieldUpdate() requires an active shipment or one-off quote event request. Call shipment(...)->addEvent() or oneOffQuote(...)->addEvent() first.');
         }
 
         $this->additionalFieldsToUpdate[] = [

@@ -6,6 +6,7 @@ enum DataTarget: string
 {
     case Shipment = 'ForwardingShipment';
     case Booking = 'ForwardingBooking';
+    case Consol = 'ForwardingConsol';
     case Custom = 'CustomsDeclaration';
     case DocManager = 'DocManager';
     case OneOffQuote = 'OneOffQuote';

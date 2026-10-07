@@ -159,6 +159,7 @@ $response = Cord::fromStructured('one_off_quote.create', [
 Cord currently supports these main targets:
 
 - Bookings via `booking()`
+- Consols via `consol()`
 - Shipments via `shipment()`
 - One-off quotes via `oneOffQuote()`
 - Customs declarations via `custom()`
@@ -190,6 +191,8 @@ Cord::withCompany('CPH')
     ->run();
 
 Cord::custom('BATL12345678')->run();
+
+Cord::consol('CCPH00000001')->run();
 
 Cord::withCompany('QHE')
     ->docManager('QU1', 'QHEL00011452')
@@ -267,6 +270,18 @@ Cord::shipment('SJFK21060014')
         type: 'MSC',
         description: 'Optional description',
         isPublished: true,
+    )
+    ->run();
+```
+
+The same call works on consols, bookings, and customs declarations:
+
+```php
+Cord::consol('CCPH00000001')
+    ->addDocument(
+        file_contents: base64_encode(file_get_contents('myfile.pdf')),
+        name: 'myfile.pdf',
+        type: 'MSC',
     )
     ->run();
 ```

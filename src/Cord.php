@@ -2052,6 +2052,20 @@ class Cord
     }
 
     /**
+     * Determine if the request is for a consol.
+     */
+    public function consol(string $consol): self
+    {
+        $this->targetKey = $consol;
+        $this->target = DataTarget::Consol;
+        $this->requestType = RequestType::UniversalShipmentRequest;
+        $this->currentOperation = OperationId::ConsolGet;
+        $this->markStructuredField('key');
+
+        return $this;
+    }
+
+    /**
      * Determine if the request should include documents.
      */
     public function withDocuments(): self
@@ -2061,6 +2075,7 @@ class Cord
             DataTarget::Shipment => OperationId::ShipmentDocumentsGet,
             DataTarget::Booking => OperationId::BookingDocumentsGet,
             DataTarget::Custom => OperationId::CustomDocumentsGet,
+            DataTarget::Consol => OperationId::ConsolDocumentsGet,
             DataTarget::Receiveable => OperationId::ReceivableDocumentsGet,
             default => $this->currentOperation,
         };
@@ -2071,6 +2086,7 @@ class Cord
     #[OperationField(OperationId::ShipmentDocumentAdd, name: 'document', required: true)]
     #[OperationField(OperationId::BookingDocumentAdd, name: 'document', required: true)]
     #[OperationField(OperationId::CustomDocumentAdd, name: 'document', required: true)]
+    #[OperationField(OperationId::ConsolDocumentAdd, name: 'document', required: true)]
     #[OperationField(OperationId::OneOffQuoteDocumentAdd, name: 'document', required: true)]
     public function addDocument(string $file_contents, string $name, string $type, string $description = '', bool $isPublished = false): self
     {
@@ -2129,6 +2145,7 @@ class Cord
             DataTarget::Shipment => OperationId::ShipmentDocumentAdd,
             DataTarget::Booking => OperationId::BookingDocumentAdd,
             DataTarget::Custom => OperationId::CustomDocumentAdd,
+            DataTarget::Consol => OperationId::ConsolDocumentAdd,
             DataTarget::OneOffQuote => OperationId::OneOffQuoteDocumentAdd,
             default => $this->currentOperation,
         };
@@ -2143,6 +2160,7 @@ class Cord
     #[OperationField(OperationId::ShipmentEventAdd, name: 'event', required: true)]
     #[OperationField(OperationId::BookingEventAdd, name: 'event', required: true)]
     #[OperationField(OperationId::CustomEventAdd, name: 'event', required: true)]
+    #[OperationField(OperationId::ConsolEventAdd, name: 'event', required: true)]
     #[OperationField(OperationId::OneOffQuoteEventAdd, name: 'event', required: true)]
     public function addEvent(string $date, string $type, string $reference = 'Automatic event from Cord', bool $isEstimate = false): self
     {
@@ -2177,6 +2195,7 @@ class Cord
             DataTarget::Shipment => OperationId::ShipmentEventAdd,
             DataTarget::Booking => OperationId::BookingEventAdd,
             DataTarget::Custom => OperationId::CustomEventAdd,
+            DataTarget::Consol => OperationId::ConsolEventAdd,
             DataTarget::OneOffQuote => OperationId::OneOffQuoteEventAdd,
             default => $this->currentOperation,
         };
@@ -2220,6 +2239,20 @@ class Cord
     )]
     #[OperationField(
         OperationId::CustomEventAdd,
+        name: 'event_contexts',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::ConsolEventAdd,
         name: 'event_contexts',
         repeatable: true,
         schema: [
@@ -2366,6 +2399,20 @@ class Cord
         ]
     )]
     #[OperationField(
+        OperationId::ConsolDocumentsGet,
+        name: 'filters',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'type' => ['type' => 'string'],
+                'value' => [],
+            ],
+            'required' => ['type', 'value'],
+        ]
+    )]
+    #[OperationField(
         OperationId::ReceivableDocumentsGet,
         name: 'filters',
         repeatable: true,
@@ -2461,6 +2508,30 @@ class Cord
     )]
     #[OperationField(
         OperationId::CustomDocumentsGet,
+        name: 'filter_collections',
+        repeatable: true,
+        schema: [
+            'type' => 'object',
+            'additionalProperties' => false,
+            'properties' => [
+                'filters' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => [
+                            'type' => ['type' => 'string'],
+                            'value' => [],
+                        ],
+                        'required' => ['type', 'value'],
+                    ],
+                ],
+            ],
+            'required' => ['filters'],
+        ]
+    )]
+    #[OperationField(
+        OperationId::ConsolDocumentsGet,
         name: 'filter_collections',
         repeatable: true,
         schema: [
@@ -4430,6 +4501,7 @@ class Cord
             'shipment' => $this->target === DataTarget::Shipment,
             'booking' => $this->target === DataTarget::Booking,
             'custom' => $this->target === DataTarget::Custom,
+            'consol' => $this->target === DataTarget::Consol,
             'doc_manager' => $this->target === DataTarget::DocManager,
             'receivable' => $this->target === DataTarget::Receiveable,
             'one_off_quote' => $this->target === DataTarget::OneOffQuote,

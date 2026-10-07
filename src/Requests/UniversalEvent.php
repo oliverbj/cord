@@ -80,6 +80,7 @@ class UniversalEvent extends Request
             OperationId::ShipmentDocumentAdd,
             OperationId::BookingDocumentAdd,
             OperationId::CustomDocumentAdd,
+            OperationId::ConsolDocumentAdd,
             OperationId::OneOffQuoteDocumentAdd,
         ], true);
     }

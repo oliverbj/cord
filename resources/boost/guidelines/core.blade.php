@@ -10,7 +10,7 @@ Cord provides a fluent Laravel API for sending CargoWise One eAdapter requests o
 
 ## Preferred request flow
 
-- Start from a target such as `shipment()`, `booking()`, `custom()`, `docManager()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
+- Start from a target such as `shipment()`, `booking()`, `consol()`, `custom()`, `docManager()`, `organization()`, `company()`, `staff()`, `oneOffQuote()`, or `receivable()`.
 - Call `get()` before `run()` for organization, staff, and one-off quote retrievals.
 - Call `run()` to send the request. Cord returns parsed array data by default.
 - Call `inspect()` while iterating or testing to build XML without sending any HTTP request.
@@ -76,6 +76,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - Use `addPackLine()` or structured `pack_lines` on `one_off_quote.create` to attach individual packing lines. Each pack line requires `pack_type` and `quantity`; `weight`, `volume`, `length`, `width`, and `height` are optional. CargoWise uses the shared `LengthUnit` element for dimensions, so Cord omits `WidthUnit` and `HeightUnit` from outbound pack line XML.
 - Use `addContainer()` or structured `containers` on `one_off_quote.create` to attach containers for FCL shipments. Each container requires `type` (e.g. `20GP`); `count` (defaults to `1`), `type_description`, `iso_code`, and `category` (`['code' => 'DRY', 'description' => 'Dry Storage']`) are optional. Maps to `ContainerCollection > Container` in XML.
 - Use `addDocument()` or structured `one_off_quote.document.add` to attach a document to an existing one-off quote. This runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`. Do not confuse this with `addAttachedDocument()` on `one_off_quote.create`, which attaches documents inline at creation time.
+- Use `consol('KEY')->addDocument(...)` or structured `consol.document.add` to upload an eDoc to a consol (`ForwardingConsol`). It works like shipment, booking, and custom document uploads. `consol.get`, `consol.documents.get`, and `consol.event.add` are also available.
 - Use `addEvent()` or structured `one_off_quote.event.add` to push an event to an existing one-off quote. This also runs as a `UniversalEvent` request and requires `withCompany()` plus a quote key so `Event > DataContext` includes `Company`, `EnterpriseID`, and `ServerID`.
 - Use `addEventContext('Type', 'Value')` (repeatable) or structured `event_contexts` on event add operations to populate `Event > ContextCollection > Context` rows.
 - Use `addAdditionalFieldUpdate('ForwardingShipment.JobHeader.Field', 'Value')` (repeatable) or structured `additional_fields_to_update` on `shipment.event.add` or `one_off_quote.event.add` to populate `Event > AdditionalFieldsToUpdateCollection` rows; requires `withCompany()`.

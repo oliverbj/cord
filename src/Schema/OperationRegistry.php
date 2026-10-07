@@ -81,6 +81,13 @@ class OperationRegistry
                 contextFields: $universalContext,
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
             ),
+            OperationId::ConsolGet->value => new OperationDefinition(
+                id: OperationId::ConsolGet,
+                resource: 'consol',
+                action: 'get',
+                contextFields: $universalContext,
+                selector: ['field' => 'key', 'method' => 'consol', 'required' => true, 'type' => 'string'],
+            ),
             OperationId::DocManagerGet->value => new OperationDefinition(
                 id: OperationId::DocManagerGet,
                 resource: 'doc_manager',
@@ -128,6 +135,14 @@ class OperationRegistry
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
                 bootstrapMethods: ['withDocuments'],
             ),
+            OperationId::ConsolDocumentsGet->value => new OperationDefinition(
+                id: OperationId::ConsolDocumentsGet,
+                resource: 'consol',
+                action: 'documents.get',
+                contextFields: $universalContext,
+                selector: ['field' => 'key', 'method' => 'consol', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['withDocuments'],
+            ),
             OperationId::ReceivableDocumentsGet->value => new OperationDefinition(
                 id: OperationId::ReceivableDocumentsGet,
                 resource: 'receivable',
@@ -157,6 +172,13 @@ class OperationRegistry
                 contextFields: $universalContext,
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
             ),
+            OperationId::ConsolEventAdd->value => new OperationDefinition(
+                id: OperationId::ConsolEventAdd,
+                resource: 'consol',
+                action: 'event.add',
+                contextFields: $universalContext,
+                selector: ['field' => 'key', 'method' => 'consol', 'required' => true, 'type' => 'string'],
+            ),
             OperationId::OneOffQuoteEventAdd->value => new OperationDefinition(
                 id: OperationId::OneOffQuoteEventAdd,
                 resource: 'one_off_quote',
@@ -185,6 +207,13 @@ class OperationRegistry
                 action: 'document.add',
                 contextFields: $universalContext,
                 selector: ['field' => 'key', 'method' => 'custom', 'required' => true, 'type' => 'string'],
+            ),
+            OperationId::ConsolDocumentAdd->value => new OperationDefinition(
+                id: OperationId::ConsolDocumentAdd,
+                resource: 'consol',
+                action: 'document.add',
+                contextFields: $universalContext,
+                selector: ['field' => 'key', 'method' => 'consol', 'required' => true, 'type' => 'string'],
             ),
             OperationId::OrganizationQuery->value => new OperationDefinition(
                 id: OperationId::OrganizationQuery,
@@ -552,6 +581,7 @@ class OperationRegistry
                 $cord->target === DataTarget::Shipment && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::ShipmentGet,
                 $cord->target === DataTarget::Booking && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::BookingGet,
                 $cord->target === DataTarget::Custom && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::CustomGet,
+                $cord->target === DataTarget::Consol && is_string($cord->targetKey) && trim($cord->targetKey) !== '' => OperationId::ConsolGet,
                 default => null,
             },
         };

@@ -22,6 +22,7 @@ All notable changes to `cord` will be documented in this file.
 
 ### Added
 
+* Add `consol()` target (`ForwardingConsol`) with `consol.get`, `consol.documents.get`, `consol.event.add` and `consol.document.add` operations, so eDocs can be uploaded to consols.
 * Add staff create and update support for job title and address fields: address lines, city, state, and postcode.
 * Support `addAdditionalFieldUpdate()` / `additional_fields_to_update` on
   one-off quote event add requests.

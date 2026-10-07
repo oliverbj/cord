@@ -1094,6 +1094,7 @@ it('describes published resources from an unscoped builder', function () {
     expect($description['resources'])->toHaveKeys([
         'booking',
         'company',
+        'consol',
         'custom',
         'doc_manager',
         'one_off_quote',
@@ -1852,6 +1853,29 @@ it('builds the same shipment helper xml from structured input', function () {
     expect($normalizeEventTime($structuredDocumentXml))->toBe($normalizeEventTime($fluentDocumentXml));
 });
 
+it('builds consol document add payloads', function () {
+    $structuredXml = Cord::fromStructured('consol.document.add', [
+        'key' => 'CCPH00000001',
+        'document' => [
+            'file_contents' => base64_encode('doc'),
+            'name' => 'myfile.pdf',
+            'type' => 'MSC',
+        ],
+    ])->inspect();
+
+    $fluentXml = Cord::consol('CCPH00000001')
+        ->addDocument(base64_encode('doc'), 'myfile.pdf', 'MSC')
+        ->inspect();
+
+    $normalizeEventTime = fn (string $xml) => preg_replace('/<EventTime>.*?<\/EventTime>/', '<EventTime>normalized</EventTime>', $xml);
+
+    expect($normalizeEventTime($structuredXml))->toBe($normalizeEventTime($fluentXml))
+        ->and($fluentXml)
+        ->toContain('<Type>ForwardingConsol</Type>')
+        ->toContain('<Key>CCPH00000001</Key>')
+        ->toContain('<FileName>myfile.pdf</FileName>');
+});
+
 it('builds shipment additional field updates on event payloads', function () {
     $structuredXml = Cord::withCompany('FRA')
         ->fromStructured('shipment.event.add', [
@@ -2042,6 +2066,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'withCodeMapping',
         'rawXml',
         'booking',
+        'consol',
         'receiveable',
         'receivable',
         'shipment',

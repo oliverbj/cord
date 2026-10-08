@@ -380,6 +380,7 @@ Cord::fromStructured('shipment.update', [
 | `payment_method` | `PaymentMethod > Code` | yes | |
 | `sending_agent` | `OrganizationAddress` with `AddressType=SendingForwarderAddress` and the `OrganizationCode` | yes | |
 | `receiving_agent` | `OrganizationAddress` with `AddressType=ReceivingForwarderAddress` and the `OrganizationCode` | yes | |
+| `carrier` | `OrganizationAddress` with `AddressType=ShippingLineAddress` and the `OrganizationCode` | yes | |
 | `transport_mode` | `TransportMode > Code` | yes | yes |
 | `packing_mode` | `ContainerMode > Code` | yes | yes |
 | `port_of_loading`, `port_of_discharge` | `PortOfLoading > Code`, `PortOfDischarge > Code` | yes | yes |

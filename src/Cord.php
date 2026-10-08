@@ -45,7 +45,7 @@ class Cord
 {
     /** @var array<string, array<int, string>> */
     private const JOB_UPDATE_FIELDS = [
-        'consol' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'paymentMethod', 'sendingAgent', 'receivingAgent'],
+        'consol' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'paymentMethod', 'sendingAgent', 'receivingAgent', 'carrier'],
         'shipment' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'portOfOrigin', 'portOfDestination', 'serviceLevel', 'incoterm', 'additionalTerms', 'goodsDescription', 'controllingAgent'],
     ];
 
@@ -70,6 +70,7 @@ class Cord
     ];
 
     private const JOB_UPDATE_AGENT_ADDRESS_TYPES = [
+        'carrier' => 'ShippingLineAddress',
         'controllingAgent' => 'ControllingAgent',
         'receivingAgent' => 'ReceivingForwarderAddress',
         'sendingAgent' => 'SendingForwarderAddress',
@@ -1279,6 +1280,15 @@ class Cord
     public function receivingAgent(string $organizationCode): self
     {
         return $this->setJobUpdateValue('receivingAgent', $organizationCode);
+    }
+
+    /**
+     * Set the carrier on a consol update from an organization code.
+     */
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function carrier(string $organizationCode): self
+    {
+        return $this->setJobUpdateValue('carrier', $organizationCode);
     }
 
     /**

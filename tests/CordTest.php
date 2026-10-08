@@ -2866,6 +2866,31 @@ it('builds a consol update with payment terms and agents', function () {
         ->not->toContain('<AddressOverride>');
 });
 
+it('builds a consol update with a carrier', function () {
+    $fluent = Cord::withCompany('CPH')
+        ->consol('CVN26001217')
+        ->update()
+        ->carrier('DHLAIR_WW')
+        ->receivingAgent('NTGAIRSAV')
+        ->inspect();
+
+    expect($fluent)
+        ->toContain('<OrganizationAddress><AddressType>ShippingLineAddress</AddressType><OrganizationCode>DHLAIR_WW</OrganizationCode></OrganizationAddress>')
+        ->toContain('<AddressType>ReceivingForwarderAddress</AddressType>');
+
+    $structured = Cord::fromStructured('consol.update', [
+        'company' => 'CPH',
+        'key' => 'CVN26001217',
+        'carrier' => 'DHLAIR_WW',
+        'receiving_agent' => 'NTGAIRSAV',
+    ])->inspect();
+
+    expect($structured)->toBe($fluent);
+
+    expect(fn () => Cord::withCompany('CPH')->shipment('SNTG26043096')->update()->carrier('DHLAIR_WW'))
+        ->toThrow(Exception::class, 'carrier() is not supported for shipment update() requests.');
+});
+
 it('builds consol and shipment updates through fromStructured', function () {
     $structuredConsol = Cord::fromStructured('consol.update', [
         'company' => 'CPH',

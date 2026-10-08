@@ -8,6 +8,8 @@ enum OperationId: string
     case BookingGet = 'booking.get';
     case CustomGet = 'custom.get';
     case ConsolGet = 'consol.get';
+    case ShipmentUpdate = 'shipment.update';
+    case ConsolUpdate = 'consol.update';
     case DocManagerGet = 'doc_manager.get';
     case ShipmentDocumentsGet = 'shipment.documents.get';
     case BookingDocumentsGet = 'booking.documents.get';

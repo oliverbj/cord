@@ -2100,6 +2100,7 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'withDocuments',
         'activeOneOffQuoteIntent',
         'currentOneOffQuoteDraft',
+        'isJobUpdate',
     ];
 
     foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
@@ -2839,6 +2840,118 @@ it('requires company context for one-off quote create', function () {
 it('throws when calling oneOffQuote update', function () {
     expect(fn () => Cord::oneOffQuote('00001063')->update())
         ->toThrow(Exception::class, 'one-off quote update() is not supported by CargoWise.');
+});
+
+it('builds a consol update with payment terms and agents', function () {
+    $xml = Cord::withCompany('CPH')
+        ->consol('CVN26001217')
+        ->update()
+        ->paymentMethod('PPD')
+        ->sendingAgent('NTGAIRHEL')
+        ->receivingAgent('NTGAIRSAV')
+        ->inspect();
+
+    expect((bool) preg_match('/^<\?xml version="1\.0" encoding="UTF-8"\?>\s*<UniversalShipment><Shipment><DataContext>/', $xml))->toBeTrue();
+
+    expect($xml)
+        ->toContain('<DataTarget><Type>ForwardingConsol</Type><Key>CVN26001217</Key></DataTarget>')
+        ->toContain('<Company><Code>CPH</Code></Company>')
+        ->toContain('<EnterpriseID>DEMO1</EnterpriseID>')
+        ->toContain('<ServerID>TRN</ServerID>')
+        ->toContain('<PaymentMethod><Code>PPD</Code></PaymentMethod>')
+        ->toContain('<OrganizationAddress><AddressType>ReceivingForwarderAddress</AddressType><OrganizationCode>NTGAIRSAV</OrganizationCode></OrganizationAddress>')
+        ->toContain('<OrganizationAddress><AddressType>SendingForwarderAddress</AddressType><OrganizationCode>NTGAIRHEL</OrganizationCode></OrganizationAddress>')
+        ->not->toContain('<SenderID>')
+        ->not->toContain('<RecipientID>')
+        ->not->toContain('<AddressOverride>');
+});
+
+it('builds consol and shipment updates through fromStructured', function () {
+    $structuredConsol = Cord::fromStructured('consol.update', [
+        'company' => 'CPH',
+        'key' => 'CVN26001217',
+        'payment_method' => 'PPD',
+        'sending_agent' => 'NTGAIRHEL',
+        'receiving_agent' => 'NTGAIRSAV',
+    ])->inspect();
+
+    $fluentConsol = Cord::withCompany('CPH')
+        ->consol('CVN26001217')
+        ->update()
+        ->paymentMethod('PPD')
+        ->sendingAgent('NTGAIRHEL')
+        ->receivingAgent('NTGAIRSAV')
+        ->inspect();
+
+    expect($structuredConsol)->toBe($fluentConsol);
+
+    $structuredShipment = Cord::fromStructured('shipment.update', [
+        'company' => 'CPH',
+        'key' => 'SNTG26043096',
+        'vessel_name' => 'ELBSUMMER',
+        'additional_terms' => 'Canton',
+        'incoterm' => 'DAP',
+    ])->inspect();
+
+    expect($structuredShipment)
+        ->toContain('<DataTarget><Type>ForwardingShipment</Type><Key>SNTG26043096</Key></DataTarget>')
+        ->toContain('<AdditionalTerms>Canton</AdditionalTerms>')
+        ->toContain('<ShipmentIncoTerm><Code>DAP</Code></ShipmentIncoTerm>')
+        ->toContain('<VesselName>ELBSUMMER</VesselName>')
+        ->not->toContain('<OrganizationAddressCollection>');
+
+    expect((bool) preg_match('/<AdditionalTerms>.*<ShipmentIncoTerm>.*<VesselName>/s', $structuredShipment))->toBeTrue();
+});
+
+it('exposes shipment and consol update schemas', function () {
+    $consol = Cord::schema('consol.update');
+    $shipment = Cord::schema('shipment.update');
+
+    expect(array_keys($consol['properties']))
+        ->toContain('key', 'company', 'payment_method', 'sending_agent', 'receiving_agent', 'transport_mode', 'vessel_name')
+        ->not->toContain('port_of_origin', 'incoterm')
+        ->and(array_keys($shipment['properties']))
+        ->toContain('key', 'company', 'port_of_origin', 'incoterm', 'additional_terms', 'goods_description', 'controlling_agent')
+        ->not->toContain('payment_method', 'sending_agent')
+        ->and($consol['required'])->toContain('key', 'company');
+});
+
+it('builds a shipment update with a controlling agent', function () {
+    $xml = Cord::withCompany('CPH')
+        ->shipment('SNTG26043096')
+        ->update()
+        ->controllingAgent('NTGAIRHEL')
+        ->inspect();
+
+    expect($xml)
+        ->toContain('<DataTarget><Type>ForwardingShipment</Type><Key>SNTG26043096</Key></DataTarget>')
+        ->toContain('<OrganizationAddressCollection><OrganizationAddress><AddressType>ControllingAgent</AddressType><OrganizationCode>NTGAIRHEL</OrganizationCode></OrganizationAddress></OrganizationAddressCollection>');
+
+    expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->update()->controllingAgent('NTGAIRHEL'))
+        ->toThrow(Exception::class, 'controllingAgent() is not supported for consol update() requests.');
+});
+
+it('rejects invalid shipment and consol updates', function () {
+    expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->update()->inspect())
+        ->toThrow(Exception::class, 'requires at least one field to update');
+
+    expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->update()->incoterm('DAP'))
+        ->toThrow(Exception::class, 'incoterm() is not supported for consol update() requests.');
+
+    expect(fn () => Cord::withCompany('CPH')->shipment('SNTG26043096')->update()->paymentMethod('PPD'))
+        ->toThrow(Exception::class, 'paymentMethod() is not supported for shipment update() requests.');
+
+    expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->update()->paymentMethod(' '))
+        ->toThrow(ValidationException::class);
+
+    expect(fn () => Cord::consol('CVN26001217')->update()->paymentMethod('PPD')->inspect())
+        ->toThrow(Exception::class, 'Company code must be provided for shipment and consol update write requests.');
+
+    expect(fn () => Cord::fromStructured('consol.update', ['company' => 'CPH', 'key' => 'CVN26001217', 'incoterm' => 'DAP']))
+        ->toThrow(ValidationException::class);
+
+    expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->paymentMethod('PPD'))
+        ->toThrow(Exception::class, "paymentMethod() requires shipment('KEY')->update() or consol('KEY')->update() context.");
 });
 
 it('builds an organization create payload with INSERT action', function () {

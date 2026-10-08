@@ -8,39 +8,20 @@ class UniversalShipment extends Request
 {
     protected function context(): array
     {
+        if ($this->cord->isJobUpdate()) {
+            return $this->embeddedContext('shipment and consol update', [
+                'Type' => $this->cord->target->value,
+                'Key' => $this->cord->targetKey,
+            ]);
+        }
+
         if (! $this->isOneOffQuoteWriteIntent()) {
             return parent::context();
         }
 
-        if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
-            throw new \Exception('Company code must be provided for one-off quote write requests. Call withCompany() before sending the request.');
-        }
-
-        $enterpriseId = $this->cord->resolveEnterpriseId();
-        $serverId = $this->cord->resolveServerId();
-
-        if (! $enterpriseId || ! $serverId) {
-            throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
-        }
-
-        $dataTarget = [
+        $context = $this->embeddedContext('one-off quote', [
             'Type' => $this->cord->target->value,
-        ];
-
-        $context = [
-            'Shipment' => [
-                'DataContext' => [
-                    'DataTargetCollection' => [
-                        'DataTarget' => $dataTarget,
-                    ],
-                    'Company' => [
-                        'Code' => $this->cord->company,
-                    ],
-                    'EnterpriseID' => $enterpriseId,
-                    'ServerID' => $serverId,
-                ],
-            ],
-        ];
+        ]);
 
         $quoteDraft = $this->cord->currentOneOffQuoteDraft();
 
@@ -73,9 +54,41 @@ class UniversalShipment extends Request
         return $context;
     }
 
+    /**
+     * Writes carry Company, EnterpriseID and ServerID inside DataContext instead of top-level interchange fields.
+     */
+    private function embeddedContext(string $label, array $dataTarget): array
+    {
+        if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
+            throw new \Exception("Company code must be provided for {$label} write requests. Call withCompany() before sending the request.");
+        }
+
+        $enterpriseId = $this->cord->resolveEnterpriseId();
+        $serverId = $this->cord->resolveServerId();
+
+        if (! $enterpriseId || ! $serverId) {
+            throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
+        }
+
+        return [
+            'Shipment' => [
+                'DataContext' => [
+                    'DataTargetCollection' => [
+                        'DataTarget' => $dataTarget,
+                    ],
+                    'Company' => [
+                        'Code' => $this->cord->company,
+                    ],
+                    'EnterpriseID' => $enterpriseId,
+                    'ServerID' => $serverId,
+                ],
+            ],
+        ];
+    }
+
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteWriteIntent()) {
+        if ($this->cord->isJobUpdate() || $this->isOneOffQuoteWriteIntent()) {
             return false;
         }
 
@@ -84,6 +97,10 @@ class UniversalShipment extends Request
 
     public function schema(): array
     {
+        if ($this->cord->isJobUpdate()) {
+            return $this->cord->jobUpdate;
+        }
+
         if ($this->cord->target === DataTarget::OneOffQuote) {
             return $this->cord->oneOffQuote;
         }

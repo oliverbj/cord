@@ -43,6 +43,38 @@ use Oliverbj\Cord\Schema\SchemaValidator;
 
 class Cord
 {
+    /** @var array<string, array<int, string>> */
+    private const JOB_UPDATE_FIELDS = [
+        'consol' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'paymentMethod', 'sendingAgent', 'receivingAgent'],
+        'shipment' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'portOfOrigin', 'portOfDestination', 'serviceLevel', 'incoterm', 'additionalTerms', 'goodsDescription', 'controllingAgent'],
+    ];
+
+    private const JOB_UPDATE_CODE_ELEMENTS = [
+        'packingMode' => 'ContainerMode',
+        'incoterm' => 'ShipmentIncoTerm',
+        'paymentMethod' => 'PaymentMethod',
+        'portOfDestination' => 'PortOfDestination',
+        'portOfDischarge' => 'PortOfDischarge',
+        'portOfLoading' => 'PortOfLoading',
+        'portOfOrigin' => 'PortOfOrigin',
+        'serviceLevel' => 'ServiceLevel',
+        'transportMode' => 'TransportMode',
+    ];
+
+    private const JOB_UPDATE_TEXT_ELEMENTS = [
+        'additionalTerms' => 'AdditionalTerms',
+        'goodsDescription' => 'GoodsDescription',
+        'vesselName' => 'VesselName',
+        'voyageFlightNo' => 'VoyageFlightNo',
+        'waybillNumber' => 'WayBillNumber',
+    ];
+
+    private const JOB_UPDATE_AGENT_ADDRESS_TYPES = [
+        'controllingAgent' => 'ControllingAgent',
+        'receivingAgent' => 'ReceivingForwarderAddress',
+        'sendingAgent' => 'SendingForwarderAddress',
+    ];
+
     public DataTarget $target = DataTarget::Shipment;
 
     public RequestType $requestType = RequestType::UniversalShipmentRequest;
@@ -90,6 +122,12 @@ class Cord
     public array $staff = [];
 
     public array $oneOffQuote = [];
+
+    public array $jobUpdate = [];
+
+    protected bool $jobUpdateActive = false;
+
+    protected array $jobUpdateDraft = [];
 
     public ?OperationId $currentOperation = null;
 
@@ -228,6 +266,7 @@ class Cord
         $this->oneOffQuoteDraft = [];
         $this->organizationIntent = null;
         $this->organizationDraft = [];
+        $this->resetJobUpdate();
 
         return $this;
     }
@@ -274,6 +313,7 @@ class Cord
      */
     public function shipment(string $shipment): self
     {
+        $this->resetJobUpdate();
         $this->targetKey = $shipment;
         $this->target = DataTarget::Shipment;
         $this->requestType = RequestType::UniversalShipmentRequest;
@@ -513,7 +553,18 @@ class Cord
             throw new \Exception('one-off quote update() is not supported by CargoWise.');
         }
 
-        throw new \Exception('update() is currently implemented for staff and organization only.');
+        if (in_array($this->target, [DataTarget::Shipment, DataTarget::Consol], true)) {
+            $this->resetJobUpdate();
+            $this->jobUpdateActive = true;
+            $this->requestType = RequestType::UniversalShipment;
+            $this->currentOperation = $this->target === DataTarget::Consol
+                ? OperationId::ConsolUpdate
+                : OperationId::ShipmentUpdate;
+
+            return $this;
+        }
+
+        throw new \Exception('update() is currently implemented for staff, organization, shipment and consol only.');
     }
 
     /**
@@ -903,8 +954,14 @@ class Cord
      * Set one-off quote transport mode.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'transport_mode', required: true, enum: ['SEA', 'AIR', 'ROA'])]
+    #[OperationField(OperationId::ShipmentUpdate, name: 'transport_mode')]
+    #[OperationField(OperationId::ConsolUpdate, name: 'transport_mode')]
     public function transportMode(string $code): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('transportMode', $code);
+        }
+
         $this->assertOneOffQuoteBuilderContext('transportMode');
 
         $this->oneOffQuoteDraft['transportMode'] = [
@@ -919,8 +976,13 @@ class Cord
      * Set one-off quote origin port.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_origin', required: true)]
+    #[OperationField(OperationId::ShipmentUpdate, name: 'port_of_origin')]
     public function portOfOrigin(string $code): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('portOfOrigin', $code);
+        }
+
         $this->assertOneOffQuoteBuilderContext('portOfOrigin');
 
         $this->oneOffQuoteDraft['portOfOrigin'] = [
@@ -935,8 +997,13 @@ class Cord
      * Set one-off quote destination port.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_destination', required: true)]
+    #[OperationField(OperationId::ShipmentUpdate, name: 'port_of_destination')]
     public function portOfDestination(string $code): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('portOfDestination', $code);
+        }
+
         $this->assertOneOffQuoteBuilderContext('portOfDestination');
 
         $this->oneOffQuoteDraft['portOfDestination'] = [
@@ -978,8 +1045,13 @@ class Cord
      * Set one-off quote service level.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'service_level')]
+    #[OperationField(OperationId::ShipmentUpdate, name: 'service_level')]
     public function serviceLevel(string $code): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('serviceLevel', $code);
+        }
+
         $this->assertOneOffQuoteBuilderContext('serviceLevel');
 
         $this->oneOffQuoteDraft['serviceLevel'] = [
@@ -994,8 +1066,14 @@ class Cord
      * Set one-off quote packing mode.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'packing_mode')]
+    #[OperationField(OperationId::ShipmentUpdate, name: 'packing_mode')]
+    #[OperationField(OperationId::ConsolUpdate, name: 'packing_mode')]
     public function packingMode(string $code): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('packingMode', $code);
+        }
+
         $this->assertOneOffQuoteBuilderContext('packingMode');
 
         $this->oneOffQuoteDraft['packingMode'] = [
@@ -1026,8 +1104,13 @@ class Cord
      * Set one-off quote incoterm.
      */
     #[OperationField(OperationId::OneOffQuoteCreate)]
+    #[OperationField(OperationId::ShipmentUpdate)]
     public function incoterm(string $code): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('incoterm', $code);
+        }
+
         $this->assertOneOffQuoteBuilderContext('incoterm');
 
         $this->oneOffQuoteDraft['incoterm'] = [
@@ -1093,8 +1176,13 @@ class Cord
      * Set one-off quote additional terms.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'additional_terms')]
+    #[OperationField(OperationId::ShipmentUpdate, name: 'additional_terms')]
     public function additionalTerms(string $value): self
     {
+        if ($this->isJobUpdate()) {
+            return $this->setJobUpdateValue('additionalTerms', $value);
+        }
+
         return $this->setOneOffQuoteDraftValue('additionalTerms', $value);
     }
 
@@ -1105,6 +1193,101 @@ class Cord
     public function isDomesticFreight(bool $value): self
     {
         return $this->setOneOffQuoteDraftValue('isDomesticFreight', $value);
+    }
+
+    /**
+     * Set the port of loading on a shipment or consol update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function portOfLoading(string $code): self
+    {
+        return $this->setJobUpdateValue('portOfLoading', $code);
+    }
+
+    /**
+     * Set the port of discharge on a shipment or consol update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function portOfDischarge(string $code): self
+    {
+        return $this->setJobUpdateValue('portOfDischarge', $code);
+    }
+
+    /**
+     * Set the vessel name on a shipment or consol update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function vesselName(string $name): self
+    {
+        return $this->setJobUpdateValue('vesselName', $name);
+    }
+
+    /**
+     * Set the voyage or flight number on a shipment or consol update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function voyageFlightNo(string $number): self
+    {
+        return $this->setJobUpdateValue('voyageFlightNo', $number);
+    }
+
+    /**
+     * Set the waybill number on a shipment or consol update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function waybillNumber(string $number): self
+    {
+        return $this->setJobUpdateValue('waybillNumber', $number);
+    }
+
+    /**
+     * Set the goods description on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function goodsDescription(string $description): self
+    {
+        return $this->setJobUpdateValue('goodsDescription', $description);
+    }
+
+    /**
+     * Set the payment terms (payment method code, e.g. PPD) on a consol update.
+     */
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function paymentMethod(string $code): self
+    {
+        return $this->setJobUpdateValue('paymentMethod', $code);
+    }
+
+    /**
+     * Set the sending agent on a consol update from an organization code.
+     */
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function sendingAgent(string $organizationCode): self
+    {
+        return $this->setJobUpdateValue('sendingAgent', $organizationCode);
+    }
+
+    /**
+     * Set the receiving agent on a consol update from an organization code.
+     */
+    #[OperationField(OperationId::ConsolUpdate)]
+    public function receivingAgent(string $organizationCode): self
+    {
+        return $this->setJobUpdateValue('receivingAgent', $organizationCode);
+    }
+
+    /**
+     * Set the controlling agent on a shipment update from an organization code.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function controllingAgent(string $organizationCode): self
+    {
+        return $this->setJobUpdateValue('controllingAgent', $organizationCode);
     }
 
     /**
@@ -1406,6 +1589,12 @@ class Cord
 
         if ($this->target === DataTarget::OneOffQuote) {
             return $this->oneOffQuote;
+        }
+
+        if ($this->isJobUpdate()) {
+            $this->syncFluentJobUpdatePayload();
+
+            return $this->jobUpdate;
         }
 
         return $this->staff;
@@ -2056,6 +2245,7 @@ class Cord
      */
     public function consol(string $consol): self
     {
+        $this->resetJobUpdate();
         $this->targetKey = $consol;
         $this->target = DataTarget::Consol;
         $this->requestType = RequestType::UniversalShipmentRequest;
@@ -2933,6 +3123,7 @@ class Cord
     {
         $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
+        $this->syncFluentJobUpdatePayload();
         $this->checkForErrors();
         $this->xml = $this->buildRequest()->xml();
     }
@@ -4211,6 +4402,95 @@ class Cord
     public function activeOneOffQuoteIntent(): ?string
     {
         return $this->oneOffQuoteIntent;
+    }
+
+    public function isJobUpdate(): bool
+    {
+        return $this->jobUpdateActive
+            && in_array($this->target, [DataTarget::Shipment, DataTarget::Consol], true)
+            && $this->requestType === RequestType::UniversalShipment;
+    }
+
+    private function resetJobUpdate(): void
+    {
+        $this->jobUpdateActive = false;
+        $this->jobUpdateDraft = [];
+        $this->jobUpdate = [];
+    }
+
+    private function setJobUpdateValue(string $field, string $value): self
+    {
+        $name = Str::snake($field);
+
+        if (! $this->isJobUpdate()) {
+            throw new \Exception("{$field}() requires shipment('KEY')->update() or consol('KEY')->update() context.");
+        }
+
+        $resource = $this->target === DataTarget::Consol ? 'consol' : 'shipment';
+
+        if (! in_array($field, self::JOB_UPDATE_FIELDS[$resource], true)) {
+            throw new \Exception("{$field}() is not supported for {$resource} update() requests.");
+        }
+
+        if (trim($value) === '') {
+            throw ValidationException::withMessages([$name => ["The {$name} field must not be empty."]]);
+        }
+
+        $this->jobUpdateDraft[$field] = $value;
+        $this->markStructuredField($name);
+
+        return $this;
+    }
+
+    private function syncFluentJobUpdatePayload(): void
+    {
+        if (! $this->isJobUpdate()) {
+            return;
+        }
+
+        if ($this->jobUpdateDraft === []) {
+            throw new \Exception('A shipment or consol update() requires at least one field to update.');
+        }
+
+        $this->jobUpdate = $this->buildJobUpdatePayload($this->jobUpdateDraft);
+    }
+
+    private function buildJobUpdatePayload(array $draft): array
+    {
+        $payload = [];
+
+        foreach (self::JOB_UPDATE_CODE_ELEMENTS as $field => $element) {
+            if (isset($draft[$field])) {
+                $payload[$element] = ['Code' => $draft[$field]];
+            }
+        }
+
+        foreach (self::JOB_UPDATE_TEXT_ELEMENTS as $field => $element) {
+            if (isset($draft[$field])) {
+                $payload[$element] = $draft[$field];
+            }
+        }
+
+        // CargoWise lists scalar elements alphabetically in its own universal messages.
+        ksort($payload);
+
+        $addresses = [];
+        foreach (self::JOB_UPDATE_AGENT_ADDRESS_TYPES as $field => $addressType) {
+            if (isset($draft[$field])) {
+                $addresses[] = [
+                    'AddressType' => $addressType,
+                    'OrganizationCode' => $draft[$field],
+                ];
+            }
+        }
+
+        if ($addresses !== []) {
+            $payload['OrganizationAddressCollection'] = [
+                'OrganizationAddress' => count($addresses) === 1 ? $addresses[0] : $addresses,
+            ];
+        }
+
+        return $payload;
     }
 
     public function currentOneOffQuoteDraft(): array

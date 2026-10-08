@@ -30,6 +30,7 @@ All notable changes to `cord` will be documented in this file.
 
 ### Added
 
+* Add `shipment.update` and `consol.update` (`shipment('KEY')->update()` / `consol('KEY')->update()`): a Universal Shipment sent to an existing job, with `Company`, `EnterpriseID`, and `ServerID` inside `Shipment > DataContext`. Consols support `payment_method`, `sending_agent`, and `receiving_agent`; both targets support transport, container mode, port, vessel, voyage, and waybill fields, and shipments also support origin/destination ports, service level, incoterm, additional terms, goods description, and a controlling agent.
 * Add `consol()` target (`ForwardingConsol`) with `consol.get`, `consol.documents.get`, `consol.event.add` and `consol.document.add` operations, so eDocs can be uploaded to consols.
 * Add staff create and update support for job title and address fields: address lines, city, state, and postcode.
 * Support `addAdditionalFieldUpdate()` / `additional_fields_to_update` on

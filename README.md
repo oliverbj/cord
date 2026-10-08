@@ -20,6 +20,7 @@ Cord offers an expressive, chainable API for interacting with CargoWise One's eA
 - [Documents / eDocs](#documents--edocs)
   - [Upload documents](#upload-documents)
   - [Add events](#add-events)
+- [Update Shipments and Consols](#update-shipments-and-consols)
 - [DocManager](#docmanager)
     - [Fetch documents](#fetch-documents)
 - [Organizations](#organizations)
@@ -351,6 +352,53 @@ Cord::fromStructured('shipment.event.add', [
         ['type' => 'ForwardingShipment.JobHeader.JH_Status', 'value' => 'CMP'],
     ],
 ])->run();
+```
+
+## Update Shipments and Consols
+
+`shipment('KEY')->update()` and `consol('KEY')->update()` (structured: `shipment.update` and `consol.update`) send a Universal Shipment to an existing job. `withCompany()` is required; Cord puts `Company`, `EnterpriseID`, and `ServerID` inside `Shipment > DataContext`, identifies the job through `DataTarget` (`Type` and `Key`), and omits top-level `SenderID` / `RecipientID`. Only the fields you set are sent.
+
+```php
+Cord::withCompany('CPH')
+    ->consol('CVN26001217')
+    ->update()
+    ->paymentMethod('PPD')
+    ->sendingAgent('NTGAIRHEL')
+    ->receivingAgent('NTGAIRSAV')
+    ->run();
+
+Cord::fromStructured('shipment.update', [
+    'company' => 'CPH',
+    'key' => 'SNTG26043096',
+    'vessel_name' => 'ELBSUMMER',
+    'incoterm' => 'DAP',
+])->run();
+```
+
+| Structured key | XML (under `Shipment`) | Consol | Shipment |
+|---|---|---|---|
+| `payment_method` | `PaymentMethod > Code` | yes | |
+| `sending_agent` | `OrganizationAddress` with `AddressType=SendingForwarderAddress` and the `OrganizationCode` | yes | |
+| `receiving_agent` | `OrganizationAddress` with `AddressType=ReceivingForwarderAddress` and the `OrganizationCode` | yes | |
+| `transport_mode` | `TransportMode > Code` | yes | yes |
+| `packing_mode` | `ContainerMode > Code` | yes | yes |
+| `port_of_loading`, `port_of_discharge` | `PortOfLoading > Code`, `PortOfDischarge > Code` | yes | yes |
+| `vessel_name`, `voyage_flight_no`, `waybill_number` | `VesselName`, `VoyageFlightNo`, `WayBillNumber` | yes | yes |
+| `port_of_origin`, `port_of_destination` | `PortOfOrigin > Code`, `PortOfDestination > Code` | | yes |
+| `service_level`, `incoterm` | `ServiceLevel > Code`, `ShipmentIncoTerm > Code` | | yes |
+| `additional_terms`, `goods_description` | `AdditionalTerms`, `GoodsDescription` | | yes |
+| `controlling_agent` | `OrganizationAddress` with `AddressType=ControllingAgent` and the `OrganizationCode` | | yes |
+
+Values must not be empty, and an update with no fields throws. Every field in the table has been verified against CargoWise. Collections (dates, references, containers, packing lines) are not supported on update.
+
+The job status on a shipment's billing header cannot be set through `shipment.update`: CargoWise ignores `JobCosting > JobStatus` there. Set it with an event instead, using `additional_fields_to_update` on `shipment.event.add` (see [Add events](#add-events)); CargoWise does not accept `AdditionalFieldsToUpdateCollection` on a Universal Shipment, so `shipment.update` and `consol.update` have no `additional_fields_to_update`:
+
+```php
+Cord::withCompany('CPH')
+    ->shipment('SNTG26043096')
+    ->addEvent(now()->toIso8601String(), 'Z88')
+    ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
+    ->run();
 ```
 
 ## DocManager

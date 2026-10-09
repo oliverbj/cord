@@ -2232,6 +2232,45 @@ it('supports typed addresses and charge lines for one-off quote create', functio
     expect((bool) preg_match('/<JobCosting>.*<Branch><Code>A01<\/Code><\/Branch>.*<Department><Code>FES<\/Code><\/Department>/s', $xml))->toBeTrue();
 });
 
+it('supports a creditor on one-off quote charge lines', function () {
+    $fluentXml = Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')
+        ->department('FES')
+        ->orgRole('LOC')
+        ->transportMode('SEA')
+        ->portOfOrigin('AUSYD')
+        ->portOfDestination('NZAKL')
+        ->addChargeLine(fn ($c) => $c
+            ->chargeCode('FRT')
+            ->description('International Freight')
+            ->costAmount('500.0000', 'AUD')
+            ->creditor('Organization', 'KLMAIR_WW'))
+        ->inspect();
+
+    $structuredXml = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'org_role' => 'LOC',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'charge_lines' => [
+            [
+                'charge_code' => 'FRT',
+                'description' => 'International Freight',
+                'cost_amount' => ['value' => '500.0000', 'currency_code' => 'AUD'],
+                'creditor' => ['type' => 'Organization', 'key' => 'KLMAIR_WW'],
+            ],
+        ],
+    ])->inspect();
+
+    expect($structuredXml)->toBe($fluentXml)
+        ->and($fluentXml)->toContain('<Creditor><Type>Organization</Type><Key>KLMAIR_WW</Key></Creditor>');
+});
+
 it('supports attached documents for one-off quote create', function () {
     $xml = Cord::withCompany('CPH')
         ->oneOffQuote()

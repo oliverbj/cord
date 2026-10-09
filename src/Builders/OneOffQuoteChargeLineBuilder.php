@@ -82,6 +82,15 @@ class OneOffQuoteChargeLineBuilder
         return $this;
     }
 
+    #[StructuredField]
+    public function creditor(string $type, string $key): self
+    {
+        $this->payload['creditorType'] = $type;
+        $this->payload['creditorKey'] = $key;
+
+        return $this;
+    }
+
     #[StructuredField(name: 'display_sequence')]
     public function displaySequence(int $value): self
     {

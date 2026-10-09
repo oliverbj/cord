@@ -69,6 +69,7 @@ $xml = Cord::fromStructured('one_off_quote.create', [
 - For `one_off_quote.create`, `event_branch` and `event_department` populate `Shipment > DataContext > EventBranch` and `EventDepartment`.
 - For `one_off_quote.create`, `data_provider` populates `Shipment > DataContext > DataProvider`.
 - For `one_off_quote.create`, `start_date` and `end_date` populate `Shipment > DateCollection > Date` rows with types `Start` and `End`; each row uses `IsEstimate=false` and a CargoWise date-time value.
+- For `one_off_quote.create` charge lines, `creditor` (`type`, `key`) populates `ChargeLine > Creditor > Type` and `Key` to set the supplier; `Type` defaults to `Organization`.
 - For `one_off_quote.create`, `carrier_address` adds an `OrganizationAddress` with `AddressType=ShippingLineAddress`; passing a string like `DHLAIR_WW` sets `OrganizationCode`.
 - Use `addPotentialCarrier()` or structured `potential_carriers` on `one_off_quote.create` to populate `PotentialCarrierCollection > PotentialCarrier > Code` with one or more carrier organization codes such as `KLMAIR_WW` and `LUFAIR_WW`.
 - Use `addNote()` or structured `notes` on `one_off_quote.create` to populate `Shipment > NoteCollection > Note`. `key` becomes `Description`, `text` becomes `NoteText`, `IsCustomDescription` is always `false`, and `NoteContext` is fixed to `AAA / Module: A - All; Direction: A - All; Freight: A - All`.

@@ -1034,15 +1034,6 @@ class Cord
     }
 
     /**
-     * Set one-off quote follow-up date.
-     */
-    #[OperationField(OperationId::OneOffQuoteCreate, name: 'follow_up_date')]
-    public function followUpDate(string $date): self
-    {
-        return $this->setOneOffQuoteDraftValue('followUpDate', $date);
-    }
-
-    /**
      * Set one-off quote service level.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'service_level')]
@@ -3681,7 +3672,6 @@ class Cord
         $dateTypes = [
             'startDate' => 'Start',
             'endDate' => 'End',
-            'followUpDate' => 'FollowUp',
         ];
 
         $dates = [];

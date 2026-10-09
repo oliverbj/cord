@@ -4117,6 +4117,13 @@ class Cord
             ];
         }
 
+        if (is_string($chargeLine['creditorKey'] ?? null) && $chargeLine['creditorKey'] !== '') {
+            $payload['Creditor'] = [
+                'Type' => $chargeLine['creditorType'] ?? 'Organization',
+                'Key' => $chargeLine['creditorKey'],
+            ];
+        }
+
         if (array_key_exists('displaySequence', $chargeLine)) {
             $payload['DisplaySequence'] = (string) $chargeLine['displaySequence'];
         }

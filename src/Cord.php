@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Request as RequestFacade;
 use Illuminate\Support\Str;
@@ -46,7 +47,26 @@ class Cord
     /** @var array<string, array<int, string>> */
     private const JOB_UPDATE_FIELDS = [
         'consol' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'paymentMethod', 'sendingAgent', 'receivingAgent', 'carrier'],
-        'shipment' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'portOfOrigin', 'portOfDestination', 'serviceLevel', 'incoterm', 'additionalTerms', 'goodsDescription', 'controllingAgent'],
+        'shipment' => ['transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'waybillNumber', 'portOfOrigin', 'portOfDestination', 'serviceLevel', 'incoterm', 'additionalTerms', 'goodsDescription', 'controllingAgent', 'estimatedPickup', 'pickupCartageCompleted', 'estimatedDelivery', 'deliveryCartageCompleted', 'receivedDate', 'pickupDropMode', 'deliveryDropMode'],
+    ];
+
+    /** @var array<string, string> Date fields written under LocalProcessing. */
+    private const JOB_UPDATE_LOCAL_PROCESSING_DATES = [
+        'deliveryCartageCompleted' => 'DeliveryCartageCompleted',
+        'estimatedDelivery' => 'EstimatedDelivery',
+        'estimatedPickup' => 'EstimatedPickup',
+        'pickupCartageCompleted' => 'PickupCartageCompleted',
+    ];
+
+    /** @var array<string, string> Code fields written under LocalProcessing. */
+    private const JOB_UPDATE_LOCAL_PROCESSING_CODES = [
+        'deliveryDropMode' => 'FCLDeliveryEquipmentNeeded',
+        'pickupDropMode' => 'FCLPickupEquipmentNeeded',
+    ];
+
+    /** @var array<string, string> Date fields written as DateCollection > Date rows (field => Type). */
+    private const JOB_UPDATE_DATE_COLLECTION_TYPES = [
+        'receivedDate' => 'Received',
     ];
 
     private const JOB_UPDATE_CODE_ELEMENTS = [
@@ -1289,6 +1309,69 @@ class Cord
     public function controllingAgent(string $organizationCode): self
     {
         return $this->setJobUpdateValue('controllingAgent', $organizationCode);
+    }
+
+    /**
+     * Set the estimated pickup date on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function estimatedPickup(string $date): self
+    {
+        return $this->setJobUpdateDateValue('estimatedPickup', $date);
+    }
+
+    /**
+     * Set the pickup cartage completed (actual pickup) date on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function pickupCartageCompleted(string $date): self
+    {
+        return $this->setJobUpdateDateValue('pickupCartageCompleted', $date);
+    }
+
+    /**
+     * Set the estimated delivery date on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function estimatedDelivery(string $date): self
+    {
+        return $this->setJobUpdateDateValue('estimatedDelivery', $date);
+    }
+
+    /**
+     * Set the delivery cartage completed (actual delivery) date on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function deliveryCartageCompleted(string $date): self
+    {
+        return $this->setJobUpdateDateValue('deliveryCartageCompleted', $date);
+    }
+
+    /**
+     * Set the received date (JS_A_RCV) on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function receivedDate(string $date): self
+    {
+        return $this->setJobUpdateDateValue('receivedDate', $date);
+    }
+
+    /**
+     * Set the pickup drop mode (FCL pickup equipment needed code, e.g. WUP) on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function pickupDropMode(string $code): self
+    {
+        return $this->setJobUpdateValue('pickupDropMode', $code);
+    }
+
+    /**
+     * Set the delivery drop mode (FCL delivery equipment needed code, e.g. DTC) on a shipment update.
+     */
+    #[OperationField(OperationId::ShipmentUpdate)]
+    public function deliveryDropMode(string $code): self
+    {
+        return $this->setJobUpdateValue('deliveryDropMode', $code);
     }
 
     /**
@@ -4449,6 +4532,19 @@ class Cord
         return $this;
     }
 
+    private function setJobUpdateDateValue(string $field, string $value): self
+    {
+        $name = Str::snake($field);
+
+        try {
+            $normalized = Carbon::parse($value)->format('Y-m-d\TH:i:s');
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([$name => ["The {$name} field must be a valid date."]]);
+        }
+
+        return $this->setJobUpdateValue($field, $normalized);
+    }
+
     private function syncFluentJobUpdatePayload(): void
     {
         if (! $this->isJobUpdate()) {
@@ -4480,6 +4576,40 @@ class Cord
 
         // CargoWise lists scalar elements alphabetically in its own universal messages.
         ksort($payload);
+
+        $localProcessing = [];
+        foreach (self::JOB_UPDATE_LOCAL_PROCESSING_DATES as $field => $element) {
+            if (isset($draft[$field])) {
+                $localProcessing[$element] = $draft[$field];
+            }
+        }
+        foreach (self::JOB_UPDATE_LOCAL_PROCESSING_CODES as $field => $element) {
+            if (isset($draft[$field])) {
+                $localProcessing[$element] = ['Code' => $draft[$field]];
+            }
+        }
+
+        if ($localProcessing !== []) {
+            ksort($localProcessing);
+            $payload['LocalProcessing'] = $localProcessing;
+        }
+
+        $dates = [];
+        foreach (self::JOB_UPDATE_DATE_COLLECTION_TYPES as $field => $type) {
+            if (isset($draft[$field])) {
+                $dates[] = [
+                    'Type' => $type,
+                    'IsEstimate' => 'false',
+                    'Value' => $draft[$field],
+                ];
+            }
+        }
+
+        if ($dates !== []) {
+            $payload['DateCollection'] = [
+                'Date' => count($dates) === 1 ? $dates[0] : $dates,
+            ];
+        }
 
         $addresses = [];
         foreach (self::JOB_UPDATE_AGENT_ADDRESS_TYPES as $field => $addressType) {

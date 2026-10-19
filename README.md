@@ -389,8 +389,12 @@ Cord::fromStructured('shipment.update', [
 | `service_level`, `incoterm` | `ServiceLevel > Code`, `ShipmentIncoTerm > Code` | | yes |
 | `additional_terms`, `goods_description` | `AdditionalTerms`, `GoodsDescription` | | yes |
 | `controlling_agent` | `OrganizationAddress` with `AddressType=ControllingAgent` and the `OrganizationCode` | | yes |
+| `estimated_pickup`, `pickup_cartage_completed` | `LocalProcessing > EstimatedPickup`, `LocalProcessing > PickupCartageCompleted` (CargoWise `JP_EstimatedPickup`, `JP_PickupCartageCompleted`) | | yes |
+| `estimated_delivery`, `delivery_cartage_completed` | `LocalProcessing > EstimatedDelivery`, `LocalProcessing > DeliveryCartageCompleted` (CargoWise `JP_EstimatedDelivery`, `JP_DeliveryCartageCompleted`) | | yes |
+| `pickup_drop_mode`, `delivery_drop_mode` | `LocalProcessing > FCLPickupEquipmentNeeded > Code`, `LocalProcessing > FCLDeliveryEquipmentNeeded > Code` (for example `WUP`, `DTC`) | | yes |
+| `received_date` | `DateCollection > Date` with `Type=Received`, `IsEstimate=false` (CargoWise `JS_A_RCV`) | | yes |
 
-Values must not be empty, and an update with no fields throws. Every field in the table has been verified against CargoWise. Collections (dates, references, containers, packing lines) are not supported on update.
+Values must not be empty, and an update with no fields throws. Date values are normalized to `YYYY-MM-DDTHH:MM:SS`. The date and drop mode fields are mapped from a CargoWise export but have not yet been verified against a live update. Other collections (references, containers, packing lines) are not supported on update.
 
 The job status on a shipment's billing header cannot be set through `shipment.update`: CargoWise ignores `JobCosting > JobStatus` there. Set it with an event instead, using `additional_fields_to_update` on `shipment.event.add` (see [Add events](#add-events)); CargoWise does not accept `AdditionalFieldsToUpdateCollection` on a Universal Shipment, so `shipment.update` and `consol.update` have no `additional_fields_to_update`:
 

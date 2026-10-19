@@ -2995,6 +2995,44 @@ it('builds a shipment update with a controlling agent', function () {
         ->toThrow(Exception::class, 'controllingAgent() is not supported for consol update() requests.');
 });
 
+it('builds a shipment update with dates and drop modes', function () {
+    $fluent = Cord::withCompany('CPH')
+        ->shipment('SNTG26028980')
+        ->update()
+        ->estimatedPickup('2026-04-30 09:00')
+        ->pickupCartageCompleted('2026-04-30T08:37:00')
+        ->estimatedDelivery('2026-06-29')
+        ->deliveryCartageCompleted('2026-06-29T00:00:00')
+        ->receivedDate('2026-10-19T23:50:00')
+        ->pickupDropMode('WUP')
+        ->deliveryDropMode('DTC')
+        ->inspect();
+
+    expect($fluent)
+        ->toContain('<LocalProcessing><DeliveryCartageCompleted>2026-06-29T00:00:00</DeliveryCartageCompleted><EstimatedDelivery>2026-06-29T00:00:00</EstimatedDelivery><EstimatedPickup>2026-04-30T09:00:00</EstimatedPickup><FCLDeliveryEquipmentNeeded><Code>DTC</Code></FCLDeliveryEquipmentNeeded><FCLPickupEquipmentNeeded><Code>WUP</Code></FCLPickupEquipmentNeeded><PickupCartageCompleted>2026-04-30T08:37:00</PickupCartageCompleted></LocalProcessing>')
+        ->toContain('<DateCollection><Date><Type>Received</Type><IsEstimate>false</IsEstimate><Value>2026-10-19T23:50:00</Value></Date></DateCollection>');
+
+    $structured = Cord::fromStructured('shipment.update', [
+        'company' => 'CPH',
+        'key' => 'SNTG26028980',
+        'estimated_pickup' => '2026-04-30 09:00',
+        'pickup_cartage_completed' => '2026-04-30T08:37:00',
+        'estimated_delivery' => '2026-06-29',
+        'delivery_cartage_completed' => '2026-06-29T00:00:00',
+        'received_date' => '2026-10-19T23:50:00',
+        'pickup_drop_mode' => 'WUP',
+        'delivery_drop_mode' => 'DTC',
+    ])->inspect();
+
+    expect($structured)->toBe($fluent);
+
+    expect(fn () => Cord::withCompany('CPH')->shipment('SNTG26028980')->update()->estimatedPickup('not a date'))
+        ->toThrow(ValidationException::class);
+
+    expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->update()->estimatedPickup('2026-04-30'))
+        ->toThrow(Exception::class, 'estimatedPickup() is not supported for consol update() requests.');
+});
+
 it('rejects invalid shipment and consol updates', function () {
     expect(fn () => Cord::withCompany('CPH')->consol('CVN26001217')->update()->inspect())
         ->toThrow(Exception::class, 'requires at least one field to update');

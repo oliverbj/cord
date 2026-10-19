@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### What's Changed
+
+* Add estimated/actual pickup and delivery dates, received date, and pickup/delivery drop mode to shipment.update
+
 ## v3.5.3 - 2026-10-09
 
 ### What's Changed

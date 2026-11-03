@@ -158,6 +158,8 @@ it('builds a booking create payload from fluent and structured input', function 
         ->not->toContain('<SenderID>')
         ->not->toContain('<RecipientID>')
         ->not->toContain('<Key>')
+        ->and((bool) preg_match('/<DataContext>(?:(?!<\/DataContext>).)*<Branch>/s', $fluent))->toBeFalse()
+        ->and($fluent)
         ->not->toContain('<WidthUnit>')
         ->not->toContain('<AddressOverride>');
 });
@@ -248,7 +250,6 @@ it('builds a consol create payload from fluent and structured input', function (
     $structured = Cord::fromStructured('consol.create', [
         'company' => 'NYC',
         'branch' => 'ATL',
-        'department' => 'AIR',
         'transport_mode' => 'AIR',
         'packing_mode' => 'LSE',
         'consol_type' => 'AGT',
@@ -289,7 +290,6 @@ it('builds a consol create payload from fluent and structured input', function (
         ->consol()
         ->create()
         ->branch('ATL')
-        ->department('AIR')
         ->transportMode('AIR')
         ->packingMode('LSE')
         ->consolType('AGT')
@@ -320,6 +320,8 @@ it('builds a consol create payload from fluent and structured input', function (
         ->toContain('<OrganizationAddress><AddressType>SendingForwarderAddress</AddressType><OrganizationCode>PIFGLOCAN1</OrganizationCode></OrganizationAddress>')
         ->toContain('<OrganizationAddress><AddressType>ShippingLineAddress</AddressType><OrganizationCode>CATAIR_WW</OrganizationCode></OrganizationAddress>')
         ->toContain('<Container><ContainerNumber>MSKU1234567</ContainerNumber><ContainerCount>1</ContainerCount><ContainerType><Code>40HC</Code></ContainerType><Seal>SEAL1</Seal></Container>')
+        ->toContain('<Branch><Code>ATL</Code></Branch>')
+        ->not->toContain('<JobCosting>')
         ->toContain('<SubShipment><DataContext><DataTargetCollection><DataTarget><Type>ForwardingShipment</Type><Key>SNTG26092614</Key></DataTarget></DataTargetCollection></DataContext></SubShipment>')
         ->toContain('<Key>SNTG26092615</Key>')
         ->not->toContain('<SenderID>');
@@ -336,13 +338,12 @@ it('validates required consol create fields and transport legs', function () {
         $errors = array_keys($e->errors());
     }
 
-    expect($errors)->toContain('branch', 'department', 'transport_mode', 'packing_mode', 'transport_legs.0.type', 'transport_legs.0.mode', 'transport_legs.0.port_of_loading')
-        ->not->toContain('controlling_agent');
+    expect($errors)->toContain('branch', 'transport_mode', 'packing_mode', 'transport_legs.0.type', 'transport_legs.0.mode', 'transport_legs.0.port_of_loading')
+        ->not->toContain('controlling_agent', 'department');
 
     expect(fn () => Cord::fromStructured('consol.create', [
         'company' => 'NYC',
         'branch' => 'ATL',
-        'department' => 'AIR',
         'transport_mode' => 'AIR',
         'packing_mode' => 'LSE',
         'transport_legs' => [['order' => 1]],
@@ -439,7 +440,7 @@ it('reads the new key from the DataSource that matches the job type', function (
     ]);
 
     $consol = Cord::withCompany('NYC')->consol()->create()
-        ->branch('ATL')->department('AIR')->transportMode('AIR')->packingMode('LSE')
+        ->branch('ATL')->transportMode('AIR')->packingMode('LSE')
         ->run();
 
     expect($consol['key'])->toBe('CUS26074045');
@@ -477,7 +478,7 @@ XML;
     expect(Cord::fromStructured('booking.create', bookingStructuredPayload())->run()['key'])->toBe('SNTG26094969');
 
     $create = Cord::withCompany('NYC')->consol('CUS26074045')->create()
-        ->branch('ATL')->department('AIR')->transportMode('AIR')->packingMode('LSE')
+        ->branch('ATL')->transportMode('AIR')->packingMode('LSE')
         ->run();
 
     expect($create['key'])->toBeNull()
@@ -547,11 +548,64 @@ it('exposes booking and consol create and convert schemas', function () {
         ->not->toContain('master_bill', 'transport_legs')
         ->and($booking['properties']['parties']['items']['required'])->toContain('address_type')
         ->and($booking['properties']['pack_lines']['items']['properties'])->toHaveKeys(['pack_type', 'quantity', 'hs_code', 'marks_and_numbers'])
-        ->and($consol['required'])->toContain('company', 'branch', 'department', 'transport_mode', 'packing_mode')
+        ->and($consol['required'])->toContain('company', 'branch', 'transport_mode', 'packing_mode')
         ->not->toContain('controlling_agent')
         ->and(array_keys($consol['properties']))
         ->toContain('master_bill', 'consol_type', 'business_direction', 'transport_legs', 'shipment_keys', 'containers')
         ->not->toContain('house_bill', 'parties')
         ->and($convert['required'])->toContain('company', 'key')
         ->and(Cord::schema('consol.update')['properties'])->toHaveKey('shipment_keys');
+});
+
+it('validates business direction, goods description and shipment party types', function () {
+    $errorsFor = function (Closure $configure): array {
+        try {
+            $configure()->inspect();
+        } catch (ValidationException $e) {
+            return array_keys($e->errors());
+        }
+
+        return [];
+    };
+
+    $consol = fn () => Cord::withCompany('NYC')->consol()->create()
+        ->branch('ATL')->transportMode('AIR')->packingMode('LSE');
+
+    expect($errorsFor(fn () => $consol()->businessDirection('IMPORT')))->toContain('business_direction')
+        ->and($errorsFor(fn () => $consol()->businessDirection('IMP')))->toBe([])
+        ->and($consol()->businessDirection('EXP')->inspect())->toContain('<TransportBookingDirection><Code>EXP</Code></TransportBookingDirection>');
+
+    $booking = fn () => Cord::withCompany('NYC')->booking()->create()
+        ->branch('ATL')->department('AIR')->transportMode('AIR')->packingMode('LSE');
+
+    expect($errorsFor(fn () => $booking()->addParty(fn ($p) => $p->addressType('SendersOverseasAgent')->organizationCode('FREITLDUS'))))
+        ->toContain('parties.0.address_type');
+
+    expect(fn () => $booking()->goodsDescription(str_repeat('A', 36)))->toThrow(ValidationException::class)
+        ->and($booking()->goodsDescription(str_repeat('A', 35))->inspect())->toContain(str_repeat('A', 35))
+        ->and(fn () => Cord::fromStructured('booking.create', ['goods_description' => str_repeat('A', 36)]))
+        ->toThrow(ValidationException::class);
+
+    expect(fn () => Cord::withCompany('NYC')->consol()->create()->department('AIR'))
+        ->toThrow(Exception::class, 'department() is not supported for consol create() requests.');
+});
+
+it('returns the shared result shape from consol update', function () {
+    Http::fake([
+        '*' => Http::sequence()
+            ->push(universalResponse('<DataSource><Type>ForwardingConsol</Type><Key>CUS26074045</Key></DataSource>'), 200, ['Content-Type' => 'application/xml'])
+            ->push(universalResponse('', 'ERR'), 200, ['Content-Type' => 'application/xml']),
+    ]);
+
+    $result = Cord::withCompany('NYC')->consol('CUS26074045')->update()->linkShipment('SNTG26094969')->run();
+
+    expect($result)->toMatchArray([
+        'status' => 'PRS',
+        'key' => 'CUS26074045',
+        'message_number' => '00000000000023108335',
+        'processing_log' => 'Information - created',
+    ])->toHaveKey('data');
+
+    expect(fn () => Cord::withCompany('NYC')->consol('CUS26074045')->update()->linkShipment('SNTG26094969')->run())
+        ->toThrow(EadapterRejectedException::class);
 });

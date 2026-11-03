@@ -205,6 +205,33 @@ class OperationRegistry
                 selector: ['field' => 'key', 'method' => 'consol', 'required' => true, 'type' => 'string'],
                 bootstrapMethods: ['update'],
             ),
+            OperationId::BookingCreate->value => new OperationDefinition(
+                id: OperationId::BookingCreate,
+                resource: 'booking',
+                action: 'create',
+                contextFields: $oneOffQuoteCreateContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'booking', 'required' => false, 'type' => 'string'],
+                bootstrapMethods: ['create'],
+            ),
+            OperationId::BookingConvert->value => new OperationDefinition(
+                id: OperationId::BookingConvert,
+                resource: 'booking',
+                action: 'convert',
+                contextFields: $oneOffQuoteCreateContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'booking', 'required' => true, 'type' => 'string'],
+                bootstrapMethods: ['convert'],
+            ),
+            OperationId::ConsolCreate->value => new OperationDefinition(
+                id: OperationId::ConsolCreate,
+                resource: 'consol',
+                action: 'create',
+                contextFields: $oneOffQuoteCreateContext,
+                requiredContextFields: ['company'],
+                selector: ['field' => 'key', 'method' => 'consol', 'required' => false, 'type' => 'string'],
+                bootstrapMethods: ['create'],
+            ),
             OperationId::ShipmentDocumentAdd->value => new OperationDefinition(
                 id: OperationId::ShipmentDocumentAdd,
                 resource: 'shipment',
@@ -497,7 +524,7 @@ class OperationRegistry
         $fields = [];
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->class !== $builderClass) {
+            if (! is_a($builderClass, $method->class, true)) {
                 continue;
             }
 

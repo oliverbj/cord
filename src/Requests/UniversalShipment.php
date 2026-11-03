@@ -15,6 +15,23 @@ class UniversalShipment extends Request
             ]);
         }
 
+        if ($this->cord->isJobCreate()) {
+            $dataTarget = ['Type' => $this->cord->target->value];
+
+            if (is_string($this->cord->targetKey) && trim($this->cord->targetKey) !== '') {
+                $dataTarget['Key'] = $this->cord->targetKey;
+            }
+
+            $context = $this->embeddedContext('booking and consol create', $dataTarget);
+            $branch = $this->cord->currentJobCreateDraft()['branch'] ?? null;
+
+            if (is_string($branch) && trim($branch) !== '') {
+                $context['Shipment']['DataContext']['Branch'] = ['Code' => $branch];
+            }
+
+            return $context;
+        }
+
         if (! $this->isOneOffQuoteWriteIntent()) {
             return parent::context();
         }
@@ -88,7 +105,7 @@ class UniversalShipment extends Request
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->cord->isJobUpdate() || $this->isOneOffQuoteWriteIntent()) {
+        if ($this->cord->isJobUpdate() || $this->cord->isJobCreate() || $this->isOneOffQuoteWriteIntent()) {
             return false;
         }
 
@@ -99,6 +116,10 @@ class UniversalShipment extends Request
     {
         if ($this->cord->isJobUpdate()) {
             return $this->cord->jobUpdate;
+        }
+
+        if ($this->cord->isJobCreate()) {
+            return $this->cord->jobCreate;
         }
 
         if ($this->cord->target === DataTarget::OneOffQuote) {

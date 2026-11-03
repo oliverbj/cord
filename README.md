@@ -214,7 +214,7 @@ Cord::shipment('SMIA12345678')
     ->run();
 ```
 
-For universal requests, `withCompany()` also enables Cord to derive a `SenderID` from the configured eAdapter host plus the company code, for example `DEMO1TRNCPH`. The default `RecipientID` is `Cord`.
+For universal requests, `withCompany()` also enables Cord to derive a `SenderID` from the configured eAdapter host plus the company code, for example `DEMO1TRNCPH`. The default `RecipientID` is `Cord`. Shipment, booking, consol and custom gets are the exception: with a company set, Cord puts `Company`, `EnterpriseID` and `ServerID` inside `ShipmentRequest > DataContext` and sends no `SenderID` / `RecipientID`, because CargoWise rejects them next to `ShipmentRequest`.
 
 If you need to override either value, you can set them explicitly:
 
@@ -405,6 +405,76 @@ Cord::withCompany('CPH')
     ->addAdditionalFieldUpdate('ForwardingShipment.JobHeader.JH_Status', 'CMP')
     ->run();
 ```
+
+## Create Bookings and Consols
+
+`booking()->create()` and `consol()->create()` (structured: `booking.create`, `consol.create`) send a Universal Shipment with `DataTarget Type=ForwardingBooking` or `ForwardingConsol`. `withCompany()` is required and goes, with `EnterpriseID` and `ServerID`, inside `Shipment > DataContext`; there is no `SenderID` / `RecipientID`. The key is optional and only sent when given. Cord applies no business defaults: Incoterm, parties and departments are up to the caller. The only technical default is `IsEstimate=true` on booking dates.
+
+```php
+$result = Cord::withCompany('NYC')
+    ->booking()
+    ->create()
+    ->branch('ATL')->department('AIR')
+    ->transportMode('AIR')->packingMode('LSE')
+    ->incoterm('DAP')->additionalTerms('Kennesaw')
+    ->portOfLoading('CNPEK')->portOfDischarge('USATL')
+    ->departureDate('2026-10-25')
+    ->totalWeight(631, 'KG')
+    ->controllingAgent('FREITLDUS')
+    ->addParty(fn ($p) => $p->addressType('ConsignorDocumentaryAddress')->organizationCode('NANAPPPVG'))
+    ->addParty(fn ($p) => $p->addressType('ConsigneePickupDeliveryAddress')->companyName('ESL FACEIT')->addressLine1('7575 COBB INTERNATIONAL BLVD NW')->city('KENNESAW')->country('US'))
+    ->addPackLine(fn ($l) => $l->packageType('CTN')->quantity(47)->weight(631, 'KG')->volume(3.61, 'M3'))
+    ->addAdditionalReference('CLR', 'DUS-SH-000395')
+    ->run();
+
+// ['status' => 'PRS', 'key' => 'SNTG26092601', 'message_number' => '...', 'processing_log' => ..., 'data' => ...]
+```
+
+`booking.create` requires `company`, `branch`, `department`, `transport_mode` and `packing_mode`; `controlling_agent` is optional. `consol.create` requires `company`, `branch`, `department`, `transport_mode` and `packing_mode`. `branch` and `department` serialize to `Branch` and `JobCosting > Branch` / `JobCosting > Department` (the branch is also set on `DataContext`). A value without a unit (weight, volume, goods value, pack line measures) is a validation error, and pack line width and height share the length unit.
+
+| Structured key | Booking | Consol | XML (under `Shipment`) |
+|---|---|---|---|
+| `transport_mode`, `packing_mode` | yes | yes | `TransportMode`, `ContainerMode` (`> Code`) |
+| `service_level` | yes | | `ServiceLevel > Code` |
+| `incoterm`, `additional_terms` | yes | | `ShipmentIncoTerm > Code`, `AdditionalTerms` (the named place) |
+| `port_of_loading`, `port_of_discharge` | yes | yes | `PortOfLoading`, `PortOfDischarge` |
+| `port_of_origin`, `port_of_destination` | yes | | `PortOfOrigin`, `PortOfDestination` |
+| `departure_date`, `arrival_date` (`date`, `is_estimate`) | yes | | `DateCollection > Date` with `Type=Departure` / `Arrival` |
+| `pickup_required_by`, `delivery_required_by`, `pickup_drop_mode`, `delivery_drop_mode` | yes | | `LocalProcessing` |
+| `goods_description`, `outer_packs` (`quantity`, `pack_type`) | yes | | `GoodsDescription`, `OuterPacks` + `OuterPacksPackageType` |
+| `total_weight`, `total_volume`, `goods_value` | yes | | `TotalWeight`, `TotalVolume`, `GoodsValue` + unit / currency |
+| `actual_chargeable` | yes | | `ActualChargeable` (plain number, no unit) |
+| `house_bill` / `master_bill` | `house_bill` | `master_bill` | `WayBillNumber` with `WayBillType` `HWB` / `MWB` |
+| `carrier_contract_number` | yes | yes | `CarrierContractNumber` |
+| `order_numbers`, `additional_references` (`type`, `number`, `country_of_issue`) | yes | | `LocalProcessing > OrderNumberCollection`, `AdditionalReferenceCollection` |
+| `controlling_agent` | optional | | `OrganizationAddress` `AddressType=ControllingAgent` |
+| `parties` (`address_type` plus either `organization_code` or a full address) | yes | | `OrganizationAddress` rows of any address type |
+| `pack_lines` (`pack_type`, `quantity`, `weight`, `volume`, `length`, `width`, `height`, `description`, `commodity`, `hs_code`, `marks_and_numbers`) | yes | | `PackingLineCollection` |
+| `containers` (`type`, `count`, `iso_code`, `number`, `seal`) | yes | yes | `ContainerCollection` |
+| `consol_type`, `business_direction`, `payment_method` | | yes | `ShipmentType`, `TransportBookingDirection`, `PaymentMethod` (`> Code`) |
+| `sending_agent`, `receiving_agent`, `carrier` | | yes | `OrganizationAddress` (`SendingForwarderAddress`, `ReceivingForwarderAddress`, `ShippingLineAddress`) |
+| `vessel_name`, `voyage_flight_no` | | yes | `VesselName`, `VoyageFlightNo` |
+| `transport_legs` (`order`, `type`, `mode`, `port_of_loading`, `port_of_discharge`, `estimated_departure`, `estimated_arrival`, `vessel`, `voyage_flight_no`, `carrier`) | | yes | `TransportLegCollection` |
+| `shipment_keys` | | yes | `SubShipmentCollection` |
+
+A party must not use the `ControllingAgent` address type; use `controlling_agent`. A party without an `organization_code` needs `company_name`, `address_line_1`, `city` and `country`.
+
+Create runs return `status`, `key`, `message_number`, `processing_log` and `data`. The new `key` is read from `DataContext > DataSourceCollection > DataSource` (the entry whose `Type` matches the job), with `DataTarget` as a fallback; it is `null` when the reply carries neither, and a create never falls back to a passed key.
+
+An `ERR` reply always throws `Oliverbj\Cord\Exceptions\EadapterRejectedException` (a plain `Exception` subclass), also when the request wants JSON. It exposes `status`, `processingLog` and `messageNumber`. Timeouts, connection errors and 5xx responses keep Laravel's own exceptions (`ConnectionException`, `RequestException`), so a rejection (safe to fix and retry) can be told apart from no answer (unknown outcome).
+
+### Convert a booking to a shipment
+
+Conversion is a `UniversalEvent` (event type `Z03` by default, override with `convert('Z05')` or `event_type`) against the same key with `ForwardingShipment.JS_IsForwardRegistered` set to `true`; a `UniversalShipmentRequest` is not accepted. It requires `withCompany()`:
+
+```php
+Cord::withCompany('NYC')->booking('SNTG26094969')->convert()->run();
+Cord::fromStructured('booking.convert', ['company' => 'NYC', 'key' => 'SNTG26094969'])->run();
+```
+
+### Link shipments to a consol
+
+Pass `shipment_keys` / `linkShipment('KEY')` on `consol.create`, or add shipments to an existing consol with `consol('KEY')->update()->linkShipment('SNTG...')` (structured `consol.update` with `shipment_keys`).
 
 ## DocManager
 

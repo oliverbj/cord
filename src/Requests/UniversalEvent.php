@@ -2,6 +2,7 @@
 
 namespace Oliverbj\Cord\Requests;
 
+use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\OperationId;
 
 class UniversalEvent extends Request
@@ -18,6 +19,11 @@ class UniversalEvent extends Request
 
         if (! is_string($key)) {
             return $context;
+        }
+
+        // Conversion registers the booking as a shipment under the same key.
+        if ($this->cord->currentOperation === OperationId::BookingConvert) {
+            $context[$key]['DataContext']['DataTargetCollection']['DataTarget']['Type'] = DataTarget::Shipment->value;
         }
 
         if (($this->isOneOffQuoteDocumentAdd() || $this->isOneOffQuoteEventAdd())
@@ -104,7 +110,8 @@ class UniversalEvent extends Request
 
     private function isShipmentAdditionalFieldUpdateRequest(): bool
     {
-        return $this->cord->currentOperation === OperationId::ShipmentEventAdd
-            && $this->cord->additionalFieldsToUpdate !== [];
+        return $this->cord->currentOperation === OperationId::BookingConvert
+            || ($this->cord->currentOperation === OperationId::ShipmentEventAdd
+                && $this->cord->additionalFieldsToUpdate !== []);
     }
 }

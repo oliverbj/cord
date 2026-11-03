@@ -14,6 +14,9 @@ All notable changes to `cord` will be documented in this file.
 
 ### What's Changed
 
+* Add booking.create, booking.convert and consol.create, and shipment_keys on consol.update
+* Throw EadapterRejectedException (status, processing log, message number) on ERR replies
+* Fix shipment/booking/consol/custom gets with a company: put Company, EnterpriseID and ServerID in ShipmentRequest > DataContext instead of an invalid SenderID
 * Add estimated/actual pickup and delivery dates, received date, and pickup/delivery drop mode to shipment.update
 
 ## v3.5.3 - 2026-10-09

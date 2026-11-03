@@ -10,7 +10,7 @@ class UniversalShipmentRequest extends Request
     {
         $context = parent::context();
 
-        if (! $this->isOneOffQuoteQuery()) {
+        if (! $this->isOneOffQuoteQuery() && ! $this->hasCompany()) {
             return $context;
         }
 
@@ -20,7 +20,7 @@ class UniversalShipmentRequest extends Request
             return $context;
         }
 
-        if (! is_string($this->cord->company) || trim($this->cord->company) === '') {
+        if (! $this->hasCompany()) {
             throw new \Exception('Company code must be provided for one-off quote query requests. Call withCompany() before sending the request.');
         }
 
@@ -31,25 +31,31 @@ class UniversalShipmentRequest extends Request
             throw new \Exception('EnterpriseID and ServerID could not be derived from the configured URL. Use a CargoWise URL like https://demo1trnservices.example.invalid/eAdaptor or override with withEnterprise() and withServer().');
         }
 
-        $context[$key]['DataContext'] = array_replace_recursive($context[$key]['DataContext'], [
+        $embedded = [
             'Company' => [
                 'Code' => $this->cord->company,
             ],
             'EnterpriseID' => $enterpriseId,
             'ServerID' => $serverId,
-            'RecipientRoleCollection' => [
+        ];
+
+        if ($this->isOneOffQuoteQuery()) {
+            $embedded['RecipientRoleCollection'] = [
                 'RecipientRole' => [
                     'Code' => 'ORP',
                 ],
-            ],
-        ]);
+            ];
+        }
+
+        $context[$key]['DataContext'] = array_replace_recursive($context[$key]['DataContext'], $embedded);
 
         return $context;
     }
 
     protected function shouldIncludeInterchangeContext(): bool
     {
-        if ($this->isOneOffQuoteQuery()) {
+        // CargoWise rejects SenderID/RecipientID next to ShipmentRequest; a company goes in DataContext instead.
+        if ($this->isOneOffQuoteQuery() || $this->hasCompany()) {
             return false;
         }
 
@@ -63,6 +69,11 @@ class UniversalShipmentRequest extends Request
         }
 
         return [];
+    }
+
+    private function hasCompany(): bool
+    {
+        return is_string($this->cord->company) && trim($this->cord->company) !== '';
     }
 
     private function isOneOffQuoteQuery(): bool

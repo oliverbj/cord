@@ -4,11 +4,15 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Oliverbj\Cord\Attributes\OperationField;
 use Oliverbj\Cord\Attributes\StructuredField;
+use Oliverbj\Cord\Builders\JobContainerBuilder;
+use Oliverbj\Cord\Builders\JobPackLineBuilder;
+use Oliverbj\Cord\Builders\JobPartyBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteNoteBuilder;
 use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
+use Oliverbj\Cord\Builders\TransportLegBuilder;
 use Oliverbj\Cord\Facades\Cord;
 
 it('builds request xml without sending a network request when inspecting', function () {
@@ -24,15 +28,29 @@ it('builds request xml without sending a network request when inspecting', funct
         ->toContain('<Key>SMIA12345678</Key>');
 });
 
-it('includes derived sender and default recipient ids in universal payloads when company context is available', function () {
-    $xml = Cord::shipment('SMIA12345678')
-        ->withCompany('CPH')
-        ->inspect();
+it('puts the company in the shipment request data context instead of sender and recipient ids', function () {
+    foreach ([
+        Cord::shipment('SMIA12345678'),
+        Cord::booking('SMIA12345678'),
+        Cord::consol('CMIA12345678'),
+    ] as $cord) {
+        $xml = $cord->withCompany('CPH')->inspect();
 
-    expect($xml)
-        ->toContain('<SenderID>DEMO1TRNCPH</SenderID>')
-        ->toContain('<RecipientID>Cord</RecipientID>')
-        ->toContain('<ShipmentRequest>');
+        expect($xml)
+            ->toContain('<ShipmentRequest><DataContext>')
+            ->toContain('<Company><Code>CPH</Code></Company><EnterpriseID>DEMO1</EnterpriseID><ServerID>TRN</ServerID>')
+            ->not->toContain('<SenderID>')
+            ->not->toContain('<RecipientID>');
+    }
+
+    config()->set('cord.underivable.eadapter_connection', [
+        'url' => 'https://example.invalid/eadapter',
+        'username' => 'u',
+        'password' => 'p',
+    ]);
+
+    expect(fn () => Cord::withConfig('underivable')->shipment('SMIA12345678')->withCompany('CPH')->inspect())
+        ->toThrow(Exception::class, 'EnterpriseID and ServerID could not be derived');
 });
 
 it('includes explicit sender and recipient ids in universal payloads', function () {
@@ -2101,6 +2119,9 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         'activeOneOffQuoteIntent',
         'currentOneOffQuoteDraft',
         'isJobUpdate',
+        'convert',
+        'isJobCreate',
+        'currentJobCreateDraft',
     ];
 
     foreach ($cordReflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
@@ -2118,6 +2139,10 @@ it('keeps structured metadata coverage in sync with published fluent methods', f
         OneOffQuoteAttachedDocumentBuilder::class,
         OneOffQuoteNoteBuilder::class,
         OneOffQuotePackLineBuilder::class,
+        JobPackLineBuilder::class,
+        JobContainerBuilder::class,
+        JobPartyBuilder::class,
+        TransportLegBuilder::class,
     ] as $builderClass) {
         $reflection = new ReflectionClass($builderClass);
 

@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Request as RequestFacade;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Oliverbj\Cord\Attributes\OperationField;
+use Oliverbj\Cord\Builders\JobContainerBuilder;
+use Oliverbj\Cord\Builders\JobPackLineBuilder;
+use Oliverbj\Cord\Builders\JobPartyBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAddressBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteAttachedDocumentBuilder;
 use Oliverbj\Cord\Builders\OneOffQuoteChargeLineBuilder;
@@ -21,9 +24,11 @@ use Oliverbj\Cord\Builders\OneOffQuotePackLineBuilder;
 use Oliverbj\Cord\Builders\OrganizationAddressBuilder;
 use Oliverbj\Cord\Builders\OrganizationContactBuilder;
 use Oliverbj\Cord\Builders\OrganizationEDICommunicationBuilder;
+use Oliverbj\Cord\Builders\TransportLegBuilder;
 use Oliverbj\Cord\Enums\DataTarget;
 use Oliverbj\Cord\Enums\OperationId;
 use Oliverbj\Cord\Enums\RequestType;
+use Oliverbj\Cord\Exceptions\EadapterRejectedException;
 use Oliverbj\Cord\Interfaces\RequestInterface;
 use Oliverbj\Cord\Requests\NativeCompanyRetrieval;
 use Oliverbj\Cord\Requests\NativeContainerRetrieval;
@@ -96,6 +101,22 @@ class Cord
         'sendingAgent' => 'SendingForwarderAddress',
     ];
 
+    /** @var array<string, array<int, string>> Scalar fields accepted by setJobValue() on create. */
+    private const JOB_CREATE_FIELDS = [
+        'booking' => ['branch', 'department', 'transportMode', 'packingMode', 'serviceLevel', 'incoterm', 'additionalTerms', 'goodsDescription', 'portOfLoading', 'portOfDischarge', 'portOfOrigin', 'portOfDestination', 'houseBill', 'carrierContractNumber', 'controllingAgent', 'pickupRequiredBy', 'deliveryRequiredBy', 'pickupDropMode', 'deliveryDropMode'],
+        'consol' => ['branch', 'department', 'transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'paymentMethod', 'sendingAgent', 'receivingAgent', 'carrier', 'carrierContractNumber', 'masterBill', 'consolType', 'businessDirection'],
+    ];
+
+    /** @var array<string, string> */
+    private const JOB_TRANSPORT_LEG_MODES = [
+        'AIR' => 'Air',
+        'SEA' => 'Sea',
+        'ROA' => 'Road',
+        'ROAD' => 'Road',
+        'RAI' => 'Rail',
+        'RAIL' => 'Rail',
+    ];
+
     public DataTarget $target = DataTarget::Shipment;
 
     public RequestType $requestType = RequestType::UniversalShipmentRequest;
@@ -145,6 +166,12 @@ class Cord
     public array $oneOffQuote = [];
 
     public array $jobUpdate = [];
+
+    public array $jobCreate = [];
+
+    protected bool $jobCreateActive = false;
+
+    protected array $jobCreateDraft = [];
 
     protected bool $jobUpdateActive = false;
 
@@ -288,20 +315,31 @@ class Cord
         $this->organizationIntent = null;
         $this->organizationDraft = [];
         $this->resetJobUpdate();
+        $this->resetJobCreate();
 
         return $this;
     }
 
     /**
      * Determine if the request is for a booking.
+     *
+     * Key is optional for create requests and required for get and convert requests.
+     *
+     * Examples:
+     * `->booking()->create()`
+     * `->booking('SNTG26094969')->convert()`
      */
-    public function booking(string $booking): self
+    public function booking(?string $booking = null): self
     {
+        $this->resetJobCreate();
         $this->targetKey = $booking;
         $this->target = DataTarget::Booking;
         $this->requestType = RequestType::UniversalShipmentRequest;
-        $this->currentOperation = OperationId::BookingGet;
-        $this->markStructuredField('key');
+        $this->currentOperation = $booking !== null ? OperationId::BookingGet : null;
+
+        if ($booking !== null) {
+            $this->markStructuredField('key');
+        }
 
         return $this;
     }
@@ -335,6 +373,7 @@ class Cord
     public function shipment(string $shipment): self
     {
         $this->resetJobUpdate();
+        $this->resetJobCreate();
         $this->targetKey = $shipment;
         $this->target = DataTarget::Shipment;
         $this->requestType = RequestType::UniversalShipmentRequest;
@@ -534,7 +573,54 @@ class Cord
             return $this;
         }
 
-        throw new \Exception('create() is currently implemented for staff, oneOffQuote and organization only.');
+        if (in_array($this->target, [DataTarget::Booking, DataTarget::Consol], true)) {
+            $this->resetJobCreate();
+            $this->jobCreateActive = true;
+            $this->requestType = RequestType::UniversalShipment;
+            $this->currentOperation = $this->target === DataTarget::Consol
+                ? OperationId::ConsolCreate
+                : OperationId::BookingCreate;
+
+            return $this;
+        }
+
+        throw new \Exception('create() is currently implemented for staff, oneOffQuote, organization, booking and consol only.');
+    }
+
+    /**
+     * Register a booking as a shipment (same key) by flagging it forward registered.
+     *
+     * The event type defaults to Z03.
+     *
+     * Example:
+     * `->booking('SNTG26094969')->convert()`
+     */
+    #[OperationField(OperationId::BookingConvert, name: 'event_type')]
+    public function convert(string $eventType = 'Z03'): self
+    {
+        if ($this->target !== DataTarget::Booking || ! is_string($this->targetKey) || trim($this->targetKey) === '') {
+            throw new \Exception("convert() requires booking('KEY') context.");
+        }
+
+        if (trim($eventType) === '') {
+            throw ValidationException::withMessages(['event_type' => ['The event_type field must not be empty.']]);
+        }
+
+        $this->requestType = RequestType::UniversalEvent;
+        $this->currentOperation = OperationId::BookingConvert;
+        $this->event = [
+            'EventTime' => Carbon::now('UTC')->format('Y-m-d\TH:i:s\Z'),
+            'EventType' => $eventType,
+            'EventReference' => 'Converted to shipment via Cord',
+            'IsEstimate' => 'false',
+        ];
+        $this->eventContexts = [];
+        $this->additionalFieldsToUpdate = [[
+            'Type' => 'ForwardingShipment.JS_IsForwardRegistered',
+            'Value' => 'true',
+        ]];
+
+        return $this;
     }
 
     /**
@@ -813,8 +899,14 @@ class Cord
     #[OperationField(OperationId::StaffCreate, required: true)]
     #[OperationField(OperationId::StaffUpdate)]
     #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
+    #[OperationField(OperationId::BookingCreate, required: true)]
+    #[OperationField(OperationId::ConsolCreate, required: true)]
     public function branch(string $branch): self
     {
+        if ($this->isJobCreate()) {
+            return $this->setJobValue('branch', $branch);
+        }
+
         if ($this->target === DataTarget::OneOffQuote) {
             return $this->setOneOffQuoteDraftValue('branch', $branch);
         }
@@ -833,8 +925,14 @@ class Cord
     #[OperationField(OperationId::StaffCreate, required: true)]
     #[OperationField(OperationId::StaffUpdate)]
     #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
+    #[OperationField(OperationId::BookingCreate, required: true)]
+    #[OperationField(OperationId::ConsolCreate, required: true)]
     public function department(string $department): self
     {
+        if ($this->isJobCreate()) {
+            return $this->setJobValue('department', $department);
+        }
+
         if ($this->target === DataTarget::OneOffQuote) {
             return $this->setOneOffQuoteDraftValue('department', $department);
         }
@@ -977,10 +1075,12 @@ class Cord
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'transport_mode', required: true, enum: ['SEA', 'AIR', 'ROA'])]
     #[OperationField(OperationId::ShipmentUpdate, name: 'transport_mode')]
     #[OperationField(OperationId::ConsolUpdate, name: 'transport_mode')]
+    #[OperationField(OperationId::BookingCreate, name: 'transport_mode', required: true)]
+    #[OperationField(OperationId::ConsolCreate, name: 'transport_mode', required: true)]
     public function transportMode(string $code): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('transportMode', $code);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('transportMode', $code);
         }
 
         $this->assertOneOffQuoteBuilderContext('transportMode');
@@ -998,10 +1098,11 @@ class Cord
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_origin', required: true)]
     #[OperationField(OperationId::ShipmentUpdate, name: 'port_of_origin')]
+    #[OperationField(OperationId::BookingCreate, name: 'port_of_origin')]
     public function portOfOrigin(string $code): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('portOfOrigin', $code);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('portOfOrigin', $code);
         }
 
         $this->assertOneOffQuoteBuilderContext('portOfOrigin');
@@ -1019,10 +1120,11 @@ class Cord
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'port_of_destination', required: true)]
     #[OperationField(OperationId::ShipmentUpdate, name: 'port_of_destination')]
+    #[OperationField(OperationId::BookingCreate, name: 'port_of_destination')]
     public function portOfDestination(string $code): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('portOfDestination', $code);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('portOfDestination', $code);
         }
 
         $this->assertOneOffQuoteBuilderContext('portOfDestination');
@@ -1058,10 +1160,11 @@ class Cord
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'service_level')]
     #[OperationField(OperationId::ShipmentUpdate, name: 'service_level')]
+    #[OperationField(OperationId::BookingCreate, name: 'service_level')]
     public function serviceLevel(string $code): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('serviceLevel', $code);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('serviceLevel', $code);
         }
 
         $this->assertOneOffQuoteBuilderContext('serviceLevel');
@@ -1080,10 +1183,12 @@ class Cord
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'packing_mode')]
     #[OperationField(OperationId::ShipmentUpdate, name: 'packing_mode')]
     #[OperationField(OperationId::ConsolUpdate, name: 'packing_mode')]
+    #[OperationField(OperationId::BookingCreate, name: 'packing_mode', required: true)]
+    #[OperationField(OperationId::ConsolCreate, name: 'packing_mode', required: true)]
     public function packingMode(string $code): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('packingMode', $code);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('packingMode', $code);
         }
 
         $this->assertOneOffQuoteBuilderContext('packingMode');
@@ -1117,10 +1222,11 @@ class Cord
      */
     #[OperationField(OperationId::OneOffQuoteCreate)]
     #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
     public function incoterm(string $code): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('incoterm', $code);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('incoterm', $code);
         }
 
         $this->assertOneOffQuoteBuilderContext('incoterm');
@@ -1137,8 +1243,13 @@ class Cord
      * Set one-off quote total weight.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'total_weight')]
+    #[OperationField(OperationId::BookingCreate, name: 'total_weight')]
     public function totalWeight(float|int|string $value, string $unitCode): self
     {
+        if ($this->isJobCreate()) {
+            return $this->setJobCreateMeasure('totalWeight', 'total_weight', ['value' => $value, 'unitCode' => $unitCode]);
+        }
+
         $this->assertOneOffQuoteBuilderContext('totalWeight');
 
         $this->oneOffQuoteDraft['totalWeight'] = [
@@ -1154,8 +1265,13 @@ class Cord
      * Set one-off quote total volume.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'total_volume')]
+    #[OperationField(OperationId::BookingCreate, name: 'total_volume')]
     public function totalVolume(float|int|string $value, string $unitCode): self
     {
+        if ($this->isJobCreate()) {
+            return $this->setJobCreateMeasure('totalVolume', 'total_volume', ['value' => $value, 'unitCode' => $unitCode]);
+        }
+
         $this->assertOneOffQuoteBuilderContext('totalVolume');
 
         $this->oneOffQuoteDraft['totalVolume'] = [
@@ -1168,11 +1284,25 @@ class Cord
     }
 
     /**
+     * Set the actual chargeable quantity (`Shipment > ActualChargeable`, no unit) on a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'actual_chargeable')]
+    public function actualChargeable(float|int|string $value): self
+    {
+        return $this->setJobCreateMeasure('actualChargeable', 'actual_chargeable', ['value' => $value]);
+    }
+
+    /**
      * Set one-off quote goods value.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'goods_value')]
+    #[OperationField(OperationId::BookingCreate, name: 'goods_value')]
     public function goodsValue(float|int|string $amount, string $currencyCode): self
     {
+        if ($this->isJobCreate()) {
+            return $this->setJobCreateMeasure('goodsValue', 'goods_value', ['amount' => $amount, 'currencyCode' => $currencyCode]);
+        }
+
         $this->assertOneOffQuoteBuilderContext('goodsValue');
 
         $this->oneOffQuoteDraft['goodsValue'] = [
@@ -1189,10 +1319,11 @@ class Cord
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'additional_terms')]
     #[OperationField(OperationId::ShipmentUpdate, name: 'additional_terms')]
+    #[OperationField(OperationId::BookingCreate, name: 'additional_terms')]
     public function additionalTerms(string $value): self
     {
-        if ($this->isJobUpdate()) {
-            return $this->setJobUpdateValue('additionalTerms', $value);
+        if ($this->isJobWrite()) {
+            return $this->setJobValue('additionalTerms', $value);
         }
 
         return $this->setOneOffQuoteDraftValue('additionalTerms', $value);
@@ -1212,9 +1343,11 @@ class Cord
      */
     #[OperationField(OperationId::ShipmentUpdate)]
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function portOfLoading(string $code): self
     {
-        return $this->setJobUpdateValue('portOfLoading', $code);
+        return $this->setJobValue('portOfLoading', $code);
     }
 
     /**
@@ -1222,9 +1355,11 @@ class Cord
      */
     #[OperationField(OperationId::ShipmentUpdate)]
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function portOfDischarge(string $code): self
     {
-        return $this->setJobUpdateValue('portOfDischarge', $code);
+        return $this->setJobValue('portOfDischarge', $code);
     }
 
     /**
@@ -1232,9 +1367,10 @@ class Cord
      */
     #[OperationField(OperationId::ShipmentUpdate)]
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function vesselName(string $name): self
     {
-        return $this->setJobUpdateValue('vesselName', $name);
+        return $this->setJobValue('vesselName', $name);
     }
 
     /**
@@ -1242,9 +1378,10 @@ class Cord
      */
     #[OperationField(OperationId::ShipmentUpdate)]
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function voyageFlightNo(string $number): self
     {
-        return $this->setJobUpdateValue('voyageFlightNo', $number);
+        return $this->setJobValue('voyageFlightNo', $number);
     }
 
     /**
@@ -1254,61 +1391,67 @@ class Cord
     #[OperationField(OperationId::ConsolUpdate)]
     public function waybillNumber(string $number): self
     {
-        return $this->setJobUpdateValue('waybillNumber', $number);
+        return $this->setJobValue('waybillNumber', $number);
     }
 
     /**
      * Set the goods description on a shipment update.
      */
     #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
     public function goodsDescription(string $description): self
     {
-        return $this->setJobUpdateValue('goodsDescription', $description);
+        return $this->setJobValue('goodsDescription', $description);
     }
 
     /**
      * Set the payment terms (payment method code, e.g. PPD) on a consol update.
      */
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function paymentMethod(string $code): self
     {
-        return $this->setJobUpdateValue('paymentMethod', $code);
+        return $this->setJobValue('paymentMethod', $code);
     }
 
     /**
      * Set the sending agent on a consol update from an organization code.
      */
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function sendingAgent(string $organizationCode): self
     {
-        return $this->setJobUpdateValue('sendingAgent', $organizationCode);
+        return $this->setJobValue('sendingAgent', $organizationCode);
     }
 
     /**
      * Set the receiving agent on a consol update from an organization code.
      */
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function receivingAgent(string $organizationCode): self
     {
-        return $this->setJobUpdateValue('receivingAgent', $organizationCode);
+        return $this->setJobValue('receivingAgent', $organizationCode);
     }
 
     /**
      * Set the carrier on a consol update from an organization code.
      */
     #[OperationField(OperationId::ConsolUpdate)]
+    #[OperationField(OperationId::ConsolCreate)]
     public function carrier(string $organizationCode): self
     {
-        return $this->setJobUpdateValue('carrier', $organizationCode);
+        return $this->setJobValue('carrier', $organizationCode);
     }
 
     /**
      * Set the controlling agent on a shipment update from an organization code.
      */
     #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
     public function controllingAgent(string $organizationCode): self
     {
-        return $this->setJobUpdateValue('controllingAgent', $organizationCode);
+        return $this->setJobValue('controllingAgent', $organizationCode);
     }
 
     /**
@@ -1317,7 +1460,7 @@ class Cord
     #[OperationField(OperationId::ShipmentUpdate)]
     public function estimatedPickup(string $date): self
     {
-        return $this->setJobUpdateDateValue('estimatedPickup', $date);
+        return $this->setJobDateValue('estimatedPickup', $date);
     }
 
     /**
@@ -1326,7 +1469,7 @@ class Cord
     #[OperationField(OperationId::ShipmentUpdate)]
     public function pickupCartageCompleted(string $date): self
     {
-        return $this->setJobUpdateDateValue('pickupCartageCompleted', $date);
+        return $this->setJobDateValue('pickupCartageCompleted', $date);
     }
 
     /**
@@ -1335,7 +1478,7 @@ class Cord
     #[OperationField(OperationId::ShipmentUpdate)]
     public function estimatedDelivery(string $date): self
     {
-        return $this->setJobUpdateDateValue('estimatedDelivery', $date);
+        return $this->setJobDateValue('estimatedDelivery', $date);
     }
 
     /**
@@ -1344,7 +1487,7 @@ class Cord
     #[OperationField(OperationId::ShipmentUpdate)]
     public function deliveryCartageCompleted(string $date): self
     {
-        return $this->setJobUpdateDateValue('deliveryCartageCompleted', $date);
+        return $this->setJobDateValue('deliveryCartageCompleted', $date);
     }
 
     /**
@@ -1353,25 +1496,199 @@ class Cord
     #[OperationField(OperationId::ShipmentUpdate)]
     public function receivedDate(string $date): self
     {
-        return $this->setJobUpdateDateValue('receivedDate', $date);
+        return $this->setJobDateValue('receivedDate', $date);
     }
 
     /**
      * Set the pickup drop mode (FCL pickup equipment needed code, e.g. WUP) on a shipment update.
      */
     #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
     public function pickupDropMode(string $code): self
     {
-        return $this->setJobUpdateValue('pickupDropMode', $code);
+        return $this->setJobValue('pickupDropMode', $code);
     }
 
     /**
      * Set the delivery drop mode (FCL delivery equipment needed code, e.g. DTC) on a shipment update.
      */
     #[OperationField(OperationId::ShipmentUpdate)]
+    #[OperationField(OperationId::BookingCreate)]
     public function deliveryDropMode(string $code): self
     {
-        return $this->setJobUpdateValue('deliveryDropMode', $code);
+        return $this->setJobValue('deliveryDropMode', $code);
+    }
+
+    /**
+     * Set the carrier contract number on a booking or consol create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'carrier_contract_number')]
+    #[OperationField(OperationId::ConsolCreate, name: 'carrier_contract_number')]
+    public function carrierContractNumber(string $number): self
+    {
+        return $this->setJobValue('carrierContractNumber', $number);
+    }
+
+    /**
+     * Set the house bill number on a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'house_bill')]
+    public function houseBill(string $number): self
+    {
+        return $this->setJobValue('houseBill', $number);
+    }
+
+    /**
+     * Set the master bill number on a consol create.
+     */
+    #[OperationField(OperationId::ConsolCreate, name: 'master_bill')]
+    public function masterBill(string $number): self
+    {
+        return $this->setJobValue('masterBill', $number);
+    }
+
+    /**
+     * Set the consol type code (e.g. AGT, DRT, CLD) on a consol create.
+     */
+    #[OperationField(OperationId::ConsolCreate, name: 'consol_type')]
+    public function consolType(string $code): self
+    {
+        return $this->setJobValue('consolType', $code);
+    }
+
+    /**
+     * Set the business direction code (e.g. IMP, EXP) on a consol create.
+     */
+    #[OperationField(OperationId::ConsolCreate, name: 'business_direction')]
+    public function businessDirection(string $code): self
+    {
+        return $this->setJobValue('businessDirection', $code);
+    }
+
+    /**
+     * Set the pickup required-by date on a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'pickup_required_by')]
+    public function pickupRequiredBy(string $date): self
+    {
+        return $this->setJobDateValue('pickupRequiredBy', $date);
+    }
+
+    /**
+     * Set the delivery required-by date on a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'delivery_required_by')]
+    public function deliveryRequiredBy(string $date): self
+    {
+        return $this->setJobDateValue('deliveryRequiredBy', $date);
+    }
+
+    /**
+     * Set the departure (ETD) date on a booking create. Dates are estimates unless stated otherwise.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'departure_date')]
+    public function departureDate(string $date, bool $isEstimate = true): self
+    {
+        return $this->setJobCreateDate('departureDate', 'departure_date', $date, $isEstimate);
+    }
+
+    /**
+     * Set the arrival (ETA) date on a booking create. Dates are estimates unless stated otherwise.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'arrival_date')]
+    public function arrivalDate(string $date, bool $isEstimate = true): self
+    {
+        return $this->setJobCreateDate('arrivalDate', 'arrival_date', $date, $isEstimate);
+    }
+
+    /**
+     * Set the outer pack quantity and pack type on a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'outer_packs')]
+    public function outerPacks(int $quantity, string $packType): self
+    {
+        $this->assertJobCreateContext('outerPacks', DataTarget::Booking);
+
+        $this->jobCreateDraft['outerPacks'] = [
+            'quantity' => $quantity,
+            'packTypeCode' => $packType,
+        ];
+        $this->markStructuredField('outer_packs');
+
+        return $this;
+    }
+
+    /**
+     * Add an order number reference to a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'order_numbers', repeatable: true)]
+    public function addOrderNumber(string $reference): self
+    {
+        return $this->appendJobCreateDraft('addOrderNumber', 'orderNumbers', 'order_numbers', DataTarget::Booking, $reference);
+    }
+
+    /**
+     * Add an additional reference (type code, number and optional issuing country) to a booking create.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'additional_references', repeatable: true)]
+    public function addAdditionalReference(string $type, string $number, ?string $countryOfIssue = null): self
+    {
+        return $this->appendJobCreateDraft('addAdditionalReference', 'additionalReferences', 'additional_references', DataTarget::Booking, [
+            'type' => $type,
+            'number' => $number,
+            'countryOfIssue' => $countryOfIssue,
+        ]);
+    }
+
+    /**
+     * Add a party of any organization address type (e.g. ConsigneeDocumentaryAddress) to a booking create.
+     *
+     * A party is either an organization code or a full address without a code.
+     */
+    #[OperationField(OperationId::BookingCreate, name: 'parties', repeatable: true, builder: JobPartyBuilder::class)]
+    public function addParty(Closure $builder): self
+    {
+        $partyBuilder = new JobPartyBuilder;
+        $builder($partyBuilder);
+
+        return $this->appendJobCreateDraft('addParty', 'parties', 'parties', DataTarget::Booking, $partyBuilder->toArray());
+    }
+
+    /**
+     * Add a transport leg to a consol create.
+     */
+    #[OperationField(OperationId::ConsolCreate, name: 'transport_legs', repeatable: true, builder: TransportLegBuilder::class)]
+    public function addTransportLeg(Closure $builder): self
+    {
+        $legBuilder = new TransportLegBuilder;
+        $builder($legBuilder);
+
+        return $this->appendJobCreateDraft('addTransportLeg', 'transportLegs', 'transport_legs', DataTarget::Consol, $legBuilder->toArray());
+    }
+
+    /**
+     * Link an existing shipment to a consol on create or update.
+     */
+    #[OperationField(OperationId::ConsolCreate, name: 'shipment_keys', repeatable: true)]
+    #[OperationField(OperationId::ConsolUpdate, name: 'shipment_keys', repeatable: true)]
+    public function linkShipment(string $key): self
+    {
+        if (trim($key) === '') {
+            throw ValidationException::withMessages(['shipment_keys' => ['Shipment keys must not be empty.']]);
+        }
+
+        if ($this->target !== DataTarget::Consol || ! $this->isJobWrite()) {
+            throw new \Exception("linkShipment() requires consol()->create() or consol('KEY')->update() context.");
+        }
+
+        if ($this->isJobUpdate()) {
+            $this->jobUpdateDraft['shipmentKeys'][] = $key;
+            $this->markStructuredField('shipment_keys');
+
+            return $this;
+        }
+
+        return $this->appendJobCreateDraft('linkShipment', 'shipmentKeys', 'shipment_keys', DataTarget::Consol, $key);
     }
 
     /**
@@ -1483,8 +1800,15 @@ class Cord
      * Add a single pack line to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'pack_lines', repeatable: true, builder: OneOffQuotePackLineBuilder::class)]
+    #[OperationField(OperationId::BookingCreate, name: 'pack_lines', repeatable: true, builder: JobPackLineBuilder::class)]
     public function addPackLine(Closure $builder): self
     {
+        if ($this->isJobCreate()) {
+            $packLineBuilder = new JobPackLineBuilder;
+            $builder($packLineBuilder);
+
+            return $this->appendJobCreateDraft('addPackLine', 'packLines', 'pack_lines', DataTarget::Booking, $packLineBuilder->toArray());
+        }
         $this->assertOneOffQuoteBuilderContext('addPackLine');
 
         $packLineBuilder = new OneOffQuotePackLineBuilder;
@@ -1504,8 +1828,16 @@ class Cord
      * Add a single container to the one-off quote.
      */
     #[OperationField(OperationId::OneOffQuoteCreate, name: 'containers', repeatable: true, builder: OneOffQuoteContainerBuilder::class)]
+    #[OperationField(OperationId::BookingCreate, name: 'containers', repeatable: true, builder: JobContainerBuilder::class)]
+    #[OperationField(OperationId::ConsolCreate, name: 'containers', repeatable: true, builder: JobContainerBuilder::class)]
     public function addContainer(Closure $builder): self
     {
+        if ($this->isJobCreate()) {
+            $containerBuilder = new JobContainerBuilder;
+            $builder($containerBuilder);
+
+            return $this->appendJobCreateDraft('addContainer', 'containers', 'containers', $this->target, $containerBuilder->toArray());
+        }
         $this->assertOneOffQuoteBuilderContext('addContainer');
 
         $containerBuilder = new OneOffQuoteContainerBuilder;
@@ -1679,6 +2011,12 @@ class Cord
             $this->syncFluentJobUpdatePayload();
 
             return $this->jobUpdate;
+        }
+
+        if ($this->isJobCreate()) {
+            $this->syncFluentJobCreatePayload();
+
+            return $this->jobCreate;
         }
 
         return $this->staff;
@@ -2326,15 +2664,21 @@ class Cord
 
     /**
      * Determine if the request is for a consol.
+     *
+     * Key is optional for create requests.
      */
-    public function consol(string $consol): self
+    public function consol(?string $consol = null): self
     {
         $this->resetJobUpdate();
+        $this->resetJobCreate();
         $this->targetKey = $consol;
         $this->target = DataTarget::Consol;
         $this->requestType = RequestType::UniversalShipmentRequest;
-        $this->currentOperation = OperationId::ConsolGet;
-        $this->markStructuredField('key');
+        $this->currentOperation = $consol !== null ? OperationId::ConsolGet : null;
+
+        if ($consol !== null) {
+            $this->markStructuredField('key');
+        }
 
         return $this;
     }
@@ -2985,6 +3329,10 @@ class Cord
             return;
         }
 
+        if ($this->isJobCreate()) {
+            return;
+        }
+
         if ($this->target === DataTarget::OneOffQuote && $this->oneOffQuoteIntent === 'create') {
             return;
         }
@@ -3076,6 +3424,116 @@ class Cord
             && trim($this->targetKey) !== '';
     }
 
+    private function isJobWriteOperation(): bool
+    {
+        return in_array($this->currentOperation, [
+            OperationId::BookingCreate,
+            OperationId::BookingConvert,
+            OperationId::ConsolCreate,
+        ], true);
+    }
+
+    private function processingLogText(array $response): ?string
+    {
+        $log = $response['ProcessingLog'] ?? null;
+
+        return is_string($log) && trim($log) !== '' ? $log : null;
+    }
+
+    private function messageNumber(array $response): ?string
+    {
+        $messageNumber = $response['MessageNumberCollection']['MessageNumber'] ?? null;
+
+        if (is_array($messageNumber)) {
+            $messageNumber = $messageNumber[0] ?? null;
+        }
+
+        return is_string($messageNumber) ? $messageNumber : null;
+    }
+
+    private function rejection(array $response): EadapterRejectedException
+    {
+        return new EadapterRejectedException(
+            (string) ($response['Status'] ?? 'ERR'),
+            $this->processingLogText($response),
+            $this->messageNumber($response),
+        );
+    }
+
+    /**
+     * Reduce the eAdapter envelope of a booking/consol write to its outcome.
+     *
+     * @return array{status: string, key: ?string, message_number: ?string, processing_log: ?string, data: mixed}
+     */
+    private function buildJobWriteResult(array $response): array
+    {
+        $data = $response['Data'] ?? [];
+
+        return [
+            'status' => (string) ($response['Status'] ?? ''),
+            // A create never falls back to a passed key, so a missing answer stays null.
+            'key' => $this->findJobKey($data) ?? ($this->currentOperation === OperationId::BookingConvert ? $this->targetKey : null),
+            'message_number' => $this->messageNumber($response),
+            'processing_log' => $this->processingLogText($response),
+            'data' => $data,
+        ];
+    }
+
+    private function findJobKey(mixed $data): ?string
+    {
+        $types = match ($this->currentOperation) {
+            OperationId::ConsolCreate => [DataTarget::Consol->value],
+            OperationId::BookingConvert => [DataTarget::Shipment->value],
+            default => [DataTarget::Booking->value, DataTarget::Shipment->value],
+        };
+
+        return $this->keyFromNodes($this->collectNodes($data, 'DataSource'), $types)
+            ?? $this->keyFromNodes($this->collectNodes($data, 'DataTarget'), $types);
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     * @param  array<int, string>  $types
+     */
+    private function keyFromNodes(array $nodes, array $types): ?string
+    {
+        foreach ([...$types, null] as $type) {
+            foreach ($nodes as $node) {
+                if (is_array($node) && $this->isFilledString($node['Key'] ?? null) && ($type === null || ($node['Type'] ?? null) === $type)) {
+                    return trim($node['Key']);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Collect every node named $name anywhere in the response, in document order.
+     *
+     * @return array<int, mixed>
+     */
+    private function collectNodes(mixed $node, string $name): array
+    {
+        if (! is_array($node)) {
+            return [];
+        }
+
+        $found = [];
+
+        foreach ($node as $key => $child) {
+            if ($key === $name) {
+                array_push($found, ...(is_array($child) && array_is_list($child) ? $child : [$child]));
+
+                continue;
+            }
+
+            array_push($found, ...$this->collectNodes($child, $name));
+        }
+
+        return $found;
+    }
+
     protected function flattenResponse(array $response, string $key)
     {
         return tap($response, function (&$items) use ($key) {
@@ -3159,6 +3617,11 @@ class Cord
 
         // If eAdapter response is not successful, throw exception:
         if (($response['Status'] ?? null) == 'ERR') {
+            // Job writes must never hand back an error as a normal return value.
+            if ($this->isJobWriteOperation()) {
+                throw $this->rejection($response);
+            }
+
             // If client expects json, return json:
             if (RequestFacade::wantsJson()) {
                 $status = match ($response['ProcessingLog']) {
@@ -3168,7 +3631,7 @@ class Cord
 
                 return new JsonResponse(['error' => $response['ProcessingLog']], $status);
             }
-            throw new \Exception($response['ProcessingLog']);
+            throw $this->rejection($response);
         }
 
         if ($this->asXml) {
@@ -3178,7 +3641,7 @@ class Cord
 
         // If eAdapter response is successful, return data:
         // Handling different request types
-        $payload = match ($this->requestType) {
+        $payload = $this->isJobWriteOperation() ? $this->buildJobWriteResult($response) : match ($this->requestType) {
             RequestType::NativeOrganizationRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Organization', 'OrgHeader'),
             RequestType::NativeCompanyRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Company', 'GlbCompany'),
             RequestType::NativeContainerRetrieval => $this->flattenNativeResponse($response, 'Data.Native.Body.Container', 'RefContainer'),
@@ -3208,6 +3671,7 @@ class Cord
         $this->syncFluentOneOffQuotePayload();
         $this->syncFluentStaffPayload();
         $this->syncFluentJobUpdatePayload();
+        $this->syncFluentJobCreatePayload();
         $this->checkForErrors();
         $this->xml = $this->buildRequest()->xml();
     }
@@ -4508,12 +4972,111 @@ class Cord
         $this->jobUpdate = [];
     }
 
-    private function setJobUpdateValue(string $field, string $value): self
+    public function isJobCreate(): bool
     {
+        return $this->jobCreateActive
+            && in_array($this->target, [DataTarget::Booking, DataTarget::Consol], true)
+            && $this->requestType === RequestType::UniversalShipment;
+    }
+
+    public function currentJobCreateDraft(): array
+    {
+        return $this->jobCreateDraft;
+    }
+
+    private function isJobWrite(): bool
+    {
+        return $this->isJobUpdate() || $this->isJobCreate();
+    }
+
+    private function resetJobCreate(): void
+    {
+        $this->jobCreateActive = false;
+        $this->jobCreateDraft = [];
+        $this->jobCreate = [];
+    }
+
+    private function assertJobCreateContext(string $method, DataTarget $target): void
+    {
+        if (! $this->isJobCreate() || $this->target !== $target) {
+            $resource = $target === DataTarget::Consol ? 'consol' : 'booking';
+
+            throw new \Exception("{$method}() requires {$resource}()->create() context.");
+        }
+    }
+
+    private function setJobCreateValue(string $field, string $value): self
+    {
+        $name = Str::snake($field);
+        $resource = $this->target === DataTarget::Consol ? 'consol' : 'booking';
+
+        if (! in_array($field, self::JOB_CREATE_FIELDS[$resource], true)) {
+            throw new \Exception("{$field}() is not supported for {$resource} create() requests.");
+        }
+
+        if (trim($value) === '') {
+            throw ValidationException::withMessages([$name => ["The {$name} field must not be empty."]]);
+        }
+
+        $this->jobCreateDraft[$field] = $value;
+        $this->markStructuredField($name);
+
+        return $this;
+    }
+
+    /**
+     * @param  array<string, mixed>  $value
+     */
+    private function setJobCreateMeasure(string $field, string $name, array $value): self
+    {
+        $this->assertJobCreateContext($field, DataTarget::Booking);
+
+        $this->jobCreateDraft[$field] = $value;
+        $this->markStructuredField($name);
+
+        return $this;
+    }
+
+    private function setJobCreateDate(string $field, string $name, string $date, bool $isEstimate): self
+    {
+        $this->assertJobCreateContext($field, DataTarget::Booking);
+
+        try {
+            $normalized = Carbon::parse($date)->format('Y-m-d\TH:i:s');
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([$name => ["The {$name} field must be a valid date."]]);
+        }
+
+        $this->jobCreateDraft[$field] = ['date' => $normalized, 'isEstimate' => $isEstimate];
+        $this->markStructuredField($name);
+
+        return $this;
+    }
+
+    private function appendJobCreateDraft(string $method, string $field, string $name, DataTarget $target, mixed $item): self
+    {
+        $this->assertJobCreateContext($method, $target);
+
+        $this->jobCreateDraft[$field][] = $item;
+        $this->markStructuredField($name);
+
+        return $this;
+    }
+
+    private function setJobValue(string $field, string $value): self
+    {
+        if ($this->isJobCreate()) {
+            return $this->setJobCreateValue($field, $value);
+        }
+
         $name = Str::snake($field);
 
         if (! $this->isJobUpdate()) {
-            throw new \Exception("{$field}() requires shipment('KEY')->update() or consol('KEY')->update() context.");
+            $updatable = in_array($field, array_merge(...array_values(self::JOB_UPDATE_FIELDS)), true);
+
+            throw new \Exception($updatable
+                ? "{$field}() requires shipment('KEY')->update() or consol('KEY')->update() context."
+                : "{$field}() requires booking()->create() or consol()->create() context.");
         }
 
         $resource = $this->target === DataTarget::Consol ? 'consol' : 'shipment';
@@ -4532,7 +5095,7 @@ class Cord
         return $this;
     }
 
-    private function setJobUpdateDateValue(string $field, string $value): self
+    private function setJobDateValue(string $field, string $value): self
     {
         $name = Str::snake($field);
 
@@ -4542,7 +5105,7 @@ class Cord
             throw ValidationException::withMessages([$name => ["The {$name} field must be a valid date."]]);
         }
 
-        return $this->setJobUpdateValue($field, $normalized);
+        return $this->setJobValue($field, $normalized);
     }
 
     private function syncFluentJobUpdatePayload(): void
@@ -4627,6 +5190,481 @@ class Cord
             ];
         }
 
+        if (! empty($draft['shipmentKeys'])) {
+            $payload['SubShipmentCollection'] = $this->buildSubShipmentCollection($draft['shipmentKeys']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<int, string>  $shipmentKeys
+     */
+    private function buildSubShipmentCollection(array $shipmentKeys): array
+    {
+        $subShipments = array_map(static fn (string $key) => [
+            'DataContext' => [
+                'DataTargetCollection' => [
+                    'DataTarget' => [
+                        'Type' => DataTarget::Shipment->value,
+                        'Key' => $key,
+                    ],
+                ],
+            ],
+        ], array_values($shipmentKeys));
+
+        return [
+            'SubShipment' => count($subShipments) === 1 ? $subShipments[0] : $subShipments,
+        ];
+    }
+
+    private function syncFluentJobCreatePayload(): void
+    {
+        if (! $this->isJobCreate()) {
+            return;
+        }
+
+        $this->validateJobCreateDraft($this->jobCreateDraft);
+
+        $this->jobCreate = $this->buildJobCreatePayload($this->jobCreateDraft);
+    }
+
+    private function validateJobCreateDraft(array $draft): void
+    {
+        $errors = [];
+
+        if (! is_string($this->company) || trim($this->company) === '') {
+            $errors['company'] = ['The company field is required.'];
+        }
+
+        $required = [
+            'branch' => 'branch',
+            'department' => 'department',
+            'transportMode' => 'transport_mode',
+            'packingMode' => 'packing_mode',
+        ];
+
+        foreach ($required as $field => $name) {
+            if (! $this->isFilledString($draft[$field] ?? null)) {
+                $errors[$name] = ["The {$name} field is required."];
+            }
+        }
+
+        foreach (['totalWeight' => ['total_weight', 'unitCode'], 'totalVolume' => ['total_volume', 'unitCode'], 'goodsValue' => ['goods_value', 'currencyCode']] as $field => [$name, $unitKey]) {
+            if (isset($draft[$field]) && ! $this->isFilledString($draft[$field][$unitKey] ?? null)) {
+                $errors[$name.'.'.Str::snake($unitKey)] = ['A value must come with a unit or currency code.'];
+            }
+        }
+
+        if (isset($draft['actualChargeable']) && ! is_numeric($draft['actualChargeable']['value'])) {
+            $errors['actual_chargeable'] = ['The actual_chargeable field must be numeric.'];
+        }
+
+        foreach ($draft['parties'] ?? [] as $index => $party) {
+            $prefix = 'parties.'.$index;
+            $type = $party['addressType'] ?? null;
+
+            if (! $this->isFilledString($type)) {
+                $errors[$prefix.'.address_type'] = ['The address_type field is required.'];
+
+                continue;
+            }
+
+            if ($type === 'ControllingAgent') {
+                $errors[$prefix.'.address_type'] = ['Use controlling_agent instead of a ControllingAgent party.'];
+            }
+
+            if ($this->isFilledString($party['organizationCode'] ?? null)) {
+                continue;
+            }
+
+            foreach (['companyName' => 'company_name', 'address1' => 'address_line_1', 'city' => 'city', 'countryCode' => 'country'] as $key => $name) {
+                if (! $this->isFilledString($party[$key] ?? null)) {
+                    $errors[$prefix.'.'.$name] = ["The {$name} field is required when no organization_code is given."];
+                }
+            }
+        }
+
+        foreach ($draft['packLines'] ?? [] as $index => $packLine) {
+            $prefix = 'packLines.'.$index;
+
+            if (! $this->isFilledString($packLine['packTypeCode'] ?? null)) {
+                $errors[$prefix.'.pack_type'] = ['The pack_type field is required.'];
+            }
+
+            $quantity = $packLine['quantity'] ?? null;
+            if (! is_int($quantity) && ! (is_string($quantity) && ctype_digit($quantity))) {
+                $errors[$prefix.'.quantity'] = ['The quantity field is required.'];
+            }
+
+            foreach (['weight', 'volume', 'length', 'width', 'height'] as $measure) {
+                if (isset($packLine[$measure.'Value']) && ! $this->isFilledString($packLine[$measure.'UnitCode'] ?? null)) {
+                    $errors[$prefix.'.'.$measure] = ['A value must come with a unit code.'];
+                }
+            }
+
+            // CargoWise reads one shared dimension unit from LengthUnit.
+            foreach (['width', 'height'] as $dimension) {
+                if (! isset($packLine[$dimension.'Value'])) {
+                    continue;
+                }
+
+                if (! isset($packLine['lengthValue'])) {
+                    $errors[$prefix.'.'.$dimension] = ['A '.$dimension.' requires a length because dimensions share one unit.'];
+                } elseif (($packLine[$dimension.'UnitCode'] ?? null) !== ($packLine['lengthUnitCode'] ?? null)) {
+                    $errors[$prefix.'.'.$dimension] = ['The '.$dimension.' unit must match the length unit.'];
+                }
+            }
+        }
+
+        foreach ($draft['containers'] ?? [] as $index => $container) {
+            $prefix = 'containers.'.$index;
+
+            if (! $this->isFilledString($container['containerTypeCode'] ?? null)) {
+                $errors[$prefix.'.type'] = ['The type field is required.'];
+            }
+
+            if ($this->isFilledString($container['containerNumber'] ?? null) && (int) ($container['containerCount'] ?? 1) !== 1) {
+                $errors[$prefix.'.number'] = ['A container number requires a count of 1.'];
+            }
+        }
+
+        foreach ($draft['orderNumbers'] ?? [] as $index => $reference) {
+            if (! $this->isFilledString($reference)) {
+                $errors['order_numbers.'.$index] = ['The order number must not be empty.'];
+            }
+        }
+
+        foreach ($draft['additionalReferences'] ?? [] as $index => $reference) {
+            foreach (['type', 'number'] as $key) {
+                if (! $this->isFilledString($reference[$key] ?? null)) {
+                    $errors['additional_references.'.$index.'.'.$key] = ["The {$key} field is required."];
+                }
+            }
+        }
+
+        foreach ($draft['transportLegs'] ?? [] as $index => $leg) {
+            foreach (['order' => 'order', 'type' => 'type', 'mode' => 'mode', 'portOfLoading' => 'port_of_loading', 'portOfDischarge' => 'port_of_discharge'] as $key => $name) {
+                if (! isset($leg[$key]) || $leg[$key] === '') {
+                    $errors['transport_legs.'.$index.'.'.$name] = ["The {$name} field is required."];
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function isFilledString(mixed $value): bool
+    {
+        return is_string($value) && trim($value) !== '';
+    }
+
+    private function buildJobCreatePayload(array $draft): array
+    {
+        $isConsol = $this->target === DataTarget::Consol;
+        $code = static fn (string $value): array => ['Code' => $value];
+        $collect = static fn (array $items): array => count($items) === 1 ? $items[0] : $items;
+
+        $payload = ['Branch' => $code($draft['branch'])];
+
+        if (isset($draft['carrierContractNumber'])) {
+            $payload['CarrierContractNumber'] = $draft['carrierContractNumber'];
+        }
+
+        $payload['TransportMode'] = $code($draft['transportMode']);
+        $payload['ContainerMode'] = $code($draft['packingMode']);
+
+        foreach (['serviceLevel' => 'ServiceLevel', 'paymentMethod' => 'PaymentMethod', 'incoterm' => 'ShipmentIncoTerm'] as $field => $element) {
+            if (isset($draft[$field])) {
+                $payload[$element] = $code($draft[$field]);
+            }
+        }
+
+        foreach (['additionalTerms' => 'AdditionalTerms', 'goodsDescription' => 'GoodsDescription'] as $field => $element) {
+            if (isset($draft[$field])) {
+                $payload[$element] = $draft[$field];
+            }
+        }
+
+        if (isset($draft['outerPacks'])) {
+            $payload['OuterPacks'] = (string) $draft['outerPacks']['quantity'];
+            $payload['OuterPacksPackageType'] = $code($draft['outerPacks']['packTypeCode']);
+        }
+
+        foreach (['totalWeight' => ['TotalWeight', 'TotalWeightUnit'], 'totalVolume' => ['TotalVolume', 'TotalVolumeUnit']] as $field => [$valueElement, $unitElement]) {
+            if (isset($draft[$field])) {
+                $payload[$valueElement] = (string) $draft[$field]['value'];
+                $payload[$unitElement] = $code($draft[$field]['unitCode']);
+            }
+        }
+
+        if (isset($draft['actualChargeable'])) {
+            $payload['ActualChargeable'] = (string) $draft['actualChargeable']['value'];
+        }
+
+        if (isset($draft['goodsValue'])) {
+            $payload['GoodsValue'] = (string) $draft['goodsValue']['amount'];
+            $payload['GoodsValueCurrency'] = $code($draft['goodsValue']['currencyCode']);
+        }
+
+        foreach (['portOfLoading' => 'PortOfLoading', 'portOfDischarge' => 'PortOfDischarge', 'portOfOrigin' => 'PortOfOrigin', 'portOfDestination' => 'PortOfDestination'] as $field => $element) {
+            if (isset($draft[$field])) {
+                $payload[$element] = $code($draft[$field]);
+            }
+        }
+
+        foreach (['vesselName' => 'VesselName', 'voyageFlightNo' => 'VoyageFlightNo'] as $field => $element) {
+            if (isset($draft[$field])) {
+                $payload[$element] = $draft[$field];
+            }
+        }
+
+        [$billField, $billType] = $isConsol ? ['masterBill', 'MWB'] : ['houseBill', 'HWB'];
+        if (isset($draft[$billField])) {
+            $payload['WayBillNumber'] = $draft[$billField];
+            $payload['WayBillType'] = $code($billType);
+        }
+
+        if (isset($draft['consolType'])) {
+            $payload['ShipmentType'] = $code($draft['consolType']);
+        }
+
+        if (isset($draft['businessDirection'])) {
+            $payload['TransportBookingDirection'] = $code($draft['businessDirection']);
+        }
+
+        $dates = [];
+        foreach (['departureDate' => 'Departure', 'arrivalDate' => 'Arrival'] as $field => $type) {
+            if (isset($draft[$field])) {
+                $dates[] = [
+                    'Type' => $type,
+                    'IsEstimate' => $this->normalizeBoolean($draft[$field]['isEstimate']),
+                    'Value' => $draft[$field]['date'],
+                ];
+            }
+        }
+
+        if ($dates !== []) {
+            $payload['DateCollection'] = ['Date' => $collect($dates)];
+        }
+
+        $payload['JobCosting'] = [
+            'Branch' => $code($draft['branch']),
+            'Department' => $code($draft['department']),
+        ];
+
+        if ($isConsol && ! empty($draft['transportLegs'])) {
+            $payload['TransportLegCollection'] = [
+                'TransportLeg' => $collect(array_map(
+                    fn (array $leg) => $this->buildTransportLegPayload($leg),
+                    $draft['transportLegs']
+                )),
+            ];
+        }
+
+        $addresses = [];
+        foreach ($draft['parties'] ?? [] as $party) {
+            $addresses[] = $this->buildJobPartyPayload($party);
+        }
+
+        $agentFields = $isConsol ? ['sendingAgent', 'receivingAgent', 'carrier'] : ['controllingAgent'];
+        foreach ($agentFields as $field) {
+            if (isset($draft[$field])) {
+                $addresses[] = [
+                    'AddressType' => self::JOB_UPDATE_AGENT_ADDRESS_TYPES[$field],
+                    'OrganizationCode' => $draft[$field],
+                ];
+            }
+        }
+
+        if ($addresses !== []) {
+            $payload['OrganizationAddressCollection'] = ['OrganizationAddress' => $collect($addresses)];
+        }
+
+        if (! empty($draft['packLines'])) {
+            $payload['PackingLineCollection'] = [
+                'PackingLine' => $collect(array_map(
+                    fn (array $packLine) => $this->buildJobPackLinePayload($packLine),
+                    $draft['packLines']
+                )),
+            ];
+        }
+
+        if (! empty($draft['containers'])) {
+            $payload['ContainerCollection'] = [
+                'Container' => $collect(array_map(
+                    fn (array $container) => $this->buildJobContainerPayload($container),
+                    $draft['containers']
+                )),
+            ];
+        }
+
+        $localProcessing = [];
+        foreach (['pickupRequiredBy' => 'PickupRequiredBy', 'deliveryRequiredBy' => 'DeliveryRequiredBy'] as $field => $element) {
+            if (isset($draft[$field])) {
+                $localProcessing[$element] = $draft[$field];
+            }
+        }
+
+        foreach (['deliveryDropMode', 'pickupDropMode'] as $field) {
+            if (isset($draft[$field])) {
+                $localProcessing[self::JOB_UPDATE_LOCAL_PROCESSING_CODES[$field]] = $code($draft[$field]);
+            }
+        }
+
+        if (! empty($draft['orderNumbers'])) {
+            $localProcessing['OrderNumberCollection'] = [
+                'OrderNumber' => $collect(array_map(
+                    static fn (string $reference) => ['OrderReference' => $reference],
+                    $draft['orderNumbers']
+                )),
+            ];
+        }
+
+        if ($localProcessing !== []) {
+            $payload['LocalProcessing'] = $localProcessing;
+        }
+
+        if (! empty($draft['additionalReferences'])) {
+            $payload['AdditionalReferenceCollection'] = [
+                'AdditionalReference' => $collect(array_map(static function (array $reference) use ($code) {
+                    $row = [
+                        'Type' => $code($reference['type']),
+                        'ReferenceNumber' => $reference['number'],
+                    ];
+
+                    if (is_string($reference['countryOfIssue'] ?? null) && $reference['countryOfIssue'] !== '') {
+                        $row['CountryOfIssue'] = $code($reference['countryOfIssue']);
+                    }
+
+                    return $row;
+                }, $draft['additionalReferences'])),
+            ];
+        }
+
+        if (! empty($draft['shipmentKeys'])) {
+            $payload['SubShipmentCollection'] = $this->buildSubShipmentCollection($draft['shipmentKeys']);
+        }
+
+        return $payload;
+    }
+
+    private function buildJobPartyPayload(array $party): array
+    {
+        $payload = ['AddressType' => $party['addressType']];
+
+        foreach ([
+            'organizationCode' => 'OrganizationCode',
+            'companyName' => 'CompanyName',
+            'address1' => 'Address1',
+            'address2' => 'Address2',
+            'city' => 'City',
+            'state' => 'State',
+            'postcode' => 'Postcode',
+        ] as $source => $element) {
+            if ($this->isFilledString($party[$source] ?? null)) {
+                $payload[$element] = $party[$source];
+            }
+        }
+
+        if ($this->isFilledString($party['countryCode'] ?? null)) {
+            $payload['Country'] = ['Code' => $party['countryCode']];
+        }
+
+        foreach (['email' => 'Email', 'phone' => 'Phone'] as $source => $element) {
+            if ($this->isFilledString($party[$source] ?? null)) {
+                $payload[$element] = $party[$source];
+            }
+        }
+
+        return $payload;
+    }
+
+    private function buildJobPackLinePayload(array $packLine): array
+    {
+        $payload = [];
+
+        if (isset($packLine['commodityCode'])) {
+            $payload['Commodity'] = ['Code' => $packLine['commodityCode']];
+        }
+
+        if (isset($packLine['description'])) {
+            $payload['GoodsDescription'] = $packLine['description'];
+        }
+
+        $payload['PackQty'] = (string) $packLine['quantity'];
+        $payload['PackType'] = ['Code' => $packLine['packTypeCode']];
+
+        foreach (['weight' => ['Weight', 'WeightUnit'], 'volume' => ['Volume', 'VolumeUnit'], 'length' => ['Length', 'LengthUnit']] as $measure => [$valueElement, $unitElement]) {
+            if (isset($packLine[$measure.'Value'])) {
+                $payload[$valueElement] = (string) $packLine[$measure.'Value'];
+                $payload[$unitElement] = ['Code' => $packLine[$measure.'UnitCode']];
+            }
+        }
+
+        foreach (['width' => 'Width', 'height' => 'Height'] as $dimension => $element) {
+            if (isset($packLine[$dimension.'Value'])) {
+                $payload[$element] = (string) $packLine[$dimension.'Value'];
+            }
+        }
+
+        if (isset($packLine['hsCode'])) {
+            $payload['HarmonisedCode'] = $packLine['hsCode'];
+        }
+
+        if (isset($packLine['marksAndNumbers'])) {
+            $payload['MarksAndNos'] = $packLine['marksAndNumbers'];
+        }
+
+        return array_replace_recursive($payload, $packLine['attributes'] ?? []);
+    }
+
+    private function buildJobContainerPayload(array $container): array
+    {
+        $payload = $this->buildOneOffQuoteContainerPayload($container);
+
+        if (isset($container['containerNumber'])) {
+            $payload = ['ContainerNumber' => $container['containerNumber']] + $payload;
+        }
+
+        if (isset($container['seal'])) {
+            $payload['Seal'] = $container['seal'];
+        }
+
+        return $payload;
+    }
+
+    private function buildTransportLegPayload(array $leg): array
+    {
+        $mode = self::JOB_TRANSPORT_LEG_MODES[strtoupper($leg['mode'])] ?? $leg['mode'];
+
+        $payload = [
+            'LegOrder' => (string) $leg['order'],
+            'TransportMode' => $mode,
+            'PortOfLoading' => ['Code' => $leg['portOfLoading']],
+            'PortOfDischarge' => ['Code' => $leg['portOfDischarge']],
+            'LegType' => $leg['type'],
+        ];
+
+        if (isset($leg['vessel'])) {
+            $payload['VesselName'] = $leg['vessel'];
+        }
+
+        foreach (['voyageFlightNo' => 'VoyageFlightNo', 'estimatedDeparture' => 'EstimatedDeparture', 'estimatedArrival' => 'EstimatedArrival'] as $source => $element) {
+            if (isset($leg[$source])) {
+                $payload[$element] = $leg[$source];
+            }
+        }
+
+        if (isset($leg['carrier'])) {
+            $payload['Carrier'] = [
+                'AddressType' => $mode === 'Air' ? 'AirlineAddress' : 'ShippingLineAddress',
+                'OrganizationCode' => $leg['carrier'],
+            ];
+        }
+
         return $payload;
     }
 
@@ -4658,6 +5696,8 @@ class Cord
             $this->target === DataTarget::Container => 'container',
             $this->target === DataTarget::Staff => 'staff',
             $this->target === DataTarget::OneOffQuote => 'one_off_quote',
+            $this->target === DataTarget::Booking => 'booking',
+            $this->target === DataTarget::Consol => 'consol',
             $this->target === DataTarget::Receiveable => 'receivable',
             default => null,
         };

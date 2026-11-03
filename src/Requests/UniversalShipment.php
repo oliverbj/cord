@@ -23,11 +23,6 @@ class UniversalShipment extends Request
             }
 
             $context = $this->embeddedContext('booking and consol create', $dataTarget);
-            $branch = $this->cord->currentJobCreateDraft()['branch'] ?? null;
-
-            if (is_string($branch) && trim($branch) !== '') {
-                $context['Shipment']['DataContext']['Branch'] = ['Code' => $branch];
-            }
 
             return $context;
         }

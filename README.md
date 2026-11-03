@@ -430,7 +430,7 @@ $result = Cord::withCompany('NYC')
 // ['status' => 'PRS', 'key' => 'SNTG26092601', 'message_number' => '...', 'processing_log' => ..., 'data' => ...]
 ```
 
-`booking.create` requires `company`, `branch`, `department`, `transport_mode` and `packing_mode`; `controlling_agent` is optional. `consol.create` requires `company`, `branch`, `department`, `transport_mode` and `packing_mode`. `branch` and `department` serialize to `Branch` and `JobCosting > Branch` / `JobCosting > Department` (the branch is also set on `DataContext`). A value without a unit (weight, volume, goods value, pack line measures) is a validation error, and pack line width and height share the length unit.
+`booking.create` requires `company`, `branch`, `department`, `transport_mode` and `packing_mode`; `controlling_agent` is optional. `consol.create` requires `company`, `branch`, `transport_mode` and `packing_mode`; it has no `department`. On a booking, `branch` serializes to `Shipment > Branch` and `JobCosting > Branch`, and `department` to `JobCosting > Department`. A consol only gets `Shipment > Branch`, because CargoWise rejects `JobCosting` on a consol ("does not support creation of invoicing job"). `DataContext > Branch` is not sent. A value without a unit (weight, volume, goods value, pack line measures) is a validation error, and pack line width and height share the length unit. `goods_description` is limited to 35 characters (CargoWise truncates silently), `business_direction` must be a 3-letter code such as `IMP` or `EXP`, and a party cannot use `SendersOverseasAgent` (use `sending_agent` on the consol).
 
 | Structured key | Booking | Consol | XML (under `Shipment`) |
 |---|---|---|---|
@@ -459,7 +459,7 @@ $result = Cord::withCompany('NYC')
 
 A party must not use the `ControllingAgent` address type; use `controlling_agent`. A party without an `organization_code` needs `company_name`, `address_line_1`, `city` and `country`.
 
-Create runs return `status`, `key`, `message_number`, `processing_log` and `data`. The new `key` is read from `DataContext > DataSourceCollection > DataSource` (the entry whose `Type` matches the job), with `DataTarget` as a fallback; it is `null` when the reply carries neither, and a create never falls back to a passed key.
+Create runs return `status`, `key`, `message_number`, `processing_log` and `data`; `consol.update` and `booking.convert` return the same shape. The new `key` is read from `DataContext > DataSourceCollection > DataSource` (the entry whose `Type` matches the job), with `DataTarget` as a fallback; it is `null` when the reply carries neither, and a create never falls back to a passed key.
 
 An `ERR` reply always throws `Oliverbj\Cord\Exceptions\EadapterRejectedException` (a plain `Exception` subclass), also when the request wants JSON. It exposes `status`, `processingLog` and `messageNumber`. Timeouts, connection errors and 5xx responses keep Laravel's own exceptions (`ConnectionException`, `RequestException`), so a rejection (safe to fix and retry) can be told apart from no answer (unknown outcome).
 

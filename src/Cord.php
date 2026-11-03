@@ -104,7 +104,7 @@ class Cord
     /** @var array<string, array<int, string>> Scalar fields accepted by setJobValue() on create. */
     private const JOB_CREATE_FIELDS = [
         'booking' => ['branch', 'department', 'transportMode', 'packingMode', 'serviceLevel', 'incoterm', 'additionalTerms', 'goodsDescription', 'portOfLoading', 'portOfDischarge', 'portOfOrigin', 'portOfDestination', 'houseBill', 'carrierContractNumber', 'controllingAgent', 'pickupRequiredBy', 'deliveryRequiredBy', 'pickupDropMode', 'deliveryDropMode'],
-        'consol' => ['branch', 'department', 'transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'paymentMethod', 'sendingAgent', 'receivingAgent', 'carrier', 'carrierContractNumber', 'masterBill', 'consolType', 'businessDirection'],
+        'consol' => ['branch', 'transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'paymentMethod', 'sendingAgent', 'receivingAgent', 'carrier', 'carrierContractNumber', 'masterBill', 'consolType', 'businessDirection'],
     ];
 
     /** @var array<string, string> */
@@ -926,7 +926,6 @@ class Cord
     #[OperationField(OperationId::StaffUpdate)]
     #[OperationField(OperationId::OneOffQuoteCreate, required: true)]
     #[OperationField(OperationId::BookingCreate, required: true)]
-    #[OperationField(OperationId::ConsolCreate, required: true)]
     public function department(string $department): self
     {
         if ($this->isJobCreate()) {
@@ -1395,12 +1394,16 @@ class Cord
     }
 
     /**
-     * Set the goods description on a shipment update.
+     * Set the goods description on a shipment update or booking create (CargoWise truncates beyond 35 characters).
      */
-    #[OperationField(OperationId::ShipmentUpdate)]
-    #[OperationField(OperationId::BookingCreate)]
+    #[OperationField(OperationId::ShipmentUpdate, schema: ['type' => 'string', 'maxLength' => 35])]
+    #[OperationField(OperationId::BookingCreate, schema: ['type' => 'string', 'maxLength' => 35])]
     public function goodsDescription(string $description): self
     {
+        if (mb_strlen($description) > 35) {
+            throw ValidationException::withMessages(['goods_description' => ['The goods_description field must not be greater than 35 characters.']]);
+        }
+
         return $this->setJobValue('goodsDescription', $description);
     }
 
@@ -1559,7 +1562,7 @@ class Cord
     /**
      * Set the business direction code (e.g. IMP, EXP) on a consol create.
      */
-    #[OperationField(OperationId::ConsolCreate, name: 'business_direction')]
+    #[OperationField(OperationId::ConsolCreate, name: 'business_direction', schema: ['type' => 'string', 'minLength' => 3, 'maxLength' => 3])]
     public function businessDirection(string $code): self
     {
         return $this->setJobValue('businessDirection', $code);
@@ -3430,6 +3433,7 @@ class Cord
             OperationId::BookingCreate,
             OperationId::BookingConvert,
             OperationId::ConsolCreate,
+            OperationId::ConsolUpdate,
         ], true);
     }
 
@@ -3472,7 +3476,7 @@ class Cord
         return [
             'status' => (string) ($response['Status'] ?? ''),
             // A create never falls back to a passed key, so a missing answer stays null.
-            'key' => $this->findJobKey($data) ?? ($this->currentOperation === OperationId::BookingConvert ? $this->targetKey : null),
+            'key' => $this->findJobKey($data) ?? (in_array($this->currentOperation, [OperationId::BookingConvert, OperationId::ConsolUpdate], true) ? $this->targetKey : null),
             'message_number' => $this->messageNumber($response),
             'processing_log' => $this->processingLogText($response),
             'data' => $data,
@@ -3482,7 +3486,7 @@ class Cord
     private function findJobKey(mixed $data): ?string
     {
         $types = match ($this->currentOperation) {
-            OperationId::ConsolCreate => [DataTarget::Consol->value],
+            OperationId::ConsolCreate, OperationId::ConsolUpdate => [DataTarget::Consol->value],
             OperationId::BookingConvert => [DataTarget::Shipment->value],
             default => [DataTarget::Booking->value, DataTarget::Shipment->value],
         };
@@ -5239,15 +5243,23 @@ class Cord
 
         $required = [
             'branch' => 'branch',
-            'department' => 'department',
             'transportMode' => 'transport_mode',
             'packingMode' => 'packing_mode',
         ];
+
+        if ($this->target === DataTarget::Booking) {
+            $required['department'] = 'department';
+        }
 
         foreach ($required as $field => $name) {
             if (! $this->isFilledString($draft[$field] ?? null)) {
                 $errors[$name] = ["The {$name} field is required."];
             }
+        }
+
+        // CargoWise rejects longer codes (IMPORT) with a max-length warning.
+        if (isset($draft['businessDirection']) && ! preg_match('/^[A-Za-z]{3}$/', $draft['businessDirection'])) {
+            $errors['business_direction'] = ['The business_direction field must be a 3-letter code such as IMP or EXP.'];
         }
 
         foreach (['totalWeight' => ['total_weight', 'unitCode'], 'totalVolume' => ['total_volume', 'unitCode'], 'goodsValue' => ['goods_value', 'currencyCode']] as $field => [$name, $unitKey]) {
@@ -5272,6 +5284,10 @@ class Cord
 
             if ($type === 'ControllingAgent') {
                 $errors[$prefix.'.address_type'] = ['Use controlling_agent instead of a ControllingAgent party.'];
+            }
+
+            if ($type === 'SendersOverseasAgent') {
+                $errors[$prefix.'.address_type'] = ['SendersOverseasAgent is not a shipment party type; use sending_agent on the consol.'];
             }
 
             if ($this->isFilledString($party['organizationCode'] ?? null)) {
@@ -5450,10 +5466,13 @@ class Cord
             $payload['DateCollection'] = ['Date' => $collect($dates)];
         }
 
-        $payload['JobCosting'] = [
-            'Branch' => $code($draft['branch']),
-            'Department' => $code($draft['department']),
-        ];
+        // Consols are not invoicing jobs, so only bookings carry JobCosting.
+        if (! $isConsol) {
+            $payload['JobCosting'] = [
+                'Branch' => $code($draft['branch']),
+                'Department' => $code($draft['department']),
+            ];
+        }
 
         if ($isConsol && ! empty($draft['transportLegs'])) {
             $payload['TransportLegCollection'] = [

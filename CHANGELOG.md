@@ -2,6 +2,12 @@
 
 All notable changes to `cord` will be documented in this file.
 
+## Unreleased
+
+### What's Changed
+
+* Add optional `notes[].visibility` (INT, PUB) to one_off_quote.create
+
 ## V3.5.6 - 2026-11-03
 
 ### What's Changed

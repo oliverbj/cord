@@ -3215,3 +3215,64 @@ it('allows structured organization create input to omit the code', function () {
 
     expect($xml)->not->toContain('<OrgHeader Action="INSERT"><Code>');
 });
+
+it('supports an optional visibility on one-off quote notes', function () {
+    $base = fn () => Cord::withCompany('CPH')
+        ->oneOffQuote()
+        ->create()
+        ->branch('A01')->department('FES')
+        ->transportMode('SEA')->portOfOrigin('AUSYD')->portOfDestination('NZAKL');
+
+    $fluent = $base()
+        ->addNote(fn ($n) => $n->key('Internal')->text('Check weights.')->visibility('INT'))
+        ->addNote(fn ($n) => $n->key('Client')->text('Ready.')->visibility('PUB'))
+        ->addNote(fn ($n) => $n->key('Plain')->text('No visibility.'))
+        ->inspect();
+
+    $structured = Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'notes' => [
+            ['key' => 'Internal', 'text' => 'Check weights.', 'visibility' => 'INT'],
+            ['key' => 'Client', 'text' => 'Ready.', 'visibility' => 'PUB'],
+            ['key' => 'Plain', 'text' => 'No visibility.'],
+        ],
+    ])->inspect();
+
+    $context = '<NoteContext><Code>AAA</Code><Description>Module: A - All; Direction: A - All; Freight: A - All</Description></NoteContext>';
+
+    expect($structured)->toBe($fluent)
+        ->and($fluent)
+        ->toContain($context.'<Visibility><Code>INT</Code><Description>INTERNAL</Description></Visibility></Note>')
+        ->toContain($context.'<Visibility><Code>PUB</Code><Description>CLIENT-VISIBLE</Description></Visibility></Note>')
+        ->toContain('<NoteText>No visibility.</NoteText>'.$context.'</Note>');
+
+    expect(substr_count($fluent, '<Visibility>'))->toBe(2);
+
+    $withoutVisibility = $base()->addNote(fn ($n) => $n->key('Plain')->text('No visibility.'))->inspect();
+
+    expect($withoutVisibility)->not->toContain('<Visibility>');
+
+    $items = Cord::schema('one_off_quote.create')['properties']['notes']['items'];
+
+    expect($items['properties'])->toHaveKey('visibility')
+        ->and($items['properties']['visibility'])->toMatchArray(['type' => 'string'])
+        ->and($items['required'])->not->toContain('visibility');
+
+    expect(fn () => Cord::fromStructured('one_off_quote.create', [
+        'company' => 'CPH',
+        'branch' => 'A01',
+        'department' => 'FES',
+        'transport_mode' => 'SEA',
+        'port_of_origin' => 'AUSYD',
+        'port_of_destination' => 'NZAKL',
+        'notes' => [['key' => 'A', 'text' => 'B', 'visibility' => 5]],
+    ]))->toThrow(ValidationException::class);
+
+    expect(fn () => $base()->addNote(fn ($n) => $n->key('A')->text('B')->visibility(' '))->inspect())
+        ->toThrow(ValidationException::class);
+});

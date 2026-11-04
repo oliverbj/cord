@@ -107,6 +107,13 @@ class Cord
         'consol' => ['branch', 'transportMode', 'packingMode', 'portOfLoading', 'portOfDischarge', 'vesselName', 'voyageFlightNo', 'paymentMethod', 'sendingAgent', 'receivingAgent', 'carrier', 'carrierContractNumber', 'masterBill', 'consolType', 'businessDirection'],
     ];
 
+    /** @var array<string, string> INT and PUB are confirmed on CargoWise; PRV comes from a Universal export. */
+    private const NOTE_VISIBILITY_DESCRIPTIONS = [
+        'INT' => 'INTERNAL',
+        'PUB' => 'CLIENT-VISIBLE',
+        'PRV' => 'PRIVATE',
+    ];
+
     /** @var array<string, string> */
     private const JOB_TRANSPORT_LEG_MODES = [
         'AIR' => 'Air',
@@ -4208,6 +4215,10 @@ class Cord
                         $errors['notes.'.$index.'.'.$requiredField] = ['The '.$requiredField.' field is required.'];
                     }
                 }
+
+                if (array_key_exists('visibility', $note) && (! is_string($note['visibility']) || trim($note['visibility']) === '')) {
+                    $errors['notes.'.$index.'.visibility'] = ['The visibility field must not be empty.'];
+                }
             }
         }
 
@@ -4544,7 +4555,7 @@ class Cord
 
     private function buildOneOffQuoteNotePayload(array $note): array
     {
-        return [
+        $payload = [
             'Description' => $note['key'],
             'IsCustomDescription' => $this->normalizeBoolean(false),
             'NoteText' => $note['text'],
@@ -4553,6 +4564,16 @@ class Cord
                 'Description' => 'Module: A - All; Direction: A - All; Freight: A - All',
             ],
         ];
+
+        if (isset($note['visibility'])) {
+            $payload['Visibility'] = ['Code' => $note['visibility']];
+
+            if (isset(self::NOTE_VISIBILITY_DESCRIPTIONS[$note['visibility']])) {
+                $payload['Visibility']['Description'] = self::NOTE_VISIBILITY_DESCRIPTIONS[$note['visibility']];
+            }
+        }
+
+        return $payload;
     }
 
     private function buildOneOffQuoteContainerPayload(array $container): array

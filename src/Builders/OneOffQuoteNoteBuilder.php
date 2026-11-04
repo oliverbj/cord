@@ -30,6 +30,17 @@ class OneOffQuoteNoteBuilder
         return $this;
     }
 
+    /**
+     * Set the note visibility code (INT internal, PUB client-visible).
+     */
+    #[StructuredField]
+    public function visibility(string $code): self
+    {
+        $this->payload['visibility'] = $code;
+
+        return $this;
+    }
+
     public function toArray(): array
     {
         return $this->payload;
